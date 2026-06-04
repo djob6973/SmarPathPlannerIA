@@ -1,0 +1,47 @@
+# SmartPath Planner AI
+
+> Sistema de gestión de roadmap inteligente con agente IA, tablero Kanban y analítica en tiempo real.
+
+## Descripción
+
+SmartPath Planner AI es una aplicación web para la captura y gestión de solicitudes de proyectos. Un agente IA conversacional entrevista al usuario, estructura la solicitud y la registra automáticamente en el roadmap. El equipo gestiona el progreso mediante un tablero Kanban con drag & drop, columnas configurables y notificaciones en tiempo real.
+
+## Stack técnico
+
+- **Frontend:** React 19, TanStack Start (SSR), TanStack Router, Tailwind CSS v4
+- **Backend:** Supabase (PostgreSQL, Auth, Realtime, RLS)
+- **IA:** OpenAI Chat Completions API con tool-calling (función `create_request`)
+- **UI:** Shadcn/ui, @dnd-kit, Recharts
+
+## Páginas públicas
+
+- `/` — Landing page con descripción de características
+- `/login` — Autenticación (email + password) y registro
+
+## Secciones autenticadas (`/app/*`)
+
+- `/app/dashboard` — Resumen de KPIs y solicitudes recientes
+- `/app/chat` — Chat conversacional con agente IA para captura de solicitudes
+- `/app/requests` — Tabla de solicitudes con filtros por prioridad y estado
+- `/app/board` — Tablero Kanban con drag & drop entre columnas configurables
+- `/app/analytics` — Métricas: KPIs, distribución por estado/prioridad, actividad 7 días
+- `/app/team` — Gestión de usuarios y roles (solo admin)
+- `/app/settings` — Configuración de columnas Kanban y prompt del agente IA (solo admin)
+
+## Modelo de datos principal
+
+- `profiles` — Datos de usuario (nombre, email)
+- `user_roles` — Roles: admin, manager, client, viewer
+- `kanban_columns` — Columnas del tablero configurables por admin
+- `requests` — Solicitudes de proyecto (título, descripción, prioridad, estado, campos personalizados)
+- `chat_conversations` / `chat_messages` — Historial de conversaciones con el agente
+- `ai_settings` — Prompt del sistema y preguntas guía configurables
+- `notifications` — Notificaciones en tiempo real por cambios de estado y comentarios
+- `comments` — Comentarios por solicitud
+
+## Roles y permisos
+
+- **admin** — Acceso total: configuración, columnas, roles, todas las solicitudes
+- **manager** — Ve y edita todas las solicitudes, mueve tarjetas, ve el equipo
+- **client** — Crea y edita sus propias solicitudes
+- **viewer** — Solo lectura en solicitudes y analítica

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /login
+Disallow: /app/
+Disallow: /app
+
+Sitemap: /sitemap.xml
