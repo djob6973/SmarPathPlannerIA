@@ -49,19 +49,17 @@ function KanbanCard({
     <div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       className={cn(
-        "group relative rounded-lg border border-border/50 bg-card p-3 shadow-sm cursor-pointer transition-all hover:border-primary/30 hover:shadow-md",
+        "group relative rounded-lg border border-border/50 bg-card p-3 shadow-sm transition-all hover:border-primary/30 hover:shadow-md",
+        canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
         isDragging && "opacity-50 shadow-lg border-primary/50"
       )}
       onClick={onClick}
     >
       {canEdit && (
-        <div
-          {...attributes}
-          {...listeners}
-          onClick={(e) => e.stopPropagation()}
-          className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity"
-        >
+        <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
       )}
@@ -152,7 +150,7 @@ function BoardPage() {
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [areas, setAreas] = useState<any[]>([]);
 
-  const canEdit = hasRole("admin") || hasRole("manager") || hasRole("client");
+  const canEdit = isSuperAdmin || isAreaAdmin || hasRole("manager") || hasRole("client");
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })

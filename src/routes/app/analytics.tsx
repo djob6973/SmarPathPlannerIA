@@ -3,11 +3,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, CartesianGrid, AreaChart, Area,
+  LineChart, Line,
 } from "recharts";
 import { TrendingUp, CheckCircle2, Clock, Kanban } from "lucide-react";
 
@@ -31,6 +31,8 @@ function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [areas, setAreas] = useState<any[]>([]);
+  const [completedPeriod, setCompletedPeriod] = useState<"week" | "month" | "quarter">("week");
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   const loadAreas = async () => {
     const { data } = await supabase.from("areas").select("*").order("name");
@@ -78,6 +80,62 @@ function AnalyticsPage() {
     value: requests.filter((r) => r.priority === p).length,
     color: PRIORITY_COLORS[p],
   })).filter((d) => d.value > 0);
+
+  const completedRequests = requests.filter(
+    (r) => r.status_column_id && completedIds.has(r.status_column_id)
+  );
+
+  const isoWeekNumber = (date: Date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  };
+
+  const availableYears = Array.from(
+    new Set(completedRequests.map((r) => new Date(r.updated_at).getFullYear()))
+  ).sort((a, b) => b - a);
+  if (!availableYears.includes(new Date().getFullYear())) availableYears.unshift(new Date().getFullYear());
+
+  const completedOverTime = (() => {
+    const now = new Date();
+    const currentYear = selectedYear;
+    const isCurrentYear = selectedYear === now.getFullYear();
+
+    if (completedPeriod === "week") {
+      const totalWeeks = isCurrentYear ? isoWeekNumber(now) : 52;
+      return Array.from({ length: totalWeeks }, (_, i) => {
+        const weekNum = i + 1;
+        return {
+          name: `S${weekNum}`,
+          completadas: completedRequests.filter((r) => {
+            const rd = new Date(r.updated_at);
+            return rd.getFullYear() === currentYear && isoWeekNumber(rd) === weekNum;
+          }).length,
+        };
+      });
+    }
+
+    if (completedPeriod === "month") {
+      const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+      return Array.from({ length: 12 }, (_, i) => ({
+        name: months[i],
+        completadas: completedRequests.filter((r) => {
+          const rd = new Date(r.updated_at);
+          return rd.getFullYear() === currentYear && rd.getMonth() === i;
+        }).length,
+      }));
+    }
+
+    // Quarter: Q1-Q4 of current year
+    return ["Q1", "Q2", "Q3", "Q4"].map((q, i) => ({
+      name: q,
+      completadas: completedRequests.filter((r) => {
+        const rd = new Date(r.updated_at);
+        return rd.getFullYear() === currentYear && Math.floor(rd.getMonth() / 3) === i;
+      }).length,
+    }));
+  })();
 
   // Activity over last 7 days
   const activityData = Array.from({ length: 7 }, (_, i) => {
@@ -244,6 +302,67 @@ function AnalyticsPage() {
           )}
         </Card>
       </div>
+
+      {/* Completed over time */}
+      <Card className="border-border/50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h3 className="text-sm font-semibold">Proyectos completados</h3>
+          <div className="flex items-center gap-2">
+            <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+              <SelectTrigger className="h-7 w-24 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableYears.map((y) => (
+                  <SelectItem key={y} value={String(y)} className="text-xs">{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-1 rounded-lg border border-border p-0.5">
+              {(["week", "month", "quarter"] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setCompletedPeriod(p)}
+                  className={`rounded px-2 py-1 text-xs transition-colors ${
+                    completedPeriod === p
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {p === "week" ? "Semana" : p === "month" ? "Mes" : "Trimestre"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={completedOverTime}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis dataKey="name" fontSize={11} tick={{ fill: "var(--color-muted-foreground)" }} />
+              <YAxis allowDecimals={false} fontSize={11} tick={{ fill: "var(--color-muted-foreground)" }} />
+              <Tooltip
+                contentStyle={{
+                  background: "var(--color-popover)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                formatter={(v: any) => [v, "Completadas"]}
+              />
+              <Line
+                type="monotone"
+                dataKey="completadas"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={{ fill: "#10b981", r: 4 }}
+                activeDot={{ r: 5 }}
+                name="Completadas"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
 
       {/* Activity */}
       <Card className="border-border/50 p-4">
