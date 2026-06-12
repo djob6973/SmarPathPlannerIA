@@ -8,10 +8,10 @@ import {
   SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { listAreas, updateUserOwnArea } from "@/lib/admin.functions";
+import { getColumns, createColumn, updateColumn, deleteColumn, getAiSettings, updateAiSettings } from "@/lib/data.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -226,8 +226,8 @@ export function ColumnsSettings() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const reload = async () => {
-    const { data } = await supabase.from("kanban_columns").select("*").order("position");
-    setCols((data ?? []) as Column[]);
+    const { columns: data } = await getColumns({ data: {} });
+    setCols(data as Column[]);
     setLoading(false);
   };
 
@@ -236,34 +236,34 @@ export function ColumnsSettings() {
   const add = async () => {
     if (!name.trim()) { toast.error("El nombre es requerido"); return; }
     const nextPos = cols.length > 0 ? Math.max(...cols.map((c) => c.position)) + 1 : 0;
-    const { error } = await supabase
-      .from("kanban_columns")
-      .insert({ name: name.trim(), color, position: nextPos });
-    if (error) toast.error(error.message);
-    else { toast.success("Columna añadida"); setName(""); reload(); }
+    try {
+      await createColumn({ data: { name: name.trim(), color, position: nextPos } });
+      toast.success("Columna añadida"); setName(""); reload();
+    } catch (err: any) { toast.error(err?.message); }
   };
 
   const remove = async (id: string) => {
     if (!confirm("¿Eliminar esta columna? Las solicitudes en ella quedarán sin estado.")) return;
-    const { error } = await supabase.from("kanban_columns").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Columna eliminada"); reload(); }
+    try {
+      await deleteColumn({ data: { id } });
+      toast.success("Columna eliminada"); reload();
+    } catch (err: any) { toast.error(err?.message); }
   };
 
   const toggleCompleted = async (id: string, val: boolean) => {
-    const { error } = await supabase.from("kanban_columns").update({ is_completed: val }).eq("id", id);
-    if (error) toast.error(error.message);
-    else reload();
+    try {
+      await updateColumn({ data: { id, is_completed: val } });
+      reload();
+    } catch (err: any) { toast.error(err?.message); }
   };
 
   const saveEdit = async () => {
     if (!editing) return;
     if (!editing.name.trim()) { toast.error("El nombre es requerido"); return; }
-    const { error } = await supabase.from("kanban_columns")
-      .update({ name: editing.name.trim(), color: editing.color })
-      .eq("id", editing.id);
-    if (error) toast.error(error.message);
-    else { toast.success("Columna actualizada"); setEditing(null); reload(); }
+    try {
+      await updateColumn({ data: { id: editing.id, name: editing.name.trim(), color: editing.color } });
+      toast.success("Columna actualizada"); setEditing(null); reload();
+    } catch (err: any) { toast.error(err?.message); }
   };
 
   const handleDragEnd = async ({ active, over }: DragEndEvent) => {
@@ -272,10 +272,9 @@ export function ColumnsSettings() {
     const newIndex = cols.findIndex((c) => c.id === over.id);
     const reordered = arrayMove(cols, oldIndex, newIndex);
     setCols(reordered);
-    const results = await Promise.all(
-      reordered.map((c, i) => supabase.from("kanban_columns").update({ position: i }).eq("id", c.id))
-    );
-    if (results.some((r) => r.error)) {
+    try {
+      await Promise.all(reordered.map((c, i) => updateColumn({ data: { id: c.id, position: i } })));
+    } catch {
       toast.error("Error al reordenar columnas");
       reload();
     }
@@ -379,46 +378,30 @@ function AISettings() {
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    supabase
-      .from("ai_settings")
-      .select("*")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          const d = data as any;
-          setId(d.id);
-          setPrompt(d.system_prompt ?? "");
-          setModel(d.model ?? "gpt-4o-mini");
-          setQuestions(((d.intake_questions ?? []) as string[]).join("\n"));
-          setTemp(d.temperature ?? 0.7);
-          setMaxTokens(String(d.max_tokens ?? 4096));
-        }
-        setLoading(false);
-      });
+    getAiSettings({ data: {} }).then(({ settings }) => {
+      if (settings) {
+        setId(settings.id ?? null);
+        setPrompt(settings.system_prompt ?? "");
+        setModel(settings.model ?? "gpt-4o-mini");
+        setQuestions(((settings.intake_questions ?? []) as string[]).join("\n"));
+        setTemp(settings.temperature ?? 0.7);
+        setMaxTokens(String(settings.max_tokens ?? 4096));
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const save = async () => {
-    const parsedTokens = parseInt(maxTokens, 10);
-    if (isNaN(parsedTokens) || parsedTokens < 1) {
-      toast.error("Tokens máximos debe ser un número mayor a 0");
-      return;
-    }
     setSaving(true);
-    const payload = {
-      system_prompt:    prompt.trim(),
-      model:            model.trim(),
-      intake_questions: questions.split("\n").map((s) => s.trim()).filter(Boolean),
-      temperature:      Math.round(temperature * 10) / 10,
-      max_tokens:       parsedTokens,
-      is_active:        true,
-    };
-    const { error } = id
-      ? await supabase.from("ai_settings").update(payload).eq("id", id)
-      : await supabase.from("ai_settings").insert(payload);
-    if (error) toast.error(error.message);
-    else toast.success("Configuración guardada");
+    try {
+      await updateAiSettings({ data: {
+        ...(id ? { id } : {}),
+        system_prompt:    prompt.trim(),
+        model:            model.trim(),
+        intake_questions: questions.split("\n").map((s) => s.trim()).filter(Boolean),
+      }});
+      toast.success("Configuración guardada");
+    } catch (err: any) { toast.error(err?.message); }
     setSaving(false);
   };
 

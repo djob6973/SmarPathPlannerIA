@@ -6,14 +6,15 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { getRequestsData, updateRequest, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
+import { getAreas } from "@/lib/data.functions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RequestDetailModal } from "@/components/requests/request-detail-modal";
 import { toast } from "sonner";
-import { GripVertical, MessageSquare, Clock, Settings } from "lucide-react";
+import { GripVertical, Clock, Settings } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -23,21 +24,14 @@ export const Route = createFileRoute("/app/board")({
   component: BoardPage,
 });
 
-type Column = { id: string; name: string; position: number; color: string; is_completed: boolean };
-type Request = {
-  id: string; title: string; description: string | null; priority: string;
-  status_column_id: string | null; position: number | null; created_at: string; updated_at: string;
-};
-
 const PRIORITY_CLASS: Record<string, string> = {
   urgent: "priority-urgent", high: "priority-high",
   medium: "priority-medium", low: "priority-low",
 };
 
-// ── Draggable card ──────────────────────────────────────────────
 function KanbanCard({
   request, onClick, canEdit,
-}: { request: Request; onClick: () => void; canEdit: boolean }) {
+}: { request: RequestRow; onClick: () => void; canEdit: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: request.id,
     disabled: !canEdit,
@@ -80,8 +74,7 @@ function KanbanCard({
   );
 }
 
-// ── Ghost card (drag overlay) ────────────────────────────────────
-function GhostCard({ request }: { request: Request }) {
+function GhostCard({ request }: { request: RequestRow }) {
   return (
     <div className="rounded-lg border border-primary/50 bg-card p-3 shadow-2xl opacity-90 rotate-1">
       <p className="text-sm font-medium">{request.title}</p>
@@ -92,17 +85,13 @@ function GhostCard({ request }: { request: Request }) {
   );
 }
 
-// ── Column drop zone ─────────────────────────────────────────────
 function KanbanColumn({
   col, requests, canEdit, onCardClick,
-}: { col: Column; requests: Request[]; canEdit: boolean; onCardClick: (id: string) => void }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: col.id,
-  });
+}: { col: ColumnRow; requests: RequestRow[]; canEdit: boolean; onCardClick: (id: string) => void }) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.id });
 
   return (
     <div className="w-72 shrink-0 flex flex-col gap-2">
-      {/* Column header */}
       <div className="flex items-center justify-between rounded-lg border border-border/50 bg-card/60 px-3 py-2">
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full" style={{ background: col.color }} />
@@ -110,8 +99,6 @@ function KanbanColumn({
         </div>
         <Badge variant="outline" className="text-[10px] h-5 px-1.5">{requests.length}</Badge>
       </div>
-
-      {/* Cards */}
       <SortableContext items={requests.map((r) => r.id)} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
@@ -121,12 +108,7 @@ function KanbanColumn({
           )}
         >
           {requests.map((r) => (
-            <KanbanCard
-              key={r.id}
-              request={r}
-              canEdit={canEdit}
-              onClick={() => onCardClick(r.id)}
-            />
+            <KanbanCard key={r.id} request={r} canEdit={canEdit} onClick={() => onCardClick(r.id)} />
           ))}
           {requests.length === 0 && (
             <div className="flex h-20 items-center justify-center rounded-md text-xs text-muted-foreground/50">
@@ -139,11 +121,10 @@ function KanbanColumn({
   );
 }
 
-// ── Main page ────────────────────────────────────────────────────
 function BoardPage() {
-  const { hasRole, areaId, isSuperAdmin } = useAuth();
-  const [columns, setColumns] = useState<Column[]>([]);
-  const [requests, setRequests] = useState<Request[]>([]);
+  const { isSuperAdmin, isAreaAdmin, hasRole, areaId } = useAuth();
+  const [columns, setColumns] = useState<ColumnRow[]>([]);
+  const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -156,44 +137,26 @@ function BoardPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  const loadAreas = async () => {
-    const { data } = await supabase.from("areas").select("*").order("name");
-    setAreas(data || []);
-  };
-
   const reload = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from("requests").select("*").order("position", { ascending: true }).order("updated_at", { ascending: false });
-
-    // Filter by area
     const effectiveAreaId = isSuperAdmin ? selectedArea : areaId;
-    if (effectiveAreaId) {
-      query = query.eq("area_id", effectiveAreaId);
-    }
-
-    const [{ data: cols }, { data: reqs }] = await Promise.all([
-      supabase.from("kanban_columns").select("*").order("position"),
-      query,
-    ]);
-    setColumns((cols ?? []) as Column[]);
-    setRequests((reqs ?? []) as Request[]);
+    const result = await getRequestsData({ data: { areaId: effectiveAreaId } });
+    setColumns(result.columns);
+    setRequests(result.requests);
     setLoading(false);
   }, [areaId, isSuperAdmin, selectedArea]);
 
   useEffect(() => {
     reload();
     if (isSuperAdmin) {
-      loadAreas();
+      getAreas().then(({ areas }) => setAreas(areas));
     }
   }, [reload, isSuperAdmin]);
 
-  // Supabase Realtime for live updates
+  // Poll every 5 seconds instead of Supabase Realtime
   useEffect(() => {
-    const channel = supabase
-      .channel("board-requests")
-      .on("postgres_changes", { event: "*", schema: "public", table: "requests" }, reload)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const timer = setInterval(reload, 5000);
+    return () => clearInterval(timer);
   }, [reload]);
 
   const handleDragStart = ({ active }: DragStartEvent) => setActiveId(active.id as string);
@@ -206,20 +169,16 @@ function BoardPage() {
     let targetPosition: number | null = null;
 
     if (columns.some((c) => c.id === over.id)) {
-      // Dropped on a column (empty space)
       targetColId = over.id as string;
-      // Calculate new position (append to end of target column)
       const targetColCards = requests.filter((r) => r.status_column_id === targetColId);
       targetPosition = targetColCards.length;
     } else {
-      // Dropped on a card
       const overCard = requests.find((r) => r.id === over.id);
       targetColId = overCard?.status_column_id ?? null;
       const activeCard = requests.find((r) => r.id === active.id);
       if (!activeCard) return;
 
       if (activeCard.status_column_id === targetColId) {
-        // Reorder within the same column
         const colCards = [...requests.filter((r) => r.status_column_id === targetColId)]
           .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
         const oldIndex = colCards.findIndex((r) => r.id === active.id);
@@ -229,11 +188,10 @@ function BoardPage() {
         const posMap = new Map(reordered.map((r, i) => [r.id, i]));
         setRequests((prev) => prev.map((r) => posMap.has(r.id) ? { ...r, position: posMap.get(r.id)! } : r));
         await Promise.all(
-          reordered.map((r, i) => supabase.from("requests").update({ position: i }).eq("id", r.id))
+          reordered.map((r, i) => updateRequest({ data: { requestId: r.id, position: i } }))
         );
         return;
       }
-      // Moving to different column - insert before the over card
       const targetColCards = requests.filter((r) => r.status_column_id === targetColId)
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       const overIndex = targetColCards.findIndex((r) => r.id === over.id);
@@ -243,17 +201,13 @@ function BoardPage() {
     const activeCard = requests.find((r) => r.id === active.id);
     if (!activeCard) return;
 
-    // Move to a different column
     setRequests((prev) =>
       prev.map((r) => r.id === active.id ? { ...r, status_column_id: targetColId, position: targetPosition } : r)
     );
 
-    const { error } = await supabase
-      .from("requests")
-      .update({ status_column_id: targetColId, position: targetPosition })
-      .eq("id", String(active.id));
-
-    if (error) {
+    try {
+      await updateRequest({ data: { requestId: String(active.id), status_column_id: targetColId, position: targetPosition ?? 0 } });
+    } catch {
       toast.error("Error al mover la tarjeta");
       reload();
     }
@@ -261,7 +215,7 @@ function BoardPage() {
 
   const activeRequest = activeId ? requests.find((r) => r.id === activeId) : null;
 
-  if (loading) {
+  if (loading && requests.length === 0) {
     return (
       <div className="flex gap-4 p-6 overflow-x-auto">
         {Array.from({ length: 3 }).map((_, i) => (
@@ -279,111 +233,72 @@ function BoardPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-        <div>
-          <h1 className="text-xl font-bold">Tablero Kanban</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {requests.length} solicitude{requests.length !== 1 ? "s" : ""} · {columns.length} columnas
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {isSuperAdmin && (
-            <Select value={selectedArea || "all"} onValueChange={(value) => setSelectedArea(value === "all" ? null : value)}>
-              <SelectTrigger className="w-48 h-9">
+      <div className="flex items-center justify-between border-b border-border/50 px-6 py-3 shrink-0">
+        <h1 className="text-lg font-semibold">Tablero Kanban</h1>
+        <div className="flex items-center gap-3">
+          {isSuperAdmin && areas.length > 0 && (
+            <Select
+              value={selectedArea || "all"}
+              onValueChange={(v) => setSelectedArea(v === "all" ? null : v)}
+            >
+              <SelectTrigger className="w-44 h-8 text-xs">
                 <SelectValue placeholder="Todas las áreas" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las áreas</SelectItem>
-                {areas.map((area) => (
-                  <SelectItem key={area.id} value={area.id}>
-                    {area.name}
-                  </SelectItem>
+                {areas.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           )}
-          {hasRole("admin") && (
-            <Button asChild variant="outline" className="gap-2 h-9">
-              <Link to="/app/settings">
-                <Settings className="h-4 w-4" />
-                Columnas
-              </Link>
+          {isSuperAdmin && (
+            <Button asChild variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+              <Link to="/app/settings"><Settings className="h-3.5 w-3.5" />Columnas</Link>
             </Button>
           )}
-          <Button asChild className="gap-2 h-9">
-            <Link to="/app/chat">
-              <MessageSquare className="h-4 w-4" />
-              Nueva con IA
-            </Link>
-          </Button>
         </div>
       </div>
 
       {/* Board */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-4 overflow-x-auto p-6 flex-1">
-          {columns.map((col) => {
-            const colRequests = requests.filter((r) => r.status_column_id === col.id);
-            return (
+      <div className="flex-1 overflow-x-auto p-6">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-4">
+            {columns.map((col) => (
               <KanbanColumn
                 key={col.id}
                 col={col}
-                requests={colRequests}
+                requests={requests
+                  .filter((r) => r.status_column_id === col.id)
+                  .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))}
                 canEdit={canEdit}
                 onCardClick={setSelectedId}
               />
-            );
-          })}
-
-          {/* Backlog — requests with no column */}
-          {(() => {
-            const backlog = requests.filter((r) => !r.status_column_id);
-            if (backlog.length === 0) return null;
-            return (
-              <div className="w-72 shrink-0 flex flex-col gap-2">
-                <div className="flex items-center justify-between rounded-lg border border-dashed border-border px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground" />
-                    <span className="text-sm font-medium text-muted-foreground">Sin estado</span>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] h-5 px-1.5">{backlog.length}</Badge>
-                </div>
-                <div className="flex flex-col gap-2 p-1">
-                  {backlog.map((r) => (
-                    <KanbanCard key={r.id} request={r} canEdit={false} onClick={() => setSelectedId(r.id)} />
-                  ))}
-                </div>
+            ))}
+            {columns.length === 0 && !loading && (
+              <div className="flex h-48 w-full items-center justify-center rounded-xl border-2 border-dashed border-border/50 text-sm text-muted-foreground">
+                Sin columnas. {isSuperAdmin && <Link to="/app/settings" className="text-primary hover:underline ml-1">Configura el tablero</Link>}
               </div>
-            );
-          })()}
+            )}
+          </div>
+          <DragOverlay>
+            {activeRequest && <GhostCard request={activeRequest} />}
+          </DragOverlay>
+        </DndContext>
+      </div>
 
-          {columns.length === 0 && (
-            <div className="flex flex-1 items-center justify-center">
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Sin columnas configuradas.</p>
-                <Button asChild variant="outline" size="sm" className="mt-3">
-                  <Link to="/app/settings">Configurar columnas</Link>
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <DragOverlay>
-          {activeRequest && <GhostCard request={activeRequest} />}
-        </DragOverlay>
-      </DndContext>
-
-      <RequestDetailModal
-        requestId={selectedId}
-        onClose={() => setSelectedId(null)}
-        onUpdated={reload}
-      />
+      {selectedId && (
+        <RequestDetailModal
+          requestId={selectedId}
+          onClose={() => setSelectedId(null)}
+          onUpdated={reload}
+        />
+      )}
     </div>
   );
 }

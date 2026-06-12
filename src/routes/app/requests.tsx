@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { getRequestsData, deleteRequest, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
+import { getAreas } from "@/lib/data.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,13 +21,6 @@ export const Route = createFileRoute("/app/requests")({
   component: RequestsPage,
 });
 
-type Request = {
-  id: string; title: string; description: string | null; objective: string | null; process: string | null; priority: string;
-  status_column_id: string | null; created_by: string; assigned_to: string | null;
-  created_at: string; updated_at: string; expires_at: string | null;
-};
-type Column = { id: string; name: string; color: string };
-
 const PRIORITY_CLASS: Record<string, string> = {
   urgent: "priority-urgent", high: "priority-high",
   medium: "priority-medium", low: "priority-low",
@@ -35,8 +29,8 @@ const PRIORITIES = ["all", "urgent", "high", "medium", "low"];
 
 function RequestsPage() {
   const { user, hasPermission, areaId, isSuperAdmin } = useAuth();
-  const [requests, setRequests] = useState<Request[]>([]);
-  const [columns, setColumns] = useState<Column[]>([]);
+  const [requests, setRequests] = useState<RequestRow[]>([]);
+  const [columns, setColumns] = useState<ColumnRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState("all");
@@ -49,34 +43,19 @@ function RequestsPage() {
   const canDeleteAll = hasPermission("delete_all_requests");
   const canDeleteOwn = hasPermission("delete_own_requests");
 
-  const loadAreas = async () => {
-    const { data } = await supabase.from("areas").select("*").order("name");
-    setAreas(data || []);
-  };
-
   const reload = async () => {
     setLoading(true);
-    let query = supabase.from("requests").select("*").order("updated_at", { ascending: false });
-
-    // Filter by area
     const effectiveAreaId = isSuperAdmin ? selectedArea : areaId;
-    if (effectiveAreaId) {
-      query = query.eq("area_id", effectiveAreaId);
-    }
-
-    const [{ data: cols }, { data: reqs }] = await Promise.all([
-      supabase.from("kanban_columns").select("*").order("position"),
-      query,
-    ]);
-    setColumns((cols ?? []) as Column[]);
-    setRequests((reqs ?? []) as Request[]);
+    const { columns: cols, requests: reqs } = await getRequestsData({ data: { areaId: effectiveAreaId } });
+    setColumns(cols);
+    setRequests(reqs);
     setLoading(false);
   };
 
   useEffect(() => {
     reload();
     if (isSuperAdmin) {
-      loadAreas();
+      getAreas().then(({ areas }) => setAreas(areas));
     }
   }, [selectedArea, isSuperAdmin]);
 
@@ -92,9 +71,13 @@ function RequestsPage() {
   const remove = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!confirm("¿Eliminar esta solicitud?")) return;
-    const { error } = await supabase.from("requests").delete().eq("id", id);
-    if (error) toast.error(error.message);
-    else { toast.success("Solicitud eliminada"); reload(); }
+    try {
+      await deleteRequest({ data: { requestId: id } });
+      toast.success("Solicitud eliminada");
+      reload();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Error al eliminar");
+    }
   };
 
   const colMap = useMemo(() => Object.fromEntries(columns.map((c) => [c.id, c])), [columns]);

@@ -1,13 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { getRequestsData, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
+import { getAreas } from "@/lib/data.functions";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Kanban, MessageSquare, TrendingUp, Clock, CheckCircle2, AlertCircle, ArrowRight } from "lucide-react";
-import { Link as RouterLink } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -15,60 +15,41 @@ export const Route = createFileRoute("/app/dashboard")({
   component: DashboardPage,
 });
 
-type Request = {
-  id: string; title: string; priority: string;
-  status_column_id: string | null; created_at: string; updated_at: string;
-};
-type Column = { id: string; name: string; color: string; is_completed: boolean };
-
 const PRIORITY_CLASS: Record<string, string> = {
   urgent: "priority-urgent", high: "priority-high",
   medium: "priority-medium", low: "priority-low",
 };
 
 function DashboardPage() {
-  const { user, profile, areaId, isSuperAdmin } = useAuth();
-  const [columns, setColumns] = useState<Column[]>([]);
-  const [requests, setRequests] = useState<Request[]>([]);
+  const { profile, user, areaId, isSuperAdmin } = useAuth();
+  const [columns, setColumns] = useState<ColumnRow[]>([]);
+  const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [areas, setAreas] = useState<any[]>([]);
 
-  const loadAreas = async () => {
-    const { data } = await supabase.from("areas").select("*").order("name");
-    setAreas(data || []);
-  };
-
   useEffect(() => {
-    let query = supabase.from("requests").select("*").order("updated_at", { ascending: false });
-
-    // Filter by area
     const effectiveAreaId = isSuperAdmin ? selectedArea : areaId;
-    if (effectiveAreaId) {
-      query = query.eq("area_id", effectiveAreaId);
-    }
-
-    Promise.all([
-      supabase.from("kanban_columns").select("*").order("position"),
-      query,
-    ]).then(([{ data: cols }, { data: reqs }]) => {
-      setColumns((cols ?? []) as Column[]);
-      setRequests((reqs ?? []) as Request[]);
+    setLoading(true);
+    getRequestsData({ data: { areaId: effectiveAreaId } }).then(({ columns, requests }) => {
+      setColumns(columns);
+      setRequests(requests);
       setLoading(false);
     });
 
     if (isSuperAdmin) {
-      loadAreas();
+      getAreas().then(({ areas }) => setAreas(areas));
     }
   }, [areaId, isSuperAdmin, selectedArea]);
 
   const completedIds = new Set(columns.filter((c) => c.is_completed).map((c) => c.id));
-  const completed = requests.filter((r) => r.status_column_id && completedIds.has(r.status_column_id)).length;
+  const completed  = requests.filter((r) => r.status_column_id && completedIds.has(r.status_column_id)).length;
   const inProgress = requests.filter((r) => r.status_column_id && !completedIds.has(r.status_column_id)).length;
   const pending    = requests.filter((r) => !r.status_column_id).length;
   const urgent     = requests.filter((r) => r.priority === "urgent").length;
+  const recent     = requests.slice(0, 5);
 
-  const recent = requests.slice(0, 5);
+  const firstName = profile?.full_name ?? user?.email?.split("@")[0] ?? "Usuario";
 
   const kpis = [
     { label: "Total solicitudes", value: requests.length, icon: Kanban,       color: "text-primary",     bg: "bg-primary/10"      },
@@ -77,11 +58,8 @@ function DashboardPage() {
     { label: "Completadas",       value: completed,       icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-400/10"  },
   ];
 
-  const firstName = profile?.full_name ?? user?.email?.split("@")[0] ?? "Usuario";
-
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      {/* Greeting */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
@@ -92,23 +70,20 @@ function DashboardPage() {
           </p>
         </div>
         {isSuperAdmin && (
-          <Select value={selectedArea || "all"} onValueChange={(value) => setSelectedArea(value === "all" ? null : value)}>
+          <Select value={selectedArea || "all"} onValueChange={(v) => setSelectedArea(v === "all" ? null : v)}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Todas las áreas" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas las áreas</SelectItem>
-              {areas.map((area) => (
-                <SelectItem key={area.id} value={area.id}>
-                  {area.name}
-                </SelectItem>
+              {areas.map((a) => (
+                <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {kpis.map((k) => (
           <Card key={k.label} className="p-4 border-border/50">
@@ -127,7 +102,6 @@ function DashboardPage() {
         ))}
       </div>
 
-      {/* Alert urgent */}
       {urgent > 0 && (
         <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
           <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
@@ -140,9 +114,7 @@ function DashboardPage() {
         </div>
       )}
 
-      {/* Recent requests + Quick actions */}
       <div className="grid gap-4 md:grid-cols-3">
-        {/* Recent */}
         <Card className="md:col-span-2 border-border/50">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
             <h2 className="text-sm font-semibold">Solicitudes recientes</h2>
@@ -189,7 +161,6 @@ function DashboardPage() {
           </div>
         </Card>
 
-        {/* Quick actions */}
         <div className="space-y-3">
           <h2 className="text-sm font-semibold px-1">Acciones rápidas</h2>
           {[
@@ -213,7 +184,6 @@ function DashboardPage() {
         </div>
       </div>
 
-      {/* Status distribution */}
       {!loading && columns.length > 0 && (
         <Card className="border-border/50">
           <div className="px-4 py-3 border-b border-border/50">

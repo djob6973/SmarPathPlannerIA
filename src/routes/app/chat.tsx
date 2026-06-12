@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { sendChatMessage } from "@/lib/chat.functions";
 import { useAuth } from "@/lib/auth-context";
-import { supabase } from "@/integrations/supabase/client";
+import { getAreas } from "@/lib/data.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -44,8 +44,8 @@ function ChatPage() {
   }, [isSuperAdmin]);
 
   const loadAreas = async () => {
-    const { data } = await supabase.from("areas").select("*").order("name");
-    setAreas(data || []);
+    const { areas: data } = await getAreas();
+    setAreas(data);
   };
 
   useEffect(() => {

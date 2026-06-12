@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, X, Kanban, MessageSquare, BarChart3, Settings } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { getRequestsData, type RequestRow } from "@/lib/requests.functions";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -31,50 +31,48 @@ interface SearchDialogProps {
 export function SearchDialog({ open, onClose }: SearchDialogProps) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [allRequests, setAllRequests] = useState<RequestRow[]>([]);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selected, setSelected] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const search = useCallback(async (q: string) => {
-    if (!q.trim()) {
-      setResults(NAV_RESULTS);
-      return;
-    }
+  // Load requests once when dialog opens
+  useEffect(() => {
+    if (!open) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("requests")
-      .select("id, title, priority, status_column_id")
-      .ilike("title", `%${q}%`)
-      .limit(8);
-    const reqResults: SearchResult[] = (data ?? []).map((r) => ({
-      kind: "request" as const,
-      id: r.id,
-      title: r.title,
-      priority: r.priority,
-      status: r.status_column_id,
-    }));
-    const navFiltered = NAV_RESULTS.filter((n) =>
-      n.label.toLowerCase().includes(q.toLowerCase())
-    );
+    getRequestsData({ data: {} }).then(({ requests }) => {
+      setAllRequests(requests);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [open]);
+
+  const search = useCallback((q: string) => {
+    if (!q.trim()) { setResults(NAV_RESULTS); return; }
+    const lower = q.toLowerCase();
+    const reqResults: SearchResult[] = allRequests
+      .filter((r) => r.title.toLowerCase().includes(lower))
+      .slice(0, 8)
+      .map((r) => ({
+        kind: "request" as const,
+        id: r.id,
+        title: r.title,
+        priority: r.priority,
+        status: r.status_column_id,
+      }));
+    const navFiltered = NAV_RESULTS.filter((n) => n.label.toLowerCase().includes(lower));
     setResults([...reqResults, ...navFiltered]);
     setSelected(0);
-    setLoading(false);
-  }, []);
+  }, [allRequests]);
 
   useEffect(() => {
-    const timer = setTimeout(() => search(query), 200);
+    const timer = setTimeout(() => search(query), 150);
     return () => clearTimeout(timer);
   }, [query, search]);
 
   useEffect(() => {
-    if (open) {
-      setQuery("");
-      setResults(NAV_RESULTS);
-      setSelected(0);
-    }
+    if (open) { setQuery(""); setResults(NAV_RESULTS); setSelected(0); }
   }, [open]);
 
-  // Keyboard navigation
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -92,25 +90,12 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
     return () => window.removeEventListener("keydown", handler);
   }, [open, results, selected, navigate, onClose]);
 
-  // Global Cmd+K
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Dialog */}
       <div className="relative w-full max-w-xl rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
-        {/* Input */}
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
           <input
@@ -129,11 +114,8 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
           <kbd className="rounded border border-border px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">ESC</kbd>
         </div>
 
-        {/* Results */}
         <div className="max-h-80 overflow-y-auto py-2">
-          {loading && (
-            <p className="px-4 py-3 text-sm text-muted-foreground">Buscando...</p>
-          )}
+          {loading && <p className="px-4 py-3 text-sm text-muted-foreground">Cargando...</p>}
           {!loading && results.length === 0 && (
             <p className="px-4 py-3 text-sm text-muted-foreground">Sin resultados para "{query}"</p>
           )}
@@ -172,7 +154,6 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
           ))}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center gap-4 border-t border-border px-4 py-2 text-[10px] text-muted-foreground">
           <span><kbd className="font-mono">↑↓</kbd> navegar</span>
           <span><kbd className="font-mono">↵</kbd> seleccionar</span>

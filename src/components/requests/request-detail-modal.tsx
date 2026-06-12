@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,15 +12,18 @@ import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { checkUserPermission } from "@/lib/permissions.functions";
-
-type Request = {
-  id: string; title: string; description: string | null; objective: string | null; process: string | null; priority: string;
-  status_column_id: string | null; created_by: string; assigned_to: string | null;
-  created_at: string; updated_at: string; expires_at: string | null | undefined;
-};
-type Column = { id: string; name: string; color: string };
-type Comment = { id: string; content: string; user_id: string; created_at: string };
-type Profile = { id: string; full_name: string | null; email: string };
+import {
+  getRequestDetails,
+  updateRequest as updateRequestFn,
+  deleteRequest as deleteRequestFn,
+  copyRequest as copyRequestFn,
+  addComment as addCommentFn,
+  updateComment as updateCommentFn,
+  type RequestRow,
+  type ColumnRow,
+  type CommentRow,
+  type ProfileRow,
+} from "@/lib/requests.functions";
 
 const PRIORITY_CLASS: Record<string, string> = {
   urgent: "priority-urgent", high: "priority-high",
@@ -35,19 +37,18 @@ interface RequestDetailModalProps {
 }
 
 export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDetailModalProps) {
-  const { user, hasRole } = useAuth();
-  const [request, setRequest] = useState<Request | null>(null);
-  const [columns, setColumns] = useState<Column[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
-  const [availableUsers, setAvailableUsers] = useState<Profile[]>([]);
+  const { user, isSuperAdmin, isAreaAdmin, hasRole } = useAuth();
+  const [request, setRequest] = useState<RequestRow | null>(null);
+  const [columns, setColumns] = useState<ColumnRow[]>([]);
+  const [comments, setComments] = useState<CommentRow[]>([]);
+  const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
+  const [availableUsers, setAvailableUsers] = useState<ProfileRow[]>([]);
   const [newComment, setNewComment] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [canManageExpiration, setCanManageExpiration] = useState(false);
   const [expiresAt, setExpiresAt] = useState("");
   const [updatingExpiration, setUpdatingExpiration] = useState(false);
-  const [creatorName, setCreatorName] = useState<string>("");
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentContent, setEditingCommentContent] = useState("");
   const [updatingComment, setUpdatingComment] = useState(false);
@@ -66,76 +67,20 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [canDeleteRequest, setCanDeleteRequest] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
-  const canEdit = hasRole("admin") || hasRole("manager") || hasRole("client");
+  const canEdit = isSuperAdmin || isAreaAdmin || hasRole("manager") || hasRole("client");
 
   useEffect(() => {
     if (!requestId) return;
     setLoading(true);
-    Promise.all([
-      supabase.from("requests").select("*").eq("id", requestId).single(),
-      supabase.from("kanban_columns").select("id, name, color").order("position"),
-      supabase.from("comments").select("*").eq("request_id", requestId).order("created_at"),
-    ]).then(([{ data: req, error: reqError }, { data: cols, error: colsError }, { data: comms, error: commsError }]) => {
-      if (reqError) {
-        toast.error("Error al cargar la solicitud: " + reqError.message);
-        setLoading(false);
-        return;
-      }
-      if (colsError) {
-        toast.error("Error al cargar las columnas: " + colsError.message);
-        setLoading(false);
-        return;
-      }
-      if (commsError) {
-        toast.error("Error al cargar los comentarios: " + commsError.message);
-        setLoading(false);
-        return;
-      }
-      setRequest(req as Request);
-      setColumns((cols ?? []) as Column[]);
-      const commentList = (comms ?? []) as Comment[];
-      setComments(commentList);
-      
-      // Get creator name directly from profiles table
-      if (req?.created_by) {
-        supabase.from("profiles").select("full_name, email").eq("id", req.created_by).maybeSingle().then(({ data, error }) => {
-          console.log("[RequestDetailModal] Creator profile response:", { data, error });
-          if (error) {
-            console.error("Error loading creator profile:", error);
-            setCreatorName("Desconocido");
-          } else if (data) {
-            const name = data.full_name || data.email || "Desconocido";
-            console.log("[RequestDetailModal] Setting creator name to:", name);
-            setCreatorName(name);
-          } else {
-            console.log("[RequestDetailModal] No profile found for creator");
-            setCreatorName("Desconocido");
-          }
-        });
-      }
-      
-      // load profiles for comment authors
-      const userIds = [...new Set(commentList.map((c) => c.user_id))];
-      if (userIds.length > 0) {
-        supabase.from("profiles").select("id, full_name, email").in("id", userIds).then(({ data: p, error: profilesError }) => {
-          if (profilesError) {
-            console.error("Error loading profiles:", profilesError);
-          } else {
-            const map: Record<string, Profile> = {};
-            (p ?? []).forEach((pr) => { map[pr.id] = pr as Profile; });
-            setProfiles(map);
-          }
-        });
-      }
-      // load available users for assignment
-      supabase.from("profiles").select("id, full_name, email").then(({ data: users, error: usersError }) => {
-        if (usersError) {
-          console.error("Error loading available users:", usersError);
-          setAvailableUsers([]);
-        } else {
-          setAvailableUsers((users ?? []) as Profile[]);
-        }
-      });
+    getRequestDetails({ data: { requestId } }).then(({ request: req, columns: cols, comments: comms, profiles: prof, availableUsers: users }) => {
+      setRequest(req);
+      setColumns(cols);
+      setComments(comms);
+      setProfiles(prof);
+      setAvailableUsers(users);
+      setLoading(false);
+    }).catch((err) => {
+      toast.error("Error al cargar la solicitud: " + err?.message);
       setLoading(false);
     });
   }, [requestId]);
@@ -146,64 +91,45 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
 
   useEffect(() => {
     if (!user) return;
-    console.log("[RequestDetailModal] Checking permission for user:", user.id);
-    checkUserPermission({ data: { permission: "manage_request_expiration" } }).then(({ hasPermission }) => {
-      console.log("[RequestDetailModal] Permission check result:", hasPermission);
-      setCanManageExpiration(hasPermission);
-    }).catch((error) => {
-      console.error("[RequestDetailModal] Permission check error:", error);
-      setCanManageExpiration(false);
-    });
+    checkUserPermission({ data: { permission: "manage_request_expiration" } })
+      .then(({ hasPermission }) => setCanManageExpiration(hasPermission))
+      .catch(() => setCanManageExpiration(false));
   }, [user]);
 
   useEffect(() => {
     if (!user || !request) return;
-    // Check if user can edit this request
     const isOwner = request.created_by === user.id;
     checkUserPermission({ data: { permission: "edit_all_requests" } }).then(({ hasPermission }) => {
-      if (hasPermission) {
-        setCanEditRequest(true);
-      } else {
-        checkUserPermission({ data: { permission: "edit_own_requests" } }).then(({ hasPermission }) => {
-          setCanEditRequest(hasPermission && isOwner);
-        }).catch(() => setCanEditRequest(false));
-      }
+      if (hasPermission) { setCanEditRequest(true); return; }
+      checkUserPermission({ data: { permission: "edit_own_requests" } })
+        .then(({ hasPermission: own }) => setCanEditRequest(own && isOwner))
+        .catch(() => setCanEditRequest(false));
     }).catch(() => setCanEditRequest(false));
   }, [user, request]);
 
   useEffect(() => {
     if (!user) return;
-    // Check if user can copy requests (same as create permission)
-    checkUserPermission({ data: { permission: "create_requests" } }).then(({ hasPermission }) => {
-      setCanCopyRequest(hasPermission);
-    }).catch(() => setCanCopyRequest(false));
+    checkUserPermission({ data: { permission: "create_requests" } })
+      .then(({ hasPermission }) => setCanCopyRequest(hasPermission))
+      .catch(() => setCanCopyRequest(false));
   }, [user]);
 
   useEffect(() => {
     if (!user || !request) return;
     const isOwner = request.created_by === user.id;
     checkUserPermission({ data: { permission: "delete_all_requests" } }).then(({ hasPermission }) => {
-      if (hasPermission) {
-        setCanDeleteRequest(true);
-      } else {
-        checkUserPermission({ data: { permission: "delete_own_requests" } }).then(({ hasPermission: canOwn }) => {
-          setCanDeleteRequest(canOwn && isOwner);
-        }).catch(() => setCanDeleteRequest(false));
-      }
+      if (hasPermission) { setCanDeleteRequest(true); return; }
+      checkUserPermission({ data: { permission: "delete_own_requests" } })
+        .then(({ hasPermission: own }) => setCanDeleteRequest(own && isOwner))
+        .catch(() => setCanDeleteRequest(false));
     }).catch(() => setCanDeleteRequest(false));
   }, [user, request]);
 
   useEffect(() => {
     if (request?.expires_at) {
-      // Convert database datetime format to datetime-local format (YYYY-MM-DDTHH:mm)
       const date = new Date(request.expires_at);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      const formatted = `${year}-${month}-${day}T${hours}:${minutes}`;
-      setExpiresAt(formatted);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setExpiresAt(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`);
     } else {
       setExpiresAt("");
     }
@@ -211,35 +137,36 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
 
   const updateStatus = async (colId: string) => {
     if (!request) return;
-    const { error } = await supabase.from("requests").update({ status_column_id: colId }).eq("id", request.id);
-    if (error) toast.error(error.message);
-    else { setRequest((r) => r ? { ...r, status_column_id: colId } : r); onUpdated?.(); }
+    try {
+      await updateRequestFn({ data: { requestId: request.id, status_column_id: colId } });
+      setRequest((r) => r ? { ...r, status_column_id: colId } : r);
+      onUpdated?.();
+    } catch (err: any) { toast.error(err?.message); }
   };
 
   const updateAssignedTo = async (userId: string) => {
     if (!request) return;
     const value = userId === "unassigned" ? null : userId;
-    const { error } = await supabase.from("requests").update({ assigned_to: value }).eq("id", request.id);
-    if (error) toast.error(error.message);
-    else { setRequest((r) => r ? { ...r, assigned_to: value } : r); onUpdated?.(); }
+    try {
+      await updateRequestFn({ data: { requestId: request.id, assigned_to: value } });
+      setRequest((r) => r ? { ...r, assigned_to: value } : r);
+      onUpdated?.();
+    } catch (err: any) { toast.error(err?.message); }
   };
 
   const updateExpiresAt = async (value: string) => {
     if (!request) return;
     setUpdatingExpiration(true);
     const expiresValue = value || null;
-    console.log("[RequestDetailModal] Updating expires_at:", { value, expiresValue, requestId: request.id });
-    const { error, data } = await supabase.from("requests").update({ expires_at: expiresValue }).eq("id", request.id).select().single();
-    if (error) {
-      console.error("[RequestDetailModal] Error updating expires_at:", error);
-      toast.error(error.message);
-      setExpiresAt(request.expires_at || "");
-    } else {
-      console.log("[RequestDetailModal] Successfully updated expires_at:", data);
+    try {
+      await updateRequestFn({ data: { requestId: request.id, expires_at: expiresValue } });
       setRequest((r) => r ? { ...r, expires_at: expiresValue } : r);
       setExpiresAt(value);
       onUpdated?.();
       toast.success("Fecha de vencimiento actualizada");
+    } catch (err: any) {
+      toast.error(err?.message);
+      setExpiresAt(request.expires_at ?? "");
     }
     setUpdatingExpiration(false);
   };
@@ -247,9 +174,9 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const startEditingRequest = () => {
     if (!request) return;
     setEditTitle(request.title);
-    setEditDescription(request.description || "");
-    setEditObjective(request.objective || "");
-    setEditProcess(request.process || "");
+    setEditDescription(request.description ?? "");
+    setEditObjective(request.objective ?? "");
+    setEditProcess(request.process ?? "");
     setEditPriority(request.priority);
     setEditStatusColumnId(request.status_column_id);
     setEditAssignedTo(request.assigned_to);
@@ -258,35 +185,24 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
 
   const cancelEditingRequest = () => {
     setIsEditingRequest(false);
-    setEditTitle("");
-    setEditDescription("");
-    setEditObjective("");
-    setEditProcess("");
-    setEditPriority("");
-    setEditStatusColumnId(null);
-    setEditAssignedTo(null);
+    setEditTitle(""); setEditDescription(""); setEditObjective("");
+    setEditProcess(""); setEditPriority(""); setEditStatusColumnId(null); setEditAssignedTo(null);
   };
 
-  const updateRequest = async () => {
-    if (!request || !editTitle.trim()) {
-      toast.error("El título es obligatorio");
-      return;
-    }
-
+  const saveRequestEdits = async () => {
+    if (!request || !editTitle.trim()) { toast.error("El título es obligatorio"); return; }
     setUpdatingRequest(true);
-    const { error } = await supabase.from("requests").update({
-      title: editTitle.trim(),
-      description: editDescription.trim() || null,
-      objective: editObjective.trim() || null,
-      process: editProcess.trim() || null,
-      priority: editPriority as any,
-      status_column_id: editStatusColumnId,
-      assigned_to: editAssignedTo,
-    }).eq("id", request.id);
-
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      await updateRequestFn({ data: {
+        requestId: request.id,
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        objective: editObjective.trim() || null,
+        process: editProcess.trim() || null,
+        priority: editPriority as any,
+        status_column_id: editStatusColumnId,
+        assigned_to: editAssignedTo,
+      }});
       setRequest((r) => r ? {
         ...r,
         title: editTitle.trim(),
@@ -300,97 +216,67 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       toast.success("Solicitud actualizada");
       cancelEditingRequest();
       onUpdated?.();
-    }
+    } catch (err: any) { toast.error(err?.message); }
     setUpdatingRequest(false);
   };
 
   const removeRequest = async () => {
     if (!request) return;
     if (!confirm("¿Eliminar esta solicitud? Esta acción no se puede deshacer.")) return;
-    const { error } = await supabase.from("requests").delete().eq("id", request.id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Solicitud eliminada");
-    onUpdated?.();
-    onClose();
+    try {
+      await deleteRequestFn({ data: { requestId: request.id } });
+      toast.success("Solicitud eliminada");
+      onUpdated?.();
+      onClose();
+    } catch (err: any) { toast.error(err?.message); }
   };
 
-  const copyRequest = async () => {
-    if (!request || !user) return;
-
+  const doCopyRequest = async () => {
+    if (!request) return;
     setCopyingRequest(true);
-    const { error } = await supabase.from("requests").insert({
-      title: `${request.title} (Copia)`,
-      description: request.description,
-      objective: request.objective,
-      process: request.process,
-      priority: request.priority,
-      status_column_id: request.status_column_id,
-      assigned_to: null, // Reset assignment for copy
-      created_by: user.id,
-      expires_at: request.expires_at,
-    }).select().single();
-
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      await copyRequestFn({ data: { requestId: request.id } });
       toast.success("Solicitud copiada exitosamente");
       onUpdated?.();
       onClose();
-    }
+    } catch (err: any) { toast.error(err?.message); }
     setCopyingRequest(false);
   };
 
   const sendComment = async () => {
-    if (!newComment.trim() || !requestId || !user) return;
+    if (!newComment.trim() || !requestId) return;
     setSending(true);
-    const { error, data } = await supabase
-      .from("comments")
-      .insert({ request_id: requestId, user_id: user.id, content: newComment.trim() })
-      .select()
-      .single();
-    if (error) toast.error(error.message);
-    else {
-      setComments((c) => [...c, data as Comment]);
+    try {
+      const { comment } = await addCommentFn({ data: { requestId, content: newComment.trim() } });
+      setComments((c) => [...c, comment]);
       setNewComment("");
-    }
+    } catch (err: any) { toast.error(err?.message); }
     setSending(false);
   };
 
-  const startEditingComment = (comment: Comment) => {
+  const startEditingComment = (comment: CommentRow) => {
     setEditingCommentId(comment.id);
     setEditingCommentContent(comment.content);
   };
 
-  const cancelEditingComment = () => {
-    setEditingCommentId(null);
-    setEditingCommentContent("");
-  };
+  const cancelEditingComment = () => { setEditingCommentId(null); setEditingCommentContent(""); };
 
-  const updateComment = async () => {
+  const saveCommentEdit = async () => {
     if (!editingCommentId || !editingCommentContent.trim()) return;
     setUpdatingComment(true);
-    const { error } = await supabase
-      .from("comments")
-      .update({ content: editingCommentContent.trim() })
-      .eq("id", editingCommentId);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      setComments((c) =>
-        c.map((comment) =>
-          comment.id === editingCommentId
-            ? { ...comment, content: editingCommentContent.trim() }
-            : comment
-        )
-      );
+    try {
+      await updateCommentFn({ data: { commentId: editingCommentId, content: editingCommentContent.trim() } });
+      setComments((c) => c.map((com) => com.id === editingCommentId ? { ...com, content: editingCommentContent.trim() } : com));
       toast.success("Comentario actualizado");
       cancelEditingComment();
-    }
+    } catch (err: any) { toast.error(err?.message); }
     setUpdatingComment(false);
   };
 
   if (!requestId) return null;
 
+  const creatorProfile = request?.created_by ? profiles[request.created_by] : null;
+  const creatorName = creatorProfile?.full_name ?? creatorProfile?.email ?? "Desconocido";
   const currentCol = columns.find((c) => c.id === request?.status_column_id);
 
   return (
@@ -426,7 +312,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {canCopyRequest && (
-              <Button variant="ghost" size="sm" onClick={copyRequest} disabled={copyingRequest} className="gap-2">
+              <Button variant="ghost" size="sm" onClick={doCopyRequest} disabled={copyingRequest} className="gap-2">
                 {copyingRequest ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
                 Copiar
               </Button>
@@ -453,48 +339,29 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
         <div className="flex flex-1 overflow-hidden">
           {/* Main content */}
           <div className="flex flex-1 flex-col overflow-hidden border-r border-border">
-            {/* Description */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
               {isEditingRequest ? (
                 <div className="space-y-4">
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Título</label>
-                    <Input
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className="text-sm"
-                    />
+                    <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Descripción</label>
-                    <Textarea
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      className="text-sm min-h-[80px]"
-                    />
+                    <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="text-sm min-h-[80px]" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Objetivo</label>
-                    <Textarea
-                      value={editObjective}
-                      onChange={(e) => setEditObjective(e.target.value)}
-                      className="text-sm min-h-[60px]"
-                    />
+                    <Textarea value={editObjective} onChange={(e) => setEditObjective(e.target.value)} className="text-sm min-h-[60px]" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Procesos/Pasos</label>
-                    <Textarea
-                      value={editProcess}
-                      onChange={(e) => setEditProcess(e.target.value)}
-                      className="text-sm min-h-[60px]"
-                    />
+                    <Textarea value={editProcess} onChange={(e) => setEditProcess(e.target.value)} className="text-sm min-h-[60px]" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Prioridad</label>
                     <Select value={editPriority} onValueChange={setEditPriority}>
-                      <SelectTrigger className="text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="low">Baja</SelectItem>
                         <SelectItem value="medium">Media</SelectItem>
@@ -506,9 +373,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Estado</label>
                     <Select value={editStatusColumnId || ""} onValueChange={setEditStatusColumnId}>
-                      <SelectTrigger className="text-sm">
-                        <SelectValue placeholder="Seleccionar estado" />
-                      </SelectTrigger>
+                      <SelectTrigger className="text-sm"><SelectValue placeholder="Seleccionar estado" /></SelectTrigger>
                       <SelectContent>
                         {columns.map((col) => (
                           <SelectItem key={col.id} value={col.id}>
@@ -523,22 +388,18 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Asignar a</label>
-                    <Select value={editAssignedTo || "unassigned"} onValueChange={(value) => setEditAssignedTo(value === "unassigned" ? null : value)}>
-                      <SelectTrigger className="text-sm">
-                        <SelectValue placeholder="Sin asignar" />
-                      </SelectTrigger>
+                    <Select value={editAssignedTo || "unassigned"} onValueChange={(v) => setEditAssignedTo(v === "unassigned" ? null : v)}>
+                      <SelectTrigger className="text-sm"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unassigned">Sin asignar</SelectItem>
                         {availableUsers.map((u) => (
-                          <SelectItem key={u.id} value={u.id}>
-                            {u.full_name || u.email}
-                          </SelectItem>
+                          <SelectItem key={u.id} value={u.id}>{u.full_name ?? u.email}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex gap-2 pt-2">
-                    <Button onClick={updateRequest} disabled={updatingRequest} className="flex-1">
+                    <Button onClick={saveRequestEdits} disabled={updatingRequest} className="flex-1">
                       {updatingRequest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
                       Guardar
                     </Button>
@@ -555,21 +416,18 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                       <p className="text-sm text-foreground whitespace-pre-wrap">{request.description}</p>
                     </div>
                   )}
-
                   {request?.objective && (
                     <div>
                       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Objetivo</h3>
                       <p className="text-sm text-foreground whitespace-pre-wrap">{request.objective}</p>
                     </div>
                   )}
-
                   {request?.process && (
                     <div>
                       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Procesos/Pasos</h3>
                       <p className="text-sm text-foreground whitespace-pre-wrap">{request.process}</p>
                     </div>
                   )}
-
                   {!request?.description && !request?.objective && !request?.process && (
                     <p className="text-sm text-muted-foreground italic">Sin información detallada.</p>
                   )}
@@ -590,7 +448,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                     const profile = profiles[c.user_id];
                     const initials = (profile?.full_name ?? profile?.email ?? "?").slice(0, 2).toUpperCase();
                     const isAuthor = c.user_id === user?.id;
-                    const canEditComment = isAuthor || hasRole("admin") || hasRole("manager");
+                    const canEditComment = isAuthor || isSuperAdmin || isAreaAdmin || hasRole("manager");
                     const isEditing = editingCommentId === c.id;
                     return (
                       <div key={c.id} className="flex gap-3">
@@ -608,12 +466,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                               {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: es })}
                             </span>
                             {canEditComment && !isEditing && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5 ml-auto"
-                                onClick={() => startEditingComment(c)}
-                              >
+                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto" onClick={() => startEditingComment(c)}>
                                 <Edit2 className="h-3 w-3" />
                               </Button>
                             )}
@@ -627,22 +480,11 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                                 disabled={updatingComment}
                               />
                               <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={updateComment}
-                                  disabled={updatingComment || !editingCommentContent.trim()}
-                                  className="h-7 text-xs"
-                                >
+                                <Button size="sm" onClick={saveCommentEdit} disabled={updatingComment || !editingCommentContent.trim()} className="h-7 text-xs">
                                   {updatingComment ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                                   Guardar
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={cancelEditingComment}
-                                  disabled={updatingComment}
-                                  className="h-7 text-xs"
-                                >
+                                <Button variant="ghost" size="sm" onClick={cancelEditingComment} disabled={updatingComment} className="h-7 text-xs">
                                   <X className="h-3 w-3" />
                                   Cancelar
                                 </Button>
@@ -670,12 +512,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 className="min-h-[60px] resize-none text-sm"
                 disabled={sending}
               />
-              <Button
-                size="icon"
-                onClick={sendComment}
-                disabled={sending || !newComment.trim()}
-                className="shrink-0 h-9 w-9 self-end"
-              >
+              <Button size="icon" onClick={sendComment} disabled={sending || !newComment.trim()} className="shrink-0 h-9 w-9 self-end">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
@@ -689,15 +526,11 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Asignado a</p>
                   {canEdit ? (
                     <Select value={request.assigned_to ?? "unassigned"} onValueChange={updateAssignedTo}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Sin asignar" />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unassigned" className="text-xs">Sin asignar</SelectItem>
                         {availableUsers.map((u) => (
-                          <SelectItem key={u.id} value={u.id} className="text-xs">
-                            {u.full_name ?? u.email}
-                          </SelectItem>
+                          <SelectItem key={u.id} value={u.id} className="text-xs">{u.full_name ?? u.email}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -707,11 +540,11 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                         <>
                           <Avatar className="h-6 w-6">
                             <AvatarFallback className="text-[10px]">
-                              {(availableUsers.find(u => u.id === request.assigned_to)?.full_name ?? availableUsers.find(u => u.id === request.assigned_to)?.email ?? "?").slice(0, 2).toUpperCase()}
+                              {(profiles[request.assigned_to]?.full_name ?? profiles[request.assigned_to]?.email ?? "?").slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <span className="text-xs">
-                            {availableUsers.find(u => u.id === request.assigned_to)?.full_name ?? availableUsers.find(u => u.id === request.assigned_to)?.email}
+                            {profiles[request.assigned_to]?.full_name ?? profiles[request.assigned_to]?.email}
                           </span>
                         </>
                       ) : (
@@ -725,9 +558,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Estado</p>
                   {canEdit ? (
                     <Select value={request.status_column_id ?? ""} onValueChange={updateStatus}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Sin estado" />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin estado" /></SelectTrigger>
                       <SelectContent>
                         {columns.map((c) => (
                           <SelectItem key={c.id} value={c.id} className="text-xs">
@@ -755,9 +586,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Creado por</p>
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-[10px]">
-                        {creatorName.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
+                      <AvatarFallback className="text-[10px]">{creatorName.slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <span className="text-xs">{creatorName}</span>
                   </div>
@@ -796,13 +625,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                       <Calendar className="h-3 w-3 text-muted-foreground" />
                       {request.expires_at ? (
                         <span className="text-muted-foreground">
-                          {new Date(request.expires_at).toLocaleDateString("es", { 
-                            day: "numeric", 
-                            month: "short", 
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })}
+                          {new Date(request.expires_at).toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
                       ) : (
                         <span className="text-muted-foreground italic">Sin vencimiento</span>

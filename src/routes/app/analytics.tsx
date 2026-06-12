@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { getRequestsData, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
+import { getAreas } from "@/lib/data.functions";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -15,10 +16,8 @@ export const Route = createFileRoute("/app/analytics")({
   component: AnalyticsPage,
 });
 
-type Request = {
-  id: string; priority: string; status_column_id: string | null; created_at: string; updated_at: string;
-};
-type Column = { id: string; name: string; color: string; is_completed: boolean };
+type Request = Pick<RequestRow, "id" | "priority" | "status_column_id" | "created_at" | "updated_at">;
+type Column = Pick<ColumnRow, "id" | "name" | "color" | "is_completed">;
 
 const PRIORITY_COLORS: Record<string, string> = {
   urgent: "#EF4444", high: "#F97316", medium: "#EAB308", low: "#6366F1",
@@ -34,31 +33,17 @@ function AnalyticsPage() {
   const [completedPeriod, setCompletedPeriod] = useState<"week" | "month" | "quarter">("week");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  const loadAreas = async () => {
-    const { data } = await supabase.from("areas").select("*").order("name");
-    setAreas(data || []);
-  };
-
   useEffect(() => {
-    let query = supabase.from("requests").select("id, priority, status_column_id, created_at, updated_at").order("created_at");
-
-    // Filter by area
     const effectiveAreaId = isSuperAdmin ? selectedArea : areaId;
-    if (effectiveAreaId) {
-      query = query.eq("area_id", effectiveAreaId);
-    }
-
-    Promise.all([
-      supabase.from("kanban_columns").select("*").order("position"),
-      query,
-    ]).then(([{ data: cols }, { data: reqs }]) => {
-      setColumns((cols ?? []) as Column[]);
-      setRequests((reqs ?? []) as Request[]);
+    setLoading(true);
+    getRequestsData({ data: { areaId: effectiveAreaId } }).then(({ columns: cols, requests: reqs }) => {
+      setColumns(cols);
+      setRequests(reqs);
       setLoading(false);
     });
 
     if (isSuperAdmin) {
-      loadAreas();
+      getAreas().then(({ areas: data }) => setAreas(data));
     }
   }, [areaId, isSuperAdmin, selectedArea]);
 

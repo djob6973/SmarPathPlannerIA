@@ -1,207 +1,134 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import type { AppPermission, AppRole, RolePermission, RolePermissionsConfig } from "./permissions.types";
+import { getAuthContext } from "./server-auth";
+import { db } from "./db";
+import type { AppPermission, AppRole } from "./permissions.types";
 
-async function assertAdmin(supabase: any, userId: string) {
-  const { data } = await supabase.from("user_roles_smart_path").select("role").eq("user_id", userId).eq("role", "super_admin").maybeSingle();
-  if (!data) throw new Error("Solo super administradores");
+const ALL_PERMISSIONS = [
+  "create_requests", "edit_own_requests", "edit_all_requests",
+  "delete_own_requests", "delete_all_requests", "view_all_requests",
+  "assign_requests", "manage_users", "manage_roles", "manage_permissions",
+  "manage_areas", "view_analytics", "export_data", "use_ai_features",
+  "manage_settings", "manage_request_expiration",
+] as const;
+
+const DEFAULT_PERMISSIONS: Record<string, AppPermission[]> = {
+  super_admin: [...ALL_PERMISSIONS] as AppPermission[],
+  area_admin: [
+    "create_requests","edit_own_requests","edit_all_requests","delete_own_requests",
+    "delete_all_requests","view_all_requests","assign_requests","manage_users",
+    "manage_roles","view_analytics","export_data","use_ai_features","manage_request_expiration",
+  ],
+  manager: [
+    "create_requests","edit_own_requests","edit_all_requests","delete_own_requests",
+    "delete_all_requests","view_all_requests","assign_requests","view_analytics",
+    "export_data","use_ai_features","manage_request_expiration",
+  ],
+  client: ["create_requests","edit_own_requests","delete_own_requests","use_ai_features"],
+  viewer: ["view_all_requests"],
+};
+
+async function assertSuperAdmin(userId: string) {
+  const rows = await db<[any]>`
+    SELECT 1 FROM user_roles_smart_path
+    WHERE user_id = ${userId} AND role = 'super_admin' LIMIT 1
+  `;
+  if (rows.length === 0) throw new Error("Solo super administradores");
 }
 
-export const getRolePermissions = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context.supabase, context.userId);
-    const { data } = await supabaseAdmin.from("role_permissions" as any).select("role, permission, enabled").order("role", { ascending: true });
-    return { permissions: data ?? [] };
-  });
+export const getRolePermissions = createServerFn({ method: "GET" }).handler(async () => {
+  const auth = await getAuthContext();
+  if ("error" in auth) throw new Error(auth.error);
+  await assertSuperAdmin(auth.userId);
+
+  const perms = await db<{ role: string; permission: string; enabled: boolean }[]>`
+    SELECT role, permission, enabled FROM role_permissions ORDER BY role
+  `;
+  return { permissions: perms };
+});
 
 export const updateRolePermission = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
     z.object({
-      role: z.enum(["super_admin", "area_admin", "admin", "manager", "client", "viewer"]),
-      permission: z.enum([
-        "create_requests",
-        "edit_own_requests",
-        "edit_all_requests",
-        "delete_own_requests",
-        "delete_all_requests",
-        "view_all_requests",
-        "assign_requests",
-        "manage_users",
-        "manage_roles",
-        "manage_permissions",
-        "manage_areas",
-        "view_analytics",
-        "export_data",
-        "use_ai_features",
-        "manage_settings",
-        "manage_request_expiration",
-      ]),
+      role: z.enum(["super_admin","area_admin","manager","client","viewer"]),
+      permission: z.enum(ALL_PERMISSIONS),
       enabled: z.boolean(),
-    }).parse(input),
+    }).parse(input)
   )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
-    const { error } = await supabaseAdmin
-      .from("role_permissions" as any)
-      .upsert({ role: data.role, permission: data.permission, enabled: data.enabled }, { onConflict: "role,permission" });
-    if (error) {
-      console.error("[updateRolePermission] Error:", error);
-      throw new Error(error.message);
-    }
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    await assertSuperAdmin(auth.userId);
+
+    await db`
+      INSERT INTO role_permissions (role, permission, enabled)
+      VALUES (${data.role}, ${data.permission}, ${data.enabled})
+      ON CONFLICT (role, permission) DO UPDATE SET enabled = EXCLUDED.enabled
+    `;
     return { ok: true };
   });
 
 export const resetRolePermissions = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: any) =>
+  .inputValidator((input) =>
     z.object({
-      role: z.enum(["super_admin", "area_admin", "admin", "manager", "client", "viewer"]),
-    }).parse(input),
+      role: z.enum(["super_admin","area_admin","manager","client","viewer"]),
+    }).parse(input)
   )
-  .handler(async ({ data, context }: any) => {
-    await assertAdmin(context.supabase, context.userId);
-    
-    const defaultPermissions: Record<string, AppPermission[]> = {
-      super_admin: [
-        "create_requests",
-        "edit_own_requests",
-        "edit_all_requests",
-        "delete_own_requests",
-        "delete_all_requests",
-        "view_all_requests",
-        "assign_requests",
-        "manage_users",
-        "manage_roles",
-        "manage_permissions",
-        "manage_areas",
-        "view_analytics",
-        "export_data",
-        "use_ai_features",
-        "manage_settings",
-        "manage_request_expiration",
-      ],
-      area_admin: [
-        "create_requests",
-        "edit_own_requests",
-        "edit_all_requests",
-        "delete_own_requests",
-        "delete_all_requests",
-        "view_all_requests",
-        "assign_requests",
-        "manage_users",
-        "manage_roles",
-        "view_analytics",
-        "export_data",
-        "use_ai_features",
-        "manage_request_expiration",
-      ],
-      admin: [
-        "create_requests",
-        "edit_own_requests",
-        "edit_all_requests",
-        "delete_own_requests",
-        "delete_all_requests",
-        "view_all_requests",
-        "assign_requests",
-        "manage_users",
-        "manage_roles",
-        "manage_permissions",
-        "view_analytics",
-        "export_data",
-        "use_ai_features",
-        "manage_settings",
-        "manage_request_expiration",
-      ],
-      manager: [
-        "create_requests",
-        "edit_own_requests",
-        "edit_all_requests",
-        "delete_own_requests",
-        "delete_all_requests",
-        "view_all_requests",
-        "assign_requests",
-        "view_analytics",
-        "export_data",
-        "use_ai_features",
-        "manage_request_expiration",
-      ],
-      client: ["create_requests", "edit_own_requests", "delete_own_requests", "use_ai_features"],
-      viewer: ["view_all_requests"],
-    };
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    await assertSuperAdmin(auth.userId);
 
-    const permissions = defaultPermissions[data.role as AppRole];
-    
-    // Delete all existing permissions for this role
-    await supabaseAdmin.from("role_permissions" as any).delete().eq("role", data.role);
-    
-    // Insert default permissions
-    for (const permission of permissions) {
-      await supabaseAdmin
-        .from("role_permissions" as any)
-        .insert({ role: data.role, permission, enabled: true });
+    const perms = DEFAULT_PERMISSIONS[data.role] ?? [];
+    await db`DELETE FROM role_permissions WHERE role = ${data.role}`;
+    for (const permission of perms) {
+      await db`
+        INSERT INTO role_permissions (role, permission, enabled)
+        VALUES (${data.role}, ${permission}, true)
+      `;
     }
-    
     return { ok: true };
   });
 
-export const getUserPermissions = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }: any) => {
-    const { data: roles } = await context.supabase.from("user_roles_smart_path").select("role").eq("user_id", context.userId);
-    const userRoles = (roles ?? []).map((r: any) => r.role as AppRole);
-    
-    if (userRoles.length === 0) return { permissions: [] };
-    
-    const { data: permissions } = await supabaseAdmin
-      .from("role_permissions" as any)
-      .select("permission")
-      .in("role", userRoles)
-      .eq("enabled", true);
-    
-    const uniquePermissions = new Set((permissions ?? []).map((p: any) => p.permission as AppPermission));
-    return { permissions: Array.from(uniquePermissions) };
-  });
+export const getUserPermissions = createServerFn({ method: "GET" }).handler(async () => {
+  const auth = await getAuthContext();
+  if ("error" in auth) throw new Error(auth.error);
+  const { db, userId } = auth;
+
+  const roleRows = await db<{ role: string }[]>`
+    SELECT role FROM user_roles_smart_path WHERE user_id = ${userId}
+  `;
+  const userRoles = roleRows.map((r) => r.role);
+  if (userRoles.length === 0) return { permissions: [] };
+
+  const permRows = await db<{ permission: string }[]>`
+    SELECT DISTINCT permission FROM role_permissions
+    WHERE role = ANY(${userRoles}) AND enabled = true
+  `;
+  return { permissions: permRows.map((p) => p.permission as AppPermission) };
+});
 
 export const checkUserPermission = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: any) =>
-    z.object({
-      permission: z.enum([
-        "create_requests",
-        "edit_own_requests",
-        "edit_all_requests",
-        "delete_own_requests",
-        "delete_all_requests",
-        "view_all_requests",
-        "assign_requests",
-        "manage_users",
-        "manage_roles",
-        "manage_permissions",
-        "view_analytics",
-        "export_data",
-        "use_ai_features",
-        "manage_settings",
-        "manage_request_expiration",
-      ]),
-    }).parse(input),
+  .inputValidator((input) =>
+    z.object({ permission: z.enum(ALL_PERMISSIONS) }).parse(input)
   )
-  .handler(async ({ data, context }: any) => {
-    const { data: roles } = await context.supabase.from("user_roles_smart_path").select("role").eq("user_id", context.userId);
-    const userRoles = (roles ?? []).map((r: any) => r.role as AppRole);
-    
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) return { hasPermission: false };
+    const { db, userId } = auth;
+
+    const roleRows = await db<{ role: string }[]>`
+      SELECT role FROM user_roles_smart_path WHERE user_id = ${userId}
+    `;
+    const userRoles = roleRows.map((r) => r.role);
     if (userRoles.length === 0) return { hasPermission: false };
-    
-    const { data: permission } = await supabaseAdmin
-      .from("role_permissions" as any)
-      .select("enabled")
-      .in("role", userRoles)
-      .eq("permission", data.permission)
-      .eq("enabled", true)
-      .maybeSingle();
-    
-    return { hasPermission: !!permission };
+
+    const rows = await db<[any]>`
+      SELECT 1 FROM role_permissions
+      WHERE role = ANY(${userRoles})
+        AND permission = ${data.permission}
+        AND enabled = true
+      LIMIT 1
+    `;
+    return { hasPermission: rows.length > 0 };
   });

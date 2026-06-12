@@ -1,21 +1,16 @@
 import { useEffect, useState, useCallback } from "react";
 import { X, Bell, CheckCheck, Inbox } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-
-export type Notification = {
-  id: string;
-  type: string;
-  title: string;
-  body: string | null;
-  data: Record<string, unknown>;
-  read: boolean;
-  created_at: string;
-};
+import {
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type NotificationRow,
+} from "@/lib/notifications.functions";
 
 const TYPE_ICON: Record<string, string> = {
   request_created: "📋",
@@ -34,78 +29,75 @@ interface NotificationPanelProps {
 
 export function NotificationPanel({ open, onClose, onUnreadCountChange }: NotificationPanelProps) {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    const notifs = (data ?? []) as Notification[];
-    setNotifications(notifs);
-    onUnreadCountChange?.(notifs.filter((n) => !n.read).length);
+    try {
+      const { notifications: notifs } = await getNotifications();
+      setNotifications(notifs);
+      onUnreadCountChange?.(notifs.filter((n) => !n.read).length);
+    } catch {
+      // silent — panel still shows stale data
+    }
     setLoading(false);
   }, [user, onUnreadCountChange]);
 
-  useEffect(() => { load(); }, [load]);
+  // Load on mount and whenever the panel opens
+  useEffect(() => {
+    if (open) load();
+  }, [open, load]);
 
-  // Supabase Realtime subscription
+  // Poll every 15 s while panel is open
+  useEffect(() => {
+    if (!open) return;
+    const timer = setInterval(load, 15_000);
+    return () => clearInterval(timer);
+  }, [open, load]);
+
+  // Background unread-count poll (60 s) even when panel is closed
   useEffect(() => {
     if (!user) return;
-    const channel = supabase
-      .channel(`notifications:${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => load()
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user, load]);
+    const timer = setInterval(async () => {
+      try {
+        const { notifications: notifs } = await getNotifications();
+        onUnreadCountChange?.(notifs.filter((n) => !n.read).length);
+      } catch { /* ignore */ }
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, [user, onUnreadCountChange]);
 
-  const markAllRead = async () => {
+  const doMarkAllRead = async () => {
     if (!user) return;
-    await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("user_id", user.id)
-      .eq("read", false);
-    load();
+    try {
+      await markAllNotificationsRead();
+      load();
+    } catch { /* ignore */ }
   };
 
-  const markRead = async (id: string) => {
-    await supabase.from("notifications").update({ read: true }).eq("id", id);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-    onUnreadCountChange?.(notifications.filter((n) => !n.read && n.id !== id).length);
+  const doMarkRead = async (id: string) => {
+    try {
+      await markNotificationRead({ data: { id } });
+      setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+      onUnreadCountChange?.(notifications.filter((n) => !n.read && n.id !== id).length);
+    } catch { /* ignore */ }
   };
 
   const unread = notifications.filter((n) => !n.read).length;
 
   return (
     <>
-      {/* Backdrop */}
       {open && (
-        <div
-          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={onClose} />
       )}
-
-      {/* Panel */}
       <aside
         className={cn(
           "fixed right-0 top-0 z-50 flex h-screen w-80 flex-col bg-card border-l border-border shadow-2xl transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full"
         )}
       >
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <div className="flex items-center gap-2">
             <Bell className="h-4 w-4 text-primary" />
@@ -118,7 +110,7 @@ export function NotificationPanel({ open, onClose, onUnreadCountChange }: Notifi
           </div>
           <div className="flex items-center gap-1">
             {unread > 0 && (
-              <Button variant="ghost" size="sm" onClick={markAllRead} className="h-7 gap-1 text-xs px-2">
+              <Button variant="ghost" size="sm" onClick={doMarkAllRead} className="h-7 gap-1 text-xs px-2">
                 <CheckCheck className="h-3.5 w-3.5" />
                 Todo leído
               </Button>
@@ -129,7 +121,6 @@ export function NotificationPanel({ open, onClose, onUnreadCountChange }: Notifi
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {loading && (
             <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
@@ -147,23 +138,17 @@ export function NotificationPanel({ open, onClose, onUnreadCountChange }: Notifi
               {notifications.map((n) => (
                 <li
                   key={n.id}
-                  onClick={() => !n.read && markRead(n.id)}
+                  onClick={() => !n.read && doMarkRead(n.id)}
                   className={cn(
                     "flex gap-3 px-4 py-3 border-b border-border/50 cursor-pointer transition-colors hover:bg-muted/50",
                     !n.read && "bg-primary/5"
                   )}
                 >
-                  <span className="text-lg shrink-0 mt-0.5">
-                    {TYPE_ICON[n.type] ?? "🔔"}
-                  </span>
+                  <span className="text-lg shrink-0 mt-0.5">{TYPE_ICON[n.type] ?? "🔔"}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={cn("text-sm leading-snug", !n.read && "font-medium")}>
-                        {n.title}
-                      </p>
-                      {!n.read && (
-                        <span className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />
-                      )}
+                      <p className={cn("text-sm leading-snug", !n.read && "font-medium")}>{n.title}</p>
+                      {!n.read && <span className="mt-1 h-2 w-2 rounded-full bg-primary shrink-0" />}
                     </div>
                     {n.body && (
                       <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{n.body}</p>

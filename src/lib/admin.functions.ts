@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getAuthContext } from "./server-auth";
+import { db } from "./db";
 
 export interface Area {
   id: string;
@@ -11,172 +11,193 @@ export interface Area {
   updated_at: string;
 }
 
-async function assertAdmin(supabase: any, userId: string) {
-  const { data } = await supabase.from("user_roles_smart_path").select("role").eq("user_id", userId).eq("role", "super_admin").maybeSingle();
-  if (!data) throw new Error("Solo super administradores");
+async function assertSuperAdmin(userId: string) {
+  const rows = await db<[{ role: string }]>`
+    SELECT role FROM user_roles_smart_path
+    WHERE user_id = ${userId} AND role = 'super_admin'
+    LIMIT 1
+  `;
+  if (rows.length === 0) throw new Error("Solo super administradores");
 }
 
-async function assertSuperAdminOrAreaAdmin(supabase: any, userId: string) {
-  const { data } = await supabase.from("user_roles_smart_path").select("role").eq("user_id", userId).or("role.eq.super_admin,role.eq.area_admin").maybeSingle();
-  if (!data) throw new Error("Solo super administradores o administradores de área");
+async function assertSuperAdminOrAreaAdmin(userId: string) {
+  const rows = await db<[{ role: string }]>`
+    SELECT role FROM user_roles_smart_path
+    WHERE user_id = ${userId} AND role IN ('super_admin', 'area_admin')
+    LIMIT 1
+  `;
+  if (rows.length === 0) throw new Error("Solo super administradores o administradores de área");
 }
 
-export const listUsers = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context.supabase, context.userId);
-    const { data: profiles } = await (supabaseAdmin as any).from("profiles").select("id, full_name, email, created_at, area_id");
-    const { data: roles } = await (supabaseAdmin as any).from("user_roles_smart_path").select("user_id, role, area_id");
-    const byUser: Record<string, string[]> = {};
-    (roles ?? []).forEach((r: any) => {
-      byUser[r.user_id] = [...(byUser[r.user_id] ?? []), r.role];
-    });
-    return {
-      users: (profiles ?? []).map((p: any) => ({ ...p, roles: byUser[p.id] ?? [] })),
-    };
+// ── Users ──────────────────────────────────────────────────────────────────────
+export const listUsers = createServerFn({ method: "GET" }).handler(async () => {
+  const auth = await getAuthContext();
+  if ("error" in auth) throw new Error(auth.error);
+  await assertSuperAdmin(auth.userId);
+
+  const profiles = await db<any[]>`
+    SELECT id, full_name, email, created_at, area_id FROM profiles
+  `;
+  const roles = await db<{ user_id: string; role: string; area_id: string | null }[]>`
+    SELECT user_id, role, area_id FROM user_roles_smart_path
+  `;
+
+  const byUser: Record<string, string[]> = {};
+  roles.forEach((r) => {
+    byUser[r.user_id] = [...(byUser[r.user_id] ?? []), r.role];
   });
 
+  return {
+    users: profiles.map((p) => ({ ...p, roles: byUser[p.id] ?? [] })),
+  };
+});
+
 export const setUserRole = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
     z.object({
       userId: z.string().uuid(),
       role: z.enum(["super_admin", "area_admin", "manager", "client", "viewer"]),
       enabled: z.boolean(),
       areaId: z.string().uuid().optional(),
-    }).parse(input),
+    }).parse(input)
   )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    await assertSuperAdmin(auth.userId);
+
     if (data.enabled) {
-      await supabaseAdmin.from("user_roles_smart_path").upsert({
-        user_id: data.userId,
-        role: data.role,
-        area_id: data.areaId || null
-      }, { onConflict: "user_id,role" });
+      await db`
+        INSERT INTO user_roles_smart_path (user_id, role, area_id)
+        VALUES (${data.userId}, ${data.role}, ${data.areaId ?? null})
+        ON CONFLICT (user_id, role) DO UPDATE SET area_id = EXCLUDED.area_id
+      `;
     } else {
-      await supabaseAdmin.from("user_roles_smart_path").delete().eq("user_id", data.userId).eq("role", data.role);
+      await db`
+        DELETE FROM user_roles_smart_path
+        WHERE user_id = ${data.userId} AND role = ${data.role}
+      `;
     }
     return { ok: true };
   });
 
-export const listAreas = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context.supabase, context.userId);
-    const { data: areas } = await (supabaseAdmin as any).from("areas").select("*").order("name");
-    return { areas: areas ?? [] };
-  });
+// ── Areas ──────────────────────────────────────────────────────────────────────
+export const listAreas = createServerFn({ method: "GET" }).handler(async () => {
+  const auth = await getAuthContext();
+  if ("error" in auth) throw new Error(auth.error);
+  await assertSuperAdmin(auth.userId);
+
+  const areas = await db<Area[]>`SELECT * FROM areas ORDER BY name`;
+  return { areas };
+});
 
 export const createArea = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
     z.object({
       name: z.string().min(1),
       description: z.string().optional(),
-    }).parse(input),
+    }).parse(input)
   )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
-    const { data: area, error } = await (supabaseAdmin as any)
-      .from("areas")
-      .insert({ name: data.name, description: data.description || null })
-      .select()
-      .single();
-    if (error) throw error;
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    await assertSuperAdmin(auth.userId);
+
+    const [area] = await db<Area[]>`
+      INSERT INTO areas (name, description)
+      VALUES (${data.name}, ${data.description ?? null})
+      RETURNING *
+    `;
     return { area };
   });
 
 export const updateArea = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
     z.object({
       id: z.string().uuid(),
       name: z.string().min(1).optional(),
       description: z.string().optional(),
-    }).parse(input),
+    }).parse(input)
   )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
-    const { data: area, error } = await (supabaseAdmin as any)
-      .from("areas")
-      .update({
-        ...(data.name && { name: data.name }),
-        ...(data.description !== undefined && { description: data.description }),
-      })
-      .eq("id", data.id)
-      .select()
-      .single();
-    if (error) throw error;
-    return { area };
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    await assertSuperAdmin(auth.userId);
+
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    if (data.name !== undefined) { updates.push(`name = $${updates.length+1}`); values.push(data.name); }
+    if (data.description !== undefined) { updates.push(`description = $${updates.length+1}`); values.push(data.description); }
+    if (updates.length === 0) return { area: null };
+
+    values.push(data.id);
+    const rows = await db.unsafe<Area[]>(
+      `UPDATE areas SET ${updates.join(", ")} WHERE id = $${values.length} RETURNING *`,
+      values as any[]
+    );
+    return { area: rows[0] };
   });
 
 export const deleteArea = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({
-      id: z.string().uuid(),
-    }).parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
-    const { error } = await (supabaseAdmin as any).from("areas").delete().eq("id", data.id);
-    if (error) throw error;
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    await assertSuperAdmin(auth.userId);
+
+    await db`DELETE FROM areas WHERE id = ${data.id}`;
     return { ok: true };
   });
 
 export const assignUserToArea = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
     z.object({
       userId: z.string().uuid(),
       areaId: z.string().uuid().nullable(),
-    }).parse(input),
+    }).parse(input)
   )
-  .handler(async ({ data, context }) => {
-    await assertSuperAdminOrAreaAdmin(context.supabase, context.userId);
-    const { error } = await (supabaseAdmin as any)
-      .from("profiles")
-      .update({ area_id: data.areaId })
-      .eq("id", data.userId);
-    if (error) throw error;
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    await assertSuperAdminOrAreaAdmin(auth.userId);
+
+    await db`
+      UPDATE profiles SET area_id = ${data.areaId}
+      WHERE id = ${data.userId}
+    `;
     return { ok: true };
   });
 
-export const assignSuperAdminToCurrentUser = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    // Delete any existing admin role (if it still exists)
-    await (supabaseAdmin as any)
-      .from("user_roles_smart_path")
-      .delete()
-      .eq("user_id", context.userId)
-      .eq("role", "admin");
+export const assignSuperAdminToCurrentUser = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    const { userId } = auth;
 
-    // Assign super_admin role
-    const { error } = await (supabaseAdmin as any)
-      .from("user_roles_smart_path")
-      .upsert({
-        user_id: context.userId,
-        role: "super_admin"
-      }, { onConflict: "user_id,role" });
-
-    if (error) throw error;
+    await db`
+      DELETE FROM user_roles_smart_path
+      WHERE user_id = ${userId} AND role = 'admin'
+    `;
+    await db`
+      INSERT INTO user_roles_smart_path (user_id, role)
+      VALUES (${userId}, 'super_admin')
+      ON CONFLICT (user_id, role) DO NOTHING
+    `;
     return { ok: true };
-  });
+  }
+);
 
 export const updateUserOwnArea = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({
-      areaId: z.string().uuid().nullable(),
-    }).parse(input),
+    z.object({ areaId: z.string().uuid().nullable() }).parse(input)
   )
-  .handler(async ({ data, context }) => {
-    const { error } = await (supabaseAdmin as any)
-      .from("profiles")
-      .update({ area_id: data.areaId })
-      .eq("id", context.userId);
-    if (error) throw error;
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+
+    await db`
+      UPDATE profiles SET area_id = ${data.areaId}
+      WHERE id = ${auth.userId}
+    `;
     return { ok: true };
   });
