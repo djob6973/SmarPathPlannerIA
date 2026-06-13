@@ -21,8 +21,9 @@ function AppLayout() {
     if (!loading && !isAuthenticated) {
       // Send to oauth2-proxy sign-in to re-authenticate via Google SSO.
       // Using window.location avoids a SPA redirect loop.
-      // Pass rd= so oauth2-proxy redirects back here after Google auth.
-      window.location.href = `/oauth2/sign_in?rd=${encodeURIComponent(window.location.pathname)}`;
+      // Reload the current page as a real HTTP request so oauth2-proxy
+      // captures the return URL and redirects back here after Google auth.
+      window.location.reload();
     }
   }, [loading, isAuthenticated]);
 
