@@ -1,16 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// Auth is handled by the platform (Google SSO via oauth2-proxy).
-// Redirect the browser directly to /app/dashboard via a real HTTP navigation —
-// oauth2-proxy intercepts the request, stores the return URL automatically,
-// and redirects back here after Google authentication completes.
+// Send users directly to oauth2-proxy. After Google auth the proxy redirects
+// to tokens.apps.dataico.world where X-Forwarded-Email is always injected.
 export const Route = createFileRoute("/login")({
   component: LoginRedirect,
 });
 
 function LoginRedirect() {
   if (typeof window !== "undefined") {
-    window.location.replace("/app/dashboard");
+    window.location.replace("/oauth2/sign_in");
   }
   return null;
 }
