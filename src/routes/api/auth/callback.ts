@@ -59,7 +59,7 @@ export const APIRoute = createAPIFileRoute("/api/auth/callback")({
       // Create session
       const [session] = await db<[{ id: string }]>`
         INSERT INTO sessions (user_id, expires_at)
-        VALUES (${profile.id}, NOW() + INTERVAL '${db.unsafe(String(SESSION_DAYS))} days')
+        VALUES (${profile.id}, NOW() + (${SESSION_DAYS} * INTERVAL '1 day'))
         RETURNING id
       `;
 
