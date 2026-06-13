@@ -18,8 +18,12 @@ function AppLayout() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) navigate({ to: "/login" });
-  }, [loading, isAuthenticated, navigate]);
+    if (!loading && !isAuthenticated) {
+      // Send to oauth2-proxy sign-in to re-authenticate via Google SSO.
+      // Using window.location avoids a SPA redirect loop.
+      window.location.href = "/oauth2/sign_in";
+    }
+  }, [loading, isAuthenticated]);
 
   // Global Cmd+K
   useEffect(() => {
