@@ -9,6 +9,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/auth-context";
 import { ThemeProvider } from "../lib/theme-context";
 import { Toaster } from "../components/ui/sonner";
+import { getCurrentUser, type CurrentUser } from "../lib/auth.functions";
 
 function NotFoundComponent() {
   return (
@@ -63,6 +64,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
     ],
   }),
+  // Load the current user server-side so oauth2-proxy's X-Forwarded-Email
+  // header is available (SSR request goes through the proxy; client fetch calls may not).
+  loader: async (): Promise<{ currentUser: CurrentUser | null }> => {
+    try {
+      const currentUser = await getCurrentUser();
+      return { currentUser };
+    } catch {
+      return { currentUser: null };
+    }
+  },
+  // Never re-fetch on client-side navigation — SSR data is authoritative.
+  staleTime: Infinity,
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -83,10 +96,11 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const { currentUser } = Route.useLoaderData();
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
+        <AuthProvider initialUser={currentUser}>
           <Outlet />
           <Toaster richColors position="top-right" />
         </AuthProvider>

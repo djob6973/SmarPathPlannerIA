@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -11,21 +11,10 @@ export const Route = createFileRoute("/app")({
 });
 
 function AppLayout() {
-  const { loading, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      // Send to oauth2-proxy sign-in to re-authenticate via Google SSO.
-      // Using window.location avoids a SPA redirect loop.
-      // Reload the current page as a real HTTP request so oauth2-proxy
-      // captures the return URL and redirects back here after Google auth.
-      window.location.reload();
-    }
-  }, [loading, isAuthenticated]);
 
   // Global Cmd+K
   useEffect(() => {
@@ -41,12 +30,22 @@ function AppLayout() {
 
   const handleUnreadChange = useCallback((count: number) => setUnreadCount(count), []);
 
-  if (loading || !isAuthenticated) {
+  // Auth is loaded server-side via the root route loader.
+  // If we reach here without a user, the SSR headers didn't have X-Forwarded-Email.
+  if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Cargando...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-sm text-center">
+          <p className="text-2xl font-semibold mb-2">Sesión no iniciada</p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Haz clic para autenticarte con Google.
+          </p>
+          <a
+            href="/app/dashboard"
+            className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Iniciar sesión
+          </a>
         </div>
       </div>
     );
@@ -76,6 +75,8 @@ function AppLayout() {
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
       />
+
+      <Toaster richColors position="top-right" />
     </div>
   );
 }
