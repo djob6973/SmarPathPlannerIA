@@ -175,6 +175,15 @@ async function _run() {
     CREATE INDEX IF NOT EXISTS idx_notifications_user      ON public.notifications(user_id);
     CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON public.notifications(user_id, read);
 
+    CREATE TABLE IF NOT EXISTS public.sessions (
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_sessions_user    ON public.sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_expires ON public.sessions(expires_at);
+
     CREATE TABLE IF NOT EXISTS public.ai_settings (
       id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       system_prompt    TEXT NOT NULL,

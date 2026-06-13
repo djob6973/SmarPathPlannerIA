@@ -8,7 +8,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginRedirect() {
   if (typeof window !== "undefined") {
-    window.location.replace("/oauth2/sign_in");
+    window.location.replace("/api/auth/signin");
   }
   return null;
 }

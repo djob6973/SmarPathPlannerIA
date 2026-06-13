@@ -71,7 +71,7 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
     hasPermission: (p) => permissions.includes(p),
     hasAnyPermission: (ps) => ps.some((p) => permissions.includes(p)),
     signOut: async () => {
-      window.location.href = "/oauth2/sign_out";
+      window.location.href = "/api/auth/signout";
     },
     refreshRoles: reload,
     refreshPermissions: reload,

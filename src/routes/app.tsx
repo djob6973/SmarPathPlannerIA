@@ -41,7 +41,7 @@ function AppLayout() {
             Haz clic para autenticarte con Google.
           </p>
           <a
-            href="/oauth2/sign_in"
+            href="/api/auth/signin"
             className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             Iniciar sesión con Google
