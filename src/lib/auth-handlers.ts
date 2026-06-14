@@ -1,21 +1,19 @@
-import { scrypt, randomBytes, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { db } from "./db";
 import { runMigrations } from "./migrate";
 
-const scryptAsync = promisify(scrypt);
 const SESSION_DAYS = 30;
 
-async function hashPassword(password: string): Promise<string> {
+function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
-  const hash = (await scryptAsync(password, salt, 64)) as Buffer;
+  const hash = scryptSync(password, salt, 64);
   return `${salt}:${hash.toString("hex")}`;
 }
 
-async function verifyPassword(password: string, stored: string): Promise<boolean> {
+function verifyPassword(password: string, stored: string): boolean {
   const [salt, hashHex] = stored.split(":");
   if (!salt || !hashHex) return false;
-  const hash = (await scryptAsync(password, salt, 64)) as Buffer;
+  const hash = scryptSync(password, salt, 64);
   const storedHash = Buffer.from(hashHex, "hex");
   return timingSafeEqual(hash, storedHash);
 }
@@ -73,7 +71,7 @@ export async function handleLogin(request: Request): Promise<Response> {
       return json({ error: "Email o contraseña incorrectos" }, { status: 401 });
     }
 
-    const valid = await verifyPassword(password, rows[0].password_hash);
+    const valid = verifyPassword(password, rows[0].password_hash);
     if (!valid) return json({ error: "Email o contraseña incorrectos" }, { status: 401 });
 
     const sessionId = await createSession(rows[0].id);
@@ -82,7 +80,8 @@ export async function handleLogin(request: Request): Promise<Response> {
     return json({ ok: true }, { headers: { "Set-Cookie": makeCookie(sessionId, isHttps) } });
   } catch (e) {
     console.error("[auth/login]", e);
-    return json({ error: "Error del servidor" }, { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    return json({ error: msg }, { status: 500 });
   }
 }
 
@@ -108,7 +107,7 @@ export async function handleRegister(request: Request): Promise<Response> {
       return json({ error: "Este email ya está registrado" }, { status: 400 });
     }
 
-    const passwordHash = await hashPassword(password);
+    const passwordHash = hashPassword(password);
 
     const [{ count }] = await db`SELECT COUNT(*)::text AS count FROM user_roles_smart_path`;
     const isFirst = count === "0";
@@ -139,7 +138,8 @@ export async function handleRegister(request: Request): Promise<Response> {
     return json({ ok: true }, { headers: { "Set-Cookie": makeCookie(sessionId, isHttps) } });
   } catch (e) {
     console.error("[auth/register]", e);
-    return json({ error: "Error del servidor" }, { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    return json({ error: msg }, { status: 500 });
   }
 }
 
