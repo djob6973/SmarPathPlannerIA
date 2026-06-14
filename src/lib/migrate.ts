@@ -60,6 +60,7 @@ async function _run() {
     );
     CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(email);
     CREATE INDEX IF NOT EXISTS idx_profiles_area  ON public.profiles(area_id);
+    ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
     DROP TRIGGER IF EXISTS trg_profiles_updated_at ON public.profiles;
     CREATE TRIGGER trg_profiles_updated_at
       BEFORE UPDATE ON public.profiles
