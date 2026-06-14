@@ -50,6 +50,22 @@ function AnalyticsPage() {
     }
   }, [areaId, isSuperAdmin, selectedArea]);
 
+  const skeleton = (
+    <div className="p-6 space-y-4 max-w-6xl mx-auto">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="h-72 animate-pulse rounded-xl bg-muted" />
+        <div className="h-72 animate-pulse rounded-xl bg-muted" />
+      </div>
+    </div>
+  );
+
+  if (!mounted) return skeleton;
+
   const completedIds = new Set(columns.filter((c) => c.is_completed).map((c) => c.id));
   const completed  = requests.filter((r) => r.status_column_id && completedIds.has(r.status_column_id)).length;
   const inProgress = requests.filter((r) => r.status_column_id && !completedIds.has(r.status_column_id)).length;
@@ -115,7 +131,6 @@ function AnalyticsPage() {
       }));
     }
 
-    // Quarter: Q1-Q4 of current year
     return ["Q1", "Q2", "Q3", "Q4"].map((q, i) => ({
       name: q,
       completadas: completedRequests.filter((r) => {
@@ -125,13 +140,12 @@ function AnalyticsPage() {
     }));
   })();
 
-  // Activity over last 7 days
   const activityData = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
     const dateStr = d.toISOString().slice(0, 10);
     const label = d.toLocaleDateString("es", { weekday: "short" });
-    const count = requests.filter((r) => r.created_at.slice(0, 10) === dateStr).length;
+    const count = requests.filter((r) => new Date(r.created_at).toISOString().slice(0, 10) === dateStr).length;
     return { name: label, count };
   });
 
@@ -142,21 +156,7 @@ function AnalyticsPage() {
     { label: "Completadas",       value: completed,        icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-400/10"  },
   ];
 
-  if (loading || !mounted) {
-    return (
-      <div className="p-6 space-y-4 max-w-6xl mx-auto">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
-          ))}
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="h-72 animate-pulse rounded-xl bg-muted" />
-          <div className="h-72 animate-pulse rounded-xl bg-muted" />
-        </div>
-      </div>
-    );
-  }
+  if (loading) return skeleton;
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
