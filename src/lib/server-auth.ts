@@ -97,9 +97,15 @@ export async function getOrCreateProfile(email: string): Promise<UserProfile> {
         `
       )[0]?.id ?? null;
 
+  const autoName = email
+    .split("@")[0]
+    .replace(/[._]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+
   const [created] = await db<UserProfile[]>`
     INSERT INTO profiles (full_name, email, area_id)
-    VALUES (${email.split("@")[0]}, ${email}, ${defaultAreaId})
+    VALUES (${autoName}, ${email}, ${defaultAreaId})
     RETURNING id, full_name, email, area_id
   `;
 

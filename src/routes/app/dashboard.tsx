@@ -12,6 +12,14 @@ export const Route = createFileRoute("/app/dashboard")({
   component: DashboardPage,
 });
 
+function formatName(raw: string | null | undefined): string {
+  if (!raw) return "";
+  return raw
+    .replace(/[._]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
 const PRIORITY_CLASS: Record<string, string> = {
   urgent: "priority-urgent",
   high: "priority-high",
@@ -195,7 +203,8 @@ function DashboardPage() {
   const urgent     = requests.filter((r) => r.priority === "urgent").length;
   const recent     = requests.slice(0, 5);
 
-  const firstName = profile?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "Usuario";
+  const displayName = formatName(profile?.full_name) || formatName(user?.email?.split("@")[0]) || "Usuario";
+  const firstName = displayName.split(" ")[0];
   const selectedAreaName = selectedArea ? areas.find((a) => a.id === selectedArea)?.name : null;
 
   const urgentPhrase = urgent > 0

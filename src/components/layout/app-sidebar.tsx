@@ -36,7 +36,13 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
 
-  const initials = profile?.full_name?.slice(0, 2).toUpperCase() ?? user?.email?.slice(0, 2).toUpperCase() ?? "SP";
+  function formatName(raw: string | null | undefined): string {
+    if (!raw) return "";
+    return raw.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+  }
+
+  const displayName = formatName(profile?.full_name) || formatName(user?.email?.split("@")[0]) || "Usuario";
+  const initials = displayName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "SP";
 
   const handleSignOut = async () => {
     await signOut();
@@ -160,7 +166,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
               </Avatar>
               <div className="flex-1 min-w-0 text-left">
                 <p className="text-xs font-medium truncate text-sidebar-foreground">
-                  {profile?.full_name ?? user?.email ?? "Usuario"}
+                  {displayName}
                 </p>
                 <p className="text-[10px] text-sidebar-foreground/50 truncate capitalize">
                   {typeof roles[0] === 'object' && roles[0] !== null && 'role' in roles[0] ? roles[0].role : roles[0] ?? "—"}
@@ -171,7 +177,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-52 mb-1">
             <div className="px-2 py-1.5">
-              <p className="text-xs font-medium truncate">{profile?.full_name ?? user?.email ?? "Usuario"}</p>
+              <p className="text-xs font-medium truncate">{displayName}</p>
               <p className="text-xs text-muted-foreground capitalize">{roles.join(", ") || "sin rol"}</p>
             </div>
             <DropdownMenuSeparator />
