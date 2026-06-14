@@ -28,6 +28,9 @@ function AnalyticsPage() {
   const [columns, setColumns] = useState<Column[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [areas, setAreas] = useState<any[]>([]);
   const [completedPeriod, setCompletedPeriod] = useState<"week" | "month" | "quarter">("week");
@@ -139,7 +142,7 @@ function AnalyticsPage() {
     { label: "Completadas",       value: completed,        icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-400/10"  },
   ];
 
-  if (loading) {
+  if (loading || !mounted) {
     return (
       <div className="p-6 space-y-4 max-w-6xl mx-auto">
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">

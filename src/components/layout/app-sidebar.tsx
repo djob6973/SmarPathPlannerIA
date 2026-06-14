@@ -77,6 +77,14 @@ function IconSettings() {
   );
 }
 
+function IconSearch() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" />
+    </svg>
+  );
+}
+
 function IconBell() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -322,6 +330,18 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
             {unreadCount > 0 && (
               <span style={{ position: "absolute", top: 4, right: 5, width: 8, height: 8, background: "#ED5650", border: `1.5px solid var(--sb-bg)`, borderRadius: 999 }} />
             )}
+          </button>
+
+          {/* Search */}
+          <button
+            onClick={onSearchClick}
+            aria-label="Buscar (⌘K)"
+            title="Buscar (⌘K)"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
+          >
+            <IconSearch />
           </button>
 
           {/* Theme toggle */}
