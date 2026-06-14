@@ -17,6 +17,7 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppTeamRouteImport } from './routes/app/team'
 import { Route as AppSettingsRouteImport } from './routes/app/settings'
 import { Route as AppRequestsRouteImport } from './routes/app/requests'
+import { Route as AppLoginRouteImport } from './routes/app/login'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
 import { Route as AppChatRouteImport } from './routes/app/chat'
 import { Route as AppBoardRouteImport } from './routes/app/board'
@@ -62,6 +63,11 @@ const AppRequestsRoute = AppRequestsRouteImport.update({
   path: '/requests',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLoginRoute = AppLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/app/board': typeof AppBoardRoute
   '/app/chat': typeof AppChatRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/login': typeof AppLoginRoute
   '/app/requests': typeof AppRequestsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/team': typeof AppTeamRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/app/board': typeof AppBoardRoute
   '/app/chat': typeof AppChatRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/login': typeof AppLoginRoute
   '/app/requests': typeof AppRequestsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/team': typeof AppTeamRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/app/board': typeof AppBoardRoute
   '/app/chat': typeof AppChatRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/login': typeof AppLoginRoute
   '/app/requests': typeof AppRequestsRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/team': typeof AppTeamRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/app/board'
     | '/app/chat'
     | '/app/dashboard'
+    | '/app/login'
     | '/app/requests'
     | '/app/settings'
     | '/app/team'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/app/board'
     | '/app/chat'
     | '/app/dashboard'
+    | '/app/login'
     | '/app/requests'
     | '/app/settings'
     | '/app/team'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/app/board'
     | '/app/chat'
     | '/app/dashboard'
+    | '/app/login'
     | '/app/requests'
     | '/app/settings'
     | '/app/team'
@@ -234,6 +246,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRequestsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/login': {
+      id: '/app/login'
+      path: '/login'
+      fullPath: '/app/login'
+      preLoaderRoute: typeof AppLoginRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/dashboard': {
       id: '/app/dashboard'
       path: '/dashboard'
@@ -270,6 +289,7 @@ interface AppRouteChildren {
   AppBoardRoute: typeof AppBoardRoute
   AppChatRoute: typeof AppChatRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppLoginRoute: typeof AppLoginRoute
   AppRequestsRoute: typeof AppRequestsRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppTeamRoute: typeof AppTeamRoute
@@ -281,6 +301,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppBoardRoute: AppBoardRoute,
   AppChatRoute: AppChatRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppLoginRoute: AppLoginRoute,
   AppRequestsRoute: AppRequestsRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppTeamRoute: AppTeamRoute,

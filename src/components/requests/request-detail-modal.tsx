@@ -49,6 +49,9 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [canManageExpiration, setCanManageExpiration] = useState(false);
   const [expiresAt, setExpiresAt] = useState("");
   const [updatingExpiration, setUpdatingExpiration] = useState(false);
+  const [canEditCreatedAt, setCanEditCreatedAt] = useState(false);
+  const [createdAt, setCreatedAt] = useState("");
+  const [updatingCreatedAt, setUpdatingCreatedAt] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentContent, setEditingCommentContent] = useState("");
   const [updatingComment, setUpdatingComment] = useState(false);
@@ -134,6 +137,38 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       setExpiresAt("");
     }
   }, [request]);
+
+  useEffect(() => {
+    if (request?.created_at) {
+      const date = new Date(request.created_at);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setCreatedAt(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`);
+    }
+  }, [request]);
+
+  useEffect(() => {
+    if (!user) return;
+    checkUserPermission({ data: { permission: "edit_all_requests" } })
+      .then(({ hasPermission }) => setCanEditCreatedAt(hasPermission))
+      .catch(() => setCanEditCreatedAt(false));
+  }, [user]);
+
+  const updateCreatedAt = async (value: string) => {
+    if (!request || !value) return;
+    setUpdatingCreatedAt(true);
+    try {
+      await updateRequestFn({ data: { requestId: request.id, created_at: value } });
+      setRequest((r) => r ? { ...r, created_at: new Date(value).toISOString() } : r);
+      onUpdated?.();
+      toast.success("Fecha de creación actualizada");
+    } catch (err: any) {
+      toast.error(err?.message);
+      const date = new Date(request.created_at);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setCreatedAt(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`);
+    }
+    setUpdatingCreatedAt(false);
+  };
 
   const updateStatus = async (colId: string) => {
     if (!request) return;
@@ -594,9 +629,23 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
 
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Creado</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(request.created_at).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" })}
-                  </p>
+                  {canEditCreatedAt ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="datetime-local"
+                        value={createdAt}
+                        onChange={(e) => setCreatedAt(e.target.value)}
+                        onBlur={() => updateCreatedAt(createdAt)}
+                        disabled={updatingCreatedAt}
+                        className="h-8 w-full text-xs rounded border border-input bg-background px-2 py-1"
+                      />
+                      {updatingCreatedAt && <Loader2 className="h-3 w-3 animate-spin" />}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(request.created_at).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" })}
+                    </p>
+                  )}
                 </div>
 
                 <div>

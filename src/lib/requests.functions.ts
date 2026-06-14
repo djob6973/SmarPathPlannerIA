@@ -133,6 +133,7 @@ export const updateRequest = createServerFn({ method: "POST" })
       assigned_to: z.string().uuid().nullable().optional(),
       position: z.number().int().optional(),
       expires_at: z.string().nullable().optional(),
+      created_at: z.string().optional(),
     }).parse(input)
   )
   .handler(async ({ data }) => {
@@ -153,6 +154,7 @@ export const updateRequest = createServerFn({ method: "POST" })
     if (fields.assigned_to !== undefined) { updates.push(`assigned_to = $${updates.length + 1}`); values.push(fields.assigned_to); }
     if (fields.position !== undefined) { updates.push(`position = $${updates.length + 1}`); values.push(fields.position); }
     if (fields.expires_at !== undefined) { updates.push(`expires_at = $${updates.length + 1}`); values.push(fields.expires_at); }
+    if (fields.created_at !== undefined) { updates.push(`created_at = $${updates.length + 1}`); values.push(fields.created_at); }
 
     if (updates.length === 0) return { ok: true };
 
