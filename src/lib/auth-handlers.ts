@@ -1,22 +1,8 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { db } from "./db";
 import { runMigrations } from "./migrate";
+import { hashPassword, verifyPassword } from "./password";
 
 const SESSION_DAYS = 30;
-
-function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64);
-  return `${salt}:${hash.toString("hex")}`;
-}
-
-function verifyPassword(password: string, stored: string): boolean {
-  const [salt, hashHex] = stored.split(":");
-  if (!salt || !hashHex) return false;
-  const hash = scryptSync(password, salt, 64);
-  const storedHash = Buffer.from(hashHex, "hex");
-  return timingSafeEqual(hash, storedHash);
-}
 
 function parseCookie(header: string | null, name: string): string | null {
   if (!header) return null;

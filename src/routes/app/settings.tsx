@@ -11,6 +11,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { listAreas, updateUserOwnArea } from "@/lib/admin.functions";
+import { changeOwnPassword } from "@/lib/auth.functions";
 import { getColumns, createColumn, updateColumn, deleteColumn, getAiSettings, updateAiSettings } from "@/lib/data.functions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -558,6 +559,36 @@ function ProfileSettings() {
     },
   });
 
+  const [currentPwd, setCurrentPwd] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+
+  const changePwdMutation = useMutation({
+    mutationFn: changeOwnPassword,
+    onSuccess: () => {
+      toast.success("Contraseña actualizada correctamente");
+      setCurrentPwd("");
+      setNewPwd("");
+      setConfirmPwd("");
+    },
+    onError: (error: any) => {
+      toast.error(error.message ?? "Error al cambiar contraseña");
+    },
+  });
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPwd !== confirmPwd) {
+      toast.error("Las contraseñas nuevas no coinciden");
+      return;
+    }
+    if (newPwd.length < 6) {
+      toast.error("La nueva contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    changePwdMutation.mutate({ currentPassword: currentPwd, newPassword: newPwd });
+  };
+
   const handleAreaChange = (areaId: string | null) => {
     updateAreaMutation.mutate({ areaId });
   };
@@ -618,6 +649,53 @@ function ProfileSettings() {
             <p className="text-sm text-muted-foreground mt-1">{profile?.email || "No especificado"}</p>
           </div>
         </div>
+      </Card>
+
+      <Card className="p-5 border-border/50">
+        <h3 className="text-sm font-semibold mb-4">Cambiar Contraseña</h3>
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="current-pwd">Contraseña actual</Label>
+            <Input
+              id="current-pwd"
+              type="password"
+              value={currentPwd}
+              onChange={(e) => setCurrentPwd(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-pwd">Nueva contraseña</Label>
+            <Input
+              id="new-pwd"
+              type="password"
+              value={newPwd}
+              onChange={(e) => setNewPwd(e.target.value)}
+              required
+              minLength={6}
+              autoComplete="new-password"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="confirm-pwd">Confirmar nueva contraseña</Label>
+            <Input
+              id="confirm-pwd"
+              type="password"
+              value={confirmPwd}
+              onChange={(e) => setConfirmPwd(e.target.value)}
+              required
+              autoComplete="new-password"
+            />
+          </div>
+          <Button type="submit" disabled={changePwdMutation.isPending} className="gap-2">
+            {changePwdMutation.isPending
+              ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              : <Lock className="h-3.5 w-3.5" />
+            }
+            Cambiar contraseña
+          </Button>
+        </form>
       </Card>
     </div>
   );

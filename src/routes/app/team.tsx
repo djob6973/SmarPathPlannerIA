@@ -1,15 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { listUsers, setUserRole, assignUserToArea, listAreas } from "@/lib/admin.functions";
+import { listUsers, setUserRole, assignUserToArea, listAreas, adminResetPassword } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, ShieldCheck, Building } from "lucide-react";
+import { Users, ShieldCheck, Building, KeyRound } from "lucide-react";
 
 export const Route = createFileRoute("/app/team")({
   component: TeamPage,
@@ -33,9 +37,14 @@ function TeamPage() {
   const setRole = useServerFn(setUserRole);
   const assignArea = useServerFn(assignUserToArea);
   const getAreas = useServerFn(listAreas);
+  const resetPwd = useServerFn(adminResetPassword);
   const [users, setUsers] = useState<TeamUser[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resetTarget, setResetTarget] = useState<TeamUser | null>(null);
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
   const isAdmin = hasRole("super_admin");
   const isAreaAdmin = hasRole("area_admin");
   const canManageAreas = isAdmin || isAreaAdmin;
@@ -78,6 +87,29 @@ function TeamPage() {
       reload();
     } catch (e: any) {
       toast.error(e?.message ?? "Error al asignar área");
+    }
+  };
+
+  const openResetDialog = (user: TeamUser) => {
+    setResetTarget(user);
+    setNewPwd("");
+    setConfirmPwd("");
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    if (newPwd !== confirmPwd) { toast.error("Las contraseñas no coinciden"); return; }
+    if (newPwd.length < 6) { toast.error("Mínimo 6 caracteres"); return; }
+    setResetLoading(true);
+    try {
+      await resetPwd({ data: { userId: resetTarget.id, newPassword: newPwd } });
+      toast.success(`Contraseña de ${resetTarget.full_name ?? resetTarget.email} restablecida`);
+      setResetTarget(null);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al restablecer contraseña");
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -194,12 +226,81 @@ function TeamPage() {
                       </Select>
                     </div>
                   )}
+
+                  {/* Reset password (admins only) */}
+                  {canManageAreas && (
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-xs font-medium text-muted-foreground">Contraseña:</span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => openResetDialog(u)}
+                      >
+                        Restablecer
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
           );
         })}
       </div>
+
+      {/* Reset password dialog */}
+      <Dialog open={!!resetTarget} onOpenChange={(open) => !open && setResetTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Restablecer contraseña</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Establecer nueva contraseña para{" "}
+            <span className="font-medium text-foreground">
+              {resetTarget?.full_name ?? resetTarget?.email}
+            </span>
+          </p>
+          <form onSubmit={handleResetPassword} className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="reset-pwd">Nueva contraseña</Label>
+              <Input
+                id="reset-pwd"
+                type="password"
+                value={newPwd}
+                onChange={(e) => setNewPwd(e.target.value)}
+                required
+                minLength={6}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="reset-confirm">Confirmar contraseña</Label>
+              <Input
+                id="reset-confirm"
+                type="password"
+                value={confirmPwd}
+                onChange={(e) => setConfirmPwd(e.target.value)}
+                required
+                autoComplete="new-password"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setResetTarget(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={resetLoading}>
+                {resetLoading
+                  ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  : "Restablecer"
+                }
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

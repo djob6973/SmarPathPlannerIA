@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAuthContext } from "./server-auth";
 import { db } from "./db";
+import { hashPassword } from "./password";
 
 export interface Area {
   id: string;
@@ -199,5 +200,17 @@ export const updateUserOwnArea = createServerFn({ method: "POST" })
       UPDATE profiles SET area_id = ${data.areaId}
       WHERE id = ${auth.userId}
     `;
+    return { ok: true };
+  });
+
+export const adminResetPassword = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z.object({ userId: z.string().uuid(), newPassword: z.string().min(6) }).parse(input)
+  )
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    await assertSuperAdminOrAreaAdmin(auth.userId);
+    await db`UPDATE profiles SET password_hash = ${hashPassword(data.newPassword)} WHERE id = ${data.userId}`;
     return { ok: true };
   });
