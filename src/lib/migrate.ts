@@ -52,7 +52,8 @@ async function _run() {
       id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       full_name   TEXT,
       email       TEXT NOT NULL UNIQUE,
-      avatar_url  TEXT,
+      avatar_url    TEXT,
+      password_hash TEXT,
       area_id     UUID REFERENCES public.areas(id) ON DELETE SET NULL,
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()

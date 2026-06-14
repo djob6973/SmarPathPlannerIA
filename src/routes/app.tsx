@@ -38,13 +38,13 @@ function AppLayout() {
         <div className="max-w-sm text-center">
           <p className="text-2xl font-semibold mb-2">Sesión no iniciada</p>
           <p className="text-sm text-muted-foreground mb-6">
-            Haz clic para autenticarte con Google.
+            Tu sesión ha expirado o no has iniciado sesión.
           </p>
           <a
-            href="/api/auth/signin"
+            href="/login"
             className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            Iniciar sesión con Google
+            Iniciar sesión
           </a>
         </div>
       </div>
