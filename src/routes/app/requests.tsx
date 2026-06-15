@@ -22,10 +22,6 @@ const priStyle: Record<string, React.CSSProperties> = {
   low:    { background: "rgba(100,116,139,.12)", color: "#64748b", border: "1px solid rgba(100,116,139,.25)" },
 };
 
-const priLabel: Record<string, string> = {
-  urgent: "Urgente", high: "Alta", medium: "Media", low: "Baja",
-};
-
 const PRIORITIES = ["urgent", "high", "medium", "low"];
 
 const GRID = "1fr 150px 110px 130px 56px";
@@ -95,12 +91,12 @@ function RequestsPage() {
           <h1 style={{
             fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
             fontSize: 30, fontWeight: 500,
-            color: "var(--sp-text, #1a1a1a)",
+            color: "var(--foreground)",
             margin: 0, lineHeight: 1.2,
           }}>
             Solicitudes
           </h1>
-          <p style={{ fontSize: 14, color: "var(--sp-muted, #888)", marginTop: 4 }}>
+          <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 4 }}>
             {filtered.length} de {requests.length} solicitudes
           </p>
         </div>
@@ -135,7 +131,7 @@ function RequestsPage() {
             style={{
               position: "absolute", left: 14, top: "50%",
               transform: "translateY(-50%)",
-              color: "var(--sp-muted, #888)", pointerEvents: "none",
+              color: "var(--muted-foreground)", pointerEvents: "none",
             }}
           />
           <input
@@ -148,35 +144,37 @@ function RequestsPage() {
         </div>
 
         <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={filterInputStyle}>
-          <option value="all">Todas las prioridades</option>
-          {PRIORITIES.map((p) => <option key={p} value={p}>{priLabel[p]}</option>)}
+          <option value="all">All priorities</option>
+          {PRIORITIES.map((p) => (
+            <option key={p} value={p} style={{ textTransform: "capitalize" }}>{p}</option>
+          ))}
         </select>
 
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={filterInputStyle}>
-          <option value="all">Todos los estados</option>
+          <option value="all">All statuses</option>
           {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
 
       {/* ── Table ── */}
       <div style={{
-        background: "white",
+        background: "var(--card)",
         borderRadius: "var(--r-card, 20px)",
-        border: "1px solid var(--sp-border, #E4E5E6)",
+        border: "1px solid var(--border)",
         overflow: "hidden",
       }}>
         {/* Column headers */}
         <div style={{
           display: "grid", gridTemplateColumns: GRID,
           padding: "10px 20px",
-          borderBottom: "1px solid var(--sp-border, #E4E5E6)",
+          borderBottom: "1px solid var(--border)",
         }}>
           {["Título", "Estado", "Prioridad", "Actualizado", ""].map((h, i) => (
             <span key={i} style={{
               fontSize: 11, fontWeight: 600,
               textTransform: "uppercase" as const,
               letterSpacing: ".06em",
-              color: "var(--sp-muted, #888)",
+              color: "var(--muted-foreground)",
             }}>
               {h}
             </span>
@@ -187,7 +185,7 @@ function RequestsPage() {
         {loading ? (
           <SkeletonRows />
         ) : filtered.length === 0 ? (
-          <div style={{ padding: "60px 20px", textAlign: "center", color: "var(--sp-muted, #888)", fontSize: 14 }}>
+          <div style={{ padding: "60px 20px", textAlign: "center", color: "var(--muted-foreground)", fontSize: 14 }}>
             {search || filterPriority !== "all" || filterStatus !== "all"
               ? "No hay solicitudes que coincidan con los filtros."
               : "Sin solicitudes aún. Usa el Chat IA para crear una."}
@@ -205,7 +203,7 @@ function RequestsPage() {
                 style={{
                   display: "grid", gridTemplateColumns: GRID,
                   padding: "14px 20px",
-                  borderBottom: idx < filtered.length - 1 ? "1px solid var(--sp-divider, #f0f0f0)" : "none",
+                  borderBottom: idx < filtered.length - 1 ? "1px solid var(--border)" : "none",
                   alignItems: "center",
                   cursor: "pointer",
                   transition: "background 120ms",
@@ -215,7 +213,7 @@ function RequestsPage() {
                 <div style={{ minWidth: 0, paddingRight: 16 }}>
                   <p style={{
                     margin: 0, fontSize: 14, fontWeight: 500,
-                    color: "var(--sp-text, #1a1a1a)",
+                    color: "var(--foreground)",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
                     {r.title}
@@ -223,7 +221,7 @@ function RequestsPage() {
                   {r.description && (
                     <p style={{
                       margin: "2px 0 0", fontSize: 12,
-                      color: "var(--sp-muted, #888)",
+                      color: "var(--muted-foreground)",
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>
                       {r.description}
@@ -237,14 +235,14 @@ function RequestsPage() {
                     <>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: col.color, flexShrink: 0 }} />
                       <span style={{
-                        fontSize: 13, color: "var(--sp-text, #1a1a1a)",
+                        fontSize: 13, color: "var(--foreground)",
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}>
                         {col.name}
                       </span>
                     </>
                   ) : (
-                    <span style={{ fontSize: 13, color: "var(--sp-muted, #888)" }}>Sin estado</span>
+                    <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Sin estado</span>
                   )}
                 </div>
 
@@ -254,14 +252,15 @@ function RequestsPage() {
                     display: "inline-flex", alignItems: "center",
                     padding: "3px 10px", borderRadius: 20,
                     fontSize: 11, fontWeight: 600,
+                    textTransform: "capitalize",
                     ...(priStyle[r.priority] ?? {}),
                   }}>
-                    {priLabel[r.priority] ?? r.priority}
+                    {r.priority}
                   </span>
                 </div>
 
                 {/* Updated at */}
-                <span style={{ fontSize: 12, color: "var(--sp-muted, #888)" }}>
+                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                   {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true, locale: es })}
                 </span>
 
@@ -317,7 +316,7 @@ function SkeletonRows() {
         <div key={i} style={{
           display: "grid", gridTemplateColumns: GRID,
           padding: "14px 20px",
-          borderBottom: "1px solid var(--sp-divider, #f0f0f0)",
+          borderBottom: "1px solid var(--border)",
           alignItems: "center",
         }}>
           <div style={skBar("55%")} />
@@ -336,9 +335,10 @@ function SkeletonRows() {
 const filterInputStyle: React.CSSProperties = {
   height: 42, padding: "0 14px",
   borderRadius: "var(--r-md, 10px)",
-  border: "1px solid var(--sp-border, #E4E5E6)",
-  background: "white", fontSize: 13,
-  color: "var(--sp-text, #1a1a1a)",
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  fontSize: 13,
   cursor: "pointer", outline: "none",
   minWidth: 160, boxSizing: "border-box",
 };
@@ -346,9 +346,10 @@ const filterInputStyle: React.CSSProperties = {
 const selectStyle: React.CSSProperties = {
   height: 40, padding: "0 14px",
   borderRadius: "var(--r-xl, 16px)",
-  border: "1px solid var(--sp-border, #E4E5E6)",
-  background: "white", fontSize: 13,
-  color: "var(--sp-text, #1a1a1a)",
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  fontSize: 13,
   cursor: "pointer", outline: "none",
 };
 
@@ -356,9 +357,10 @@ const btnOutlineStyle: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: 7,
   height: 40, padding: "0 18px",
   borderRadius: "var(--r-xl, 16px)",
-  border: "1px solid var(--sp-border, #E4E5E6)",
-  background: "white", fontSize: 13, fontWeight: 500,
-  color: "var(--sp-text, #1a1a1a)",
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  fontSize: 13, fontWeight: 500,
   cursor: "pointer", whiteSpace: "nowrap",
 };
 
@@ -376,13 +378,13 @@ const iconBtnStyle: React.CSSProperties = {
   border: "none", background: "transparent",
   cursor: "pointer", display: "flex",
   alignItems: "center", justifyContent: "center",
-  color: "var(--sp-muted, #888)",
+  color: "var(--muted-foreground)",
 };
 
 function skBar(w: number | string): React.CSSProperties {
   return {
     height: 14, borderRadius: 6,
-    background: "#f0f0f0",
+    background: "var(--muted)",
     width: w,
     animation: "pulse 1.5s ease-in-out infinite",
   };
