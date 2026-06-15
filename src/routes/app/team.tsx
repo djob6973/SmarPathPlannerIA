@@ -3,17 +3,14 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listUsers, setUserRole, assignUserToArea, listAreas, adminResetPassword } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth-context";
-import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Users, ShieldCheck, Building, KeyRound } from "lucide-react";
+import { Users, Building, KeyRound, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/app/team")({
   component: TeamPage,
@@ -22,31 +19,43 @@ export const Route = createFileRoute("/app/team")({
 type TeamUser = { id: string; email: string; full_name: string | null; roles: string[]; area_id: string | null };
 
 const ROLES = ["super_admin", "area_admin", "admin", "manager", "client", "viewer"] as const;
-const ROLE_COLOR: Record<string, string> = {
-  super_admin: "bg-red-500/15 text-red-400 border-red-500/30",
-  area_admin: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  admin:   "bg-purple-500/15 text-purple-400 border-purple-500/30",
-  manager: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  client:  "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  viewer:  "bg-slate-500/15 text-slate-400 border-slate-500/30",
+
+const ROLE_STYLES: Record<string, { bg: string; color: string; label: string }> = {
+  super_admin: { bg: "rgba(237,86,80,.13)", color: "#ED5650", label: "Super Admin" },
+  area_admin:  { bg: "rgba(249,115,22,.13)", color: "#F97316", label: "Admin Área" },
+  admin:       { bg: "rgba(168,85,247,.13)", color: "#A855F7", label: "Admin" },
+  manager:     { bg: "rgba(59,130,246,.13)",  color: "#3B82F6", label: "Manager" },
+  client:      { bg: "rgba(157,221,5,.18)",   color: "#7AAE1B", label: "Cliente" },
+  viewer:      { bg: "rgba(100,116,139,.13)", color: "#64748B", label: "Viewer" },
 };
+
+const AVATAR_PALETTE = [
+  "#ED5650", "#3B82F6", "#7AAE1B", "#F97316",
+  "#A855F7", "#06B6D4", "#F59E0B", "#10B981",
+];
+
+function getRoleKey(r: string): string {
+  return (r as any)?.role ?? r;
+}
 
 function TeamPage() {
   const { hasRole } = useAuth();
-  const list = useServerFn(listUsers);
-  const setRole = useServerFn(setUserRole);
+  const list       = useServerFn(listUsers);
+  const setRole    = useServerFn(setUserRole);
   const assignArea = useServerFn(assignUserToArea);
-  const getAreas = useServerFn(listAreas);
-  const resetPwd = useServerFn(adminResetPassword);
-  const [users, setUsers] = useState<TeamUser[]>([]);
-  const [areas, setAreas] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const getAreas   = useServerFn(listAreas);
+  const resetPwd   = useServerFn(adminResetPassword);
+
+  const [users, setUsers]             = useState<TeamUser[]>([]);
+  const [areas, setAreas]             = useState<any[]>([]);
+  const [loading, setLoading]         = useState(true);
   const [resetTarget, setResetTarget] = useState<TeamUser | null>(null);
-  const [newPwd, setNewPwd] = useState("");
-  const [confirmPwd, setConfirmPwd] = useState("");
+  const [newPwd, setNewPwd]           = useState("");
+  const [confirmPwd, setConfirmPwd]   = useState("");
   const [resetLoading, setResetLoading] = useState(false);
-  const isAdmin = hasRole("super_admin");
-  const isAreaAdmin = hasRole("area_admin");
+
+  const isAdmin        = hasRole("super_admin");
+  const isAreaAdmin    = hasRole("area_admin");
   const canManageAreas = isAdmin || isAreaAdmin;
 
   const reload = async () => {
@@ -60,9 +69,7 @@ function TeamPage() {
     try {
       const res = await getAreas();
       setAreas(res.areas || []);
-    } catch (e) {
-      console.error("Error loading areas:", e);
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -114,152 +121,81 @@ function TeamPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-          <Users className="h-5 w-5 text-primary" />
+    <div style={{ padding: "36px 40px 64px", maxWidth: 1180, margin: "0 auto", animation: "spIn .35s ease both" }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 32 }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+          background: "rgba(237,86,80,.12)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <Users size={20} style={{ color: "#ED5650" }} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Equipo</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 style={{
+            fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+            fontSize: 28, fontWeight: 500,
+            color: "var(--foreground)",
+            margin: 0, lineHeight: 1.2,
+          }}>
+            Equipo
+          </h1>
+          <p style={{ fontSize: 14, color: "var(--muted-foreground)", margin: "4px 0 0" }}>
             {users.length} miembro{users.length !== 1 ? "s" : ""} registrado{users.length !== 1 ? "s" : ""}
           </p>
         </div>
       </div>
 
+      {/* ── Read-only notice ── */}
       {!canManageAreas && (
-        <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-          <ShieldCheck className="h-4 w-4 shrink-0" />
-          Solo los super administradores y administradores de área pueden modificar asignaciones de área.
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          background: "var(--muted)", borderRadius: "var(--r-md, 10px)",
+          padding: "12px 16px", marginBottom: 24,
+          border: "1px solid var(--border)",
+        }}>
+          <ShieldCheck size={15} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+          <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
+            Solo los super administradores y administradores de área pueden modificar asignaciones de área.
+          </p>
         </div>
       )}
 
-      {/* Users grid */}
-      <div className="space-y-3">
-        {loading && Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i} className="p-4 border-border/50">
-            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full animate-pulse bg-muted" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-                <div className="h-3 w-48 animate-pulse rounded bg-muted" />
-              </div>
-            </div>
-          </Card>
-        ))}
+      {/* ── Member cards ── */}
+      {loading ? (
+        <SkeletonGrid />
+      ) : (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+          gap: 16,
+        }}>
+          {users.map((u, idx) => (
+            <MemberCard
+              key={u.id}
+              user={u}
+              idx={idx}
+              areas={areas}
+              isAdmin={isAdmin}
+              canManageAreas={canManageAreas}
+              onToggleRole={toggle}
+              onAreaChange={handleAreaChange}
+              onResetPassword={openResetDialog}
+            />
+          ))}
+        </div>
+      )}
 
-        {!loading && users.map((u) => {
-          const initials = (u.full_name ?? u.email).slice(0, 2).toUpperCase();
-          return (
-            <Card key={u.id} className="border-border/50">
-              <div className="flex flex-col gap-4 p-4">
-                {/* User info */}
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarFallback className="bg-primary/15 text-primary font-semibold">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{u.full_name ?? "Sin nombre"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {u.roles.map((r) => {
-                      const roleString = typeof r === 'object' && r !== null ? r.role : r;
-                      return (
-                        <Badge key={roleString} className={`text-[10px] px-1.5 py-0 border ${ROLE_COLOR[roleString]}`}>
-                          {roleString}
-                        </Badge>
-                      );
-                    })}
-                    {u.roles.length === 0 && (
-                      <span className="text-xs text-muted-foreground">sin rol</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Actions section */}
-                <div className="flex flex-col gap-3 border-t border-border/50 pt-3">
-                  {/* Role toggles (admin only) */}
-                  {isAdmin && (
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-xs font-medium text-muted-foreground">Roles:</span>
-                      <div className="flex flex-wrap items-center gap-3">
-                        {ROLES.map((role) => (
-                          <div key={role} className="flex items-center gap-1.5">
-                            <Switch
-                              checked={u.roles.includes(role)}
-                              onCheckedChange={(v) => toggle(u.id, role, v)}
-                              className="scale-90"
-                            />
-                            <span className="text-xs capitalize text-muted-foreground">{role}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Area selector (super_admin and area_admin only) */}
-                  {canManageAreas && (
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <Building className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs font-medium text-muted-foreground">Área:</span>
-                      </div>
-                      <Select
-                        value={u.area_id || "none"}
-                        onValueChange={(value) => handleAreaChange(u.id, value)}
-                      >
-                        <SelectTrigger className="w-48 h-8 text-xs">
-                          <SelectValue placeholder="Sin área" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sin área</SelectItem>
-                          {areas.map((area) => (
-                            <SelectItem key={area.id} value={area.id}>
-                              {area.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* Reset password (admins only) */}
-                  {canManageAreas && (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs font-medium text-muted-foreground">Contraseña:</span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => openResetDialog(u)}
-                      >
-                        Restablecer
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Reset password dialog */}
+      {/* ── Reset password dialog ── */}
       <Dialog open={!!resetTarget} onOpenChange={(open) => !open && setResetTarget(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Restablecer contraseña</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Establecer nueva contraseña para{" "}
-            <span className="font-medium text-foreground">
+          <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "0 0 4px" }}>
+            Nueva contraseña para{" "}
+            <span style={{ fontWeight: 600, color: "var(--foreground)" }}>
               {resetTarget?.full_name ?? resetTarget?.email}
             </span>
           </p>
@@ -304,3 +240,242 @@ function TeamPage() {
     </div>
   );
 }
+
+// ── MemberCard ───────────────────────────────────────────────────
+
+interface MemberCardProps {
+  user: TeamUser;
+  idx: number;
+  areas: any[];
+  isAdmin: boolean;
+  canManageAreas: boolean;
+  onToggleRole: (userId: string, role: string, enabled: boolean) => void;
+  onAreaChange: (userId: string, areaId: string) => void;
+  onResetPassword: (user: TeamUser) => void;
+}
+
+function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole, onAreaChange, onResetPassword }: MemberCardProps) {
+  const initials    = (u.full_name ?? u.email).slice(0, 2).toUpperCase();
+  const avatarColor = AVATAR_PALETTE[idx % AVATAR_PALETTE.length];
+  const areaName    = areas.find((a) => a.id === u.area_id)?.name;
+
+  return (
+    <div style={{
+      background: "var(--card)",
+      borderRadius: "var(--r-card, 20px)",
+      border: "1px solid var(--border)",
+      overflow: "hidden",
+    }}>
+      {/* Info section */}
+      <div style={{ padding: "20px 20px 18px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+          {/* Avatar */}
+          <div style={{
+            width: 44, height: 44, borderRadius: "999px", flexShrink: 0,
+            background: avatarColor + "22",
+            border: `2px solid ${avatarColor}55`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: avatarColor,
+            fontSize: 14, fontWeight: 700,
+          }}>
+            {initials}
+          </div>
+          {/* Name + email */}
+          <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+            <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--foreground)", margin: 0, lineHeight: 1.3 }}>
+              {u.full_name ?? "Sin nombre"}
+            </p>
+            <p style={{
+              fontSize: 12.5, color: "var(--muted-foreground)", margin: "3px 0 0",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {u.email}
+            </p>
+          </div>
+        </div>
+
+        {/* Role pills */}
+        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginTop: 14 }}>
+          {u.roles.length === 0 ? (
+            <span style={{
+              padding: "3px 10px", borderRadius: "var(--r-pill, 999px)",
+              fontSize: 11, fontWeight: 500,
+              background: "var(--muted)", color: "var(--muted-foreground)",
+            }}>
+              Sin rol
+            </span>
+          ) : (
+            u.roles.map((r) => {
+              const rk = getRoleKey(r);
+              const rs = ROLE_STYLES[rk];
+              return rs ? (
+                <span key={rk} style={{
+                  display: "inline-flex", alignItems: "center",
+                  padding: "3px 10px", borderRadius: "var(--r-pill, 999px)",
+                  fontSize: 11, fontWeight: 600,
+                  background: rs.bg, color: rs.color,
+                }}>
+                  {rs.label}
+                </span>
+              ) : (
+                <span key={rk} style={{
+                  padding: "3px 10px", borderRadius: "var(--r-pill, 999px)",
+                  fontSize: 11, fontWeight: 500,
+                  background: "var(--muted)", color: "var(--muted-foreground)",
+                }}>
+                  {rk}
+                </span>
+              );
+            })
+          )}
+        </div>
+
+        {/* Area display (viewers / non-admins) */}
+        {!canManageAreas && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+            <Building size={12} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Área:</span>
+            {areaName ? (
+              <span style={{
+                fontSize: 12, fontWeight: 500,
+                background: "var(--muted)", color: "var(--foreground)",
+                borderRadius: "var(--r-pill, 999px)", padding: "2px 9px",
+              }}>
+                {areaName}
+              </span>
+            ) : (
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Sin área</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Admin controls */}
+      {(isAdmin || canManageAreas) && (
+        <div style={{
+          borderTop: "1px solid var(--border)",
+          background: "var(--muted)",
+          padding: "14px 20px",
+          display: "flex", flexDirection: "column", gap: 12,
+        }}>
+
+          {/* Role toggles */}
+          {isAdmin && (
+            <div>
+              <p style={{
+                fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const,
+                letterSpacing: ".07em", color: "var(--muted-foreground)",
+                margin: "0 0 8px",
+              }}>
+                Roles
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: "8px 14px" }}>
+                {ROLES.map((role) => {
+                  const isActive = u.roles.some((r) => getRoleKey(r) === role);
+                  return (
+                    <label key={role} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                      <Switch
+                        checked={isActive}
+                        onCheckedChange={(v) => onToggleRole(u.id, role, v)}
+                        className="scale-[0.85]"
+                      />
+                      <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                        {ROLE_STYLES[role]?.label ?? role}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Area selector */}
+          {canManageAreas && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 70 }}>
+                <Building size={13} style={{ color: "var(--muted-foreground)" }} />
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>Área</span>
+              </div>
+              <Select
+                value={u.area_id || "none"}
+                onValueChange={(value) => onAreaChange(u.id, value)}
+              >
+                <SelectTrigger style={{ height: 32, fontSize: 12, flex: 1, borderRadius: "var(--r-md, 10px)" }}>
+                  <SelectValue placeholder="Sin área" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin área</SelectItem>
+                  {areas.map((area) => (
+                    <SelectItem key={area.id} value={area.id}>{area.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Reset password */}
+          {canManageAreas && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 70 }}>
+                <KeyRound size={13} style={{ color: "var(--muted-foreground)" }} />
+                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>Contraseña</span>
+              </div>
+              <button
+                onClick={() => onResetPassword(u)}
+                style={{
+                  height: 32, padding: "0 14px",
+                  borderRadius: "var(--r-md, 10px)",
+                  border: "1px solid var(--border)",
+                  background: "var(--card)",
+                  color: "var(--foreground)",
+                  fontSize: 12, cursor: "pointer",
+                  whiteSpace: "nowrap" as const,
+                }}
+              >
+                Restablecer
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Skeleton ─────────────────────────────────────────────────────
+
+function SkeletonGrid() {
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+      gap: 16,
+    }}>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} style={{
+          background: "var(--card)",
+          borderRadius: "var(--r-card, 20px)",
+          border: "1px solid var(--border)",
+          padding: "20px",
+        }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div style={{ ...skPulse, width: 44, height: 44, borderRadius: "999px" }} />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, gap: 8, paddingTop: 4 }}>
+              <div style={{ ...skPulse, height: 14, width: "55%", borderRadius: 6 }} />
+              <div style={{ ...skPulse, height: 12, width: "75%", borderRadius: 6 }} />
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 14 }}>
+            <div style={{ ...skPulse, height: 22, width: 72, borderRadius: 999 }} />
+            <div style={{ ...skPulse, height: 22, width: 56, borderRadius: 999 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const skPulse: React.CSSProperties = {
+  background: "var(--muted)",
+  animation: "pulse 1.5s ease-in-out infinite",
+};
