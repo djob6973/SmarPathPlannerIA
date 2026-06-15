@@ -4,19 +4,21 @@ import { useServerFn } from "@tanstack/react-start";
 import { sendChatMessage } from "@/lib/chat.functions";
 import { useAuth } from "@/lib/auth-context";
 import { getAreas } from "@/lib/data.functions";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Send, Loader2, Bot, User, Sparkles, RotateCcw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Bot, User, ArrowRight, Loader2, Sparkles, RotateCcw, CheckCircle2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 export const Route = createFileRoute("/app/chat")({
   component: ChatPage,
 });
 
-type Message = { id: string; role: "user" | "assistant"; content: string; created_at: string };
+type Message = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+  requestCreated?: boolean;
+};
 
 const STARTERS = [
   "Necesito un sistema de gestión de inventarios para nuestra tienda.",
@@ -27,7 +29,7 @@ const STARTERS = [
 
 function ChatPage() {
   const send = useServerFn(sendChatMessage);
-  const { isSuperAdmin, areaId } = useAuth();
+  const { isSuperAdmin, areaId, areaName } = useAuth();
   const [convId, setConvId] = useState<string | undefined>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -38,9 +40,7 @@ function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (isSuperAdmin) {
-      loadAreas();
-    }
+    if (isSuperAdmin) loadAreas();
   }, [isSuperAdmin]);
 
   const loadAreas = async () => {
@@ -50,13 +50,17 @@ function ChatPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, busy]);
 
   const submit = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || busy) return;
     setInput("");
-    setMessages((m) => [...m, { id: crypto.randomUUID(), role: "user", content, created_at: new Date().toISOString() }]);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    setMessages((m) => [
+      ...m,
+      { id: crypto.randomUUID(), role: "user", content, created_at: new Date().toISOString() },
+    ]);
     setBusy(true);
     try {
       const effectiveAreaId = isSuperAdmin ? selectedArea : areaId;
@@ -68,11 +72,14 @@ function ChatPage() {
         setConvId(res.conversationId);
         setMessages((m) => [
           ...m,
-          { id: crypto.randomUUID(), role: "assistant", content: res.assistant!, created_at: new Date().toISOString() },
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: res.assistant!,
+            created_at: new Date().toISOString(),
+            requestCreated: !!res.createdRequestId,
+          },
         ]);
-        if (res.createdRequestId) {
-          toast.success("Solicitud registrada en el roadmap", { description: "Puedes verla en el Tablero o Solicitudes." });
-        }
       }
     } catch (e: any) {
       toast.error(e?.message ?? "Error al enviar mensaje");
@@ -86,154 +93,340 @@ function ChatPage() {
   const reset = () => { setConvId(undefined); setMessages([]); };
 
   const isEmpty = messages.length === 0;
+  const displayAreaName = isSuperAdmin
+    ? (areas.find((a) => a.id === selectedArea)?.name ?? "Todas las áreas")
+    : (areaName ?? "Mi área");
 
   return (
-    <div className="flex h-full flex-col max-w-3xl mx-auto px-4">
-      {/* Header */}
-      <div className="flex items-center justify-between py-4 border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15">
-            <Bot className="h-4 w-4 text-primary" />
+    <div style={{
+      display: "flex", flexDirection: "column",
+      height: "100%", maxWidth: 820, margin: "0 auto",
+      padding: "0 24px", animation: "spIn .35s ease both",
+    }}>
+      {/* ── Header ── */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "24px 0 20px",
+        borderBottom: "1px solid var(--border)",
+        flexShrink: 0,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+            background: "rgba(237,86,80,.1)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Bot size={20} style={{ color: "#ED5650" }} />
           </div>
           <div>
-            <h1 className="text-sm font-semibold">Agente IA</h1>
-            <p className="text-xs text-muted-foreground">Captura de solicitudes inteligente</p>
+            <h1 style={{
+              fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+              fontSize: 22, fontWeight: 500,
+              color: "var(--foreground)",
+              margin: 0, lineHeight: 1.2,
+            }}>
+              Agente IA
+            </h1>
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
+              Captura de solicitudes · {displayAreaName}
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {isSuperAdmin && (
-            <Select value={selectedArea || "all"} onValueChange={(value) => setSelectedArea(value === "all" ? null : value)}>
-              <SelectTrigger className="w-48 h-7 text-xs">
-                <SelectValue placeholder="Área: Todas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las áreas</SelectItem>
-                {areas.map((area) => (
-                  <SelectItem key={area.id} value={area.id}>
-                    {area.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              value={selectedArea ?? "all"}
+              onChange={(e) => setSelectedArea(e.target.value === "all" ? null : e.target.value)}
+              style={selectStyle}
+            >
+              <option value="all">Todas las áreas</option>
+              {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
           )}
           {!isEmpty && (
-            <Button variant="ghost" size="sm" onClick={reset} className="gap-1.5 text-xs h-7">
-              <RotateCcw className="h-3 w-3" /> Nueva conversación
-            </Button>
+            <button onClick={reset} style={ghostBtnStyle}>
+              <RotateCcw size={13} /> Nueva conversación
+            </button>
           )}
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-4 space-y-4">
-        {isEmpty && (
-          <div className="flex flex-col items-center justify-center gap-6 py-12 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-              <Sparkles className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">¿Qué proyecto necesitas?</h2>
-              <p className="mt-1 text-sm text-muted-foreground max-w-sm">
-                Cuéntame tu idea. Te haré preguntas para estructurarla y la registraré en el roadmap automáticamente.
-              </p>
-            </div>
-            <div className="grid gap-2 w-full max-w-md">
-              {STARTERS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => submit(s)}
-                  className="rounded-lg border border-border/60 bg-card px-4 py-2.5 text-sm text-left hover:border-primary/40 hover:bg-primary/5 transition-all"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* ── Messages ── */}
+      <div style={{
+        flex: 1, overflowY: "auto",
+        padding: "24px 0",
+        display: "flex", flexDirection: "column", gap: 18,
+      }}>
+        {isEmpty ? (
+          <EmptyState onStarter={submit} />
+        ) : (
+          messages.map((m) => <MessageBubble key={m.id} message={m} />)
         )}
-
-        {messages.map((m) => (
-          <div key={m.id} className={cn("flex gap-3", m.role === "user" ? "justify-end" : "justify-start")}>
-            {m.role === "assistant" && (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 mt-0.5">
-                <Bot className="h-3.5 w-3.5 text-primary" />
-              </div>
-            )}
-            <div
-              className={cn(
-                "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                m.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-tr-sm"
-                  : "bg-card border border-border/50 rounded-tl-sm"
-              )}
-            >
-              {m.role === "assistant" ? (
-                <ReactMarkdown
-                  components={{
-                    h1: ({ children }) => <h1 className="text-lg font-bold mt-4 mb-2">{children}</h1>,
-                    h2: ({ children }) => <h2 className="text-base font-semibold mt-3 mb-2">{children}</h2>,
-                    h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
-                    ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>,
-                    ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
-                    li: ({ children }) => <li className="ml-2">{children}</li>,
-                    p: ({ children }) => <p className="my-1">{children}</p>,
-                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                    code: ({ children }) => <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>,
-                  }}
-                >
-                  {m.content}
-                </ReactMarkdown>
-              ) : (
-                m.content
-              )}
-            </div>
-            {m.role === "user" && (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted mt-0.5">
-                <User className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-            )}
-          </div>
-        ))}
-
-        {busy && (
-          <div className="flex gap-3 justify-start">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 mt-0.5">
-              <Bot className="h-3.5 w-3.5 text-primary" />
-            </div>
-            <div className="rounded-2xl rounded-tl-sm bg-card border border-border/50 px-4 py-3">
-              <div className="flex gap-1.5 items-center">
-                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
-                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:150ms]" />
-                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
-              </div>
-            </div>
-          </div>
-        )}
-
+        {busy && <ThinkingBubble />}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="py-4 border-t border-border/50">
-        <div className="flex gap-2 items-end">
-          <Textarea
+      {/* ── Input ── */}
+      <div style={{ flexShrink: 0, paddingBottom: 24 }}>
+        <div style={{
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--r-card, 20px)",
+          padding: "10px 10px 10px 16px",
+          display: "flex", gap: 10, alignItems: "flex-end",
+        }}>
+          <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
-            placeholder="Escribe tu mensaje... (Enter para enviar, Shift+Enter para salto de línea)"
-            className="min-h-[52px] max-h-60 resize-y text-sm"
+            onChange={(e) => {
+              setInput(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+            }}
+            placeholder="Describe tu proyecto o solicitud… (Enter para enviar)"
             disabled={busy}
+            rows={1}
+            style={{
+              flex: 1, border: "none", background: "transparent", outline: "none",
+              resize: "none", fontSize: 14, lineHeight: 1.6,
+              color: "var(--foreground)", minHeight: 44, maxHeight: 160,
+              padding: "10px 0", fontFamily: "inherit",
+            }}
           />
-          <Button
+          <button
             onClick={() => submit()}
             disabled={busy || !input.trim()}
-            size="icon"
-            className="h-[52px] w-[52px] shrink-0"
+            style={{
+              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+              background: "#ED5650", border: "none", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              opacity: busy || !input.trim() ? 0.4 : 1,
+              transition: "opacity 150ms",
+              marginBottom: 2,
+            }}
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
+            {busy ? (
+              <Loader2 size={16} style={{ color: "white" }} className="animate-spin" />
+            ) : (
+              <ArrowRight size={16} style={{ color: "white" }} />
+            )}
+          </button>
         </div>
+        <p style={{ fontSize: 11, color: "var(--muted-foreground)", textAlign: "center", marginTop: 8 }}>
+          Shift+Enter para salto de línea
+        </p>
       </div>
     </div>
   );
 }
+
+// ── Sub-components ───────────────────────────────────────
+
+function MessageBubble({ message: m }: { message: Message }) {
+  const isUser = m.role === "user";
+  return (
+    <div style={{ display: "flex", gap: 11, justifyContent: isUser ? "flex-end" : "flex-start" }}>
+      {!isUser && (
+        <div style={{
+          width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+          background: "rgba(237,86,80,.1)",
+          display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2,
+        }}>
+          <Bot size={14} style={{ color: "#ED5650" }} />
+        </div>
+      )}
+
+      <div style={{ maxWidth: "80%", display: "flex", flexDirection: "column", gap: 8 }}>
+        {m.requestCreated && (
+          <div style={{
+            background: "rgba(237,86,80,.08)",
+            border: "1px solid rgba(237,86,80,.2)",
+            borderRadius: "var(--r-card, 20px)",
+            padding: "12px 16px",
+            display: "flex", alignItems: "center", gap: 10,
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+              background: "#ED5650",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <CheckCircle2 size={14} style={{ color: "white" }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#ED5650", margin: 0 }}>
+                Solicitud registrada en el roadmap
+              </p>
+              <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
+                Puedes verla en el Tablero o Solicitudes
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div style={{
+          background: isUser ? "#ED5650" : "var(--card)",
+          border: isUser ? "none" : "1px solid var(--border)",
+          borderRadius: "var(--r-xl, 16px)",
+          ...(isUser ? { borderTopRightRadius: 4 } : { borderTopLeftRadius: 4 }),
+          padding: "12px 16px",
+          fontSize: 14, lineHeight: 1.65,
+          color: isUser ? "white" : "var(--foreground)",
+        }}>
+          {isUser ? (
+            <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
+          ) : (
+            <ReactMarkdown
+              components={{
+                h1: ({ children }) => (
+                  <h1 style={{ fontSize: 16, fontWeight: 700, margin: "10px 0 4px" }}>{children}</h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 style={{ fontSize: 14, fontWeight: 600, margin: "8px 0 4px" }}>{children}</h2>
+                ),
+                ul: ({ children }) => (
+                  <ul style={{ paddingLeft: 20, margin: "6px 0" }}>{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol style={{ paddingLeft: 20, margin: "6px 0" }}>{children}</ol>
+                ),
+                li: ({ children }) => <li style={{ marginBottom: 2 }}>{children}</li>,
+                p: ({ children }) => <p style={{ margin: "3px 0" }}>{children}</p>,
+                strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                code: ({ children }) => (
+                  <code style={{
+                    background: "var(--muted)", padding: "1px 6px",
+                    borderRadius: 4, fontSize: 12, fontFamily: "monospace",
+                  }}>
+                    {children}
+                  </code>
+                ),
+              }}
+            >
+              {m.content}
+            </ReactMarkdown>
+          )}
+        </div>
+      </div>
+
+      {isUser && (
+        <div style={{
+          width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+          background: "var(--muted)",
+          display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2,
+        }}>
+          <User size={14} style={{ color: "var(--muted-foreground)" }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ThinkingBubble() {
+  return (
+    <div style={{ display: "flex", gap: 11 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+        background: "rgba(237,86,80,.1)",
+        display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2,
+      }}>
+        <Bot size={14} style={{ color: "#ED5650" }} />
+      </div>
+      <div style={{
+        background: "var(--card)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-xl, 16px)", borderTopLeftRadius: 4,
+        padding: "14px 18px",
+        display: "flex", alignItems: "center", gap: 5,
+      }}>
+        <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
+        <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce [animation-delay:150ms]" />
+        <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ onStarter }: { onStarter: (s: string) => void }) {
+  return (
+    <div style={{
+      flex: 1, display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      gap: 24, padding: "40px 0", textAlign: "center",
+    }}>
+      <div style={{
+        width: 60, height: 60, borderRadius: "50%",
+        background: "rgba(237,86,80,.1)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <Sparkles size={28} style={{ color: "#ED5650" }} />
+      </div>
+      <div>
+        <h2 style={{
+          fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+          fontSize: 20, fontWeight: 500, margin: 0,
+          color: "var(--foreground)",
+        }}>
+          ¿Qué proyecto necesitas?
+        </h2>
+        <p style={{
+          fontSize: 14, color: "var(--muted-foreground)",
+          margin: "8px auto 0", maxWidth: 400,
+        }}>
+          Cuéntame tu idea. Te haré preguntas para estructurarla y la registraré en el roadmap automáticamente.
+        </p>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 500 }}>
+        {STARTERS.map((s) => (
+          <StarterButton key={s} text={s} onClick={() => onStarter(s)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StarterButton({ text, onClick }: { text: string; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        padding: "11px 18px",
+        borderRadius: "var(--r-xl, 16px)",
+        border: hovered ? "1px solid rgba(237,86,80,.5)" : "1px solid var(--border)",
+        background: hovered ? "rgba(237,86,80,.04)" : "var(--card)",
+        color: "var(--foreground)",
+        fontSize: 13, textAlign: "left" as const,
+        cursor: "pointer", transition: "border-color 120ms, background 120ms",
+      }}
+    >
+      {text}
+    </button>
+  );
+}
+
+// ── Shared styles ────────────────────────────────────────
+
+const selectStyle: React.CSSProperties = {
+  height: 36, padding: "0 14px",
+  borderRadius: "var(--r-xl, 16px)",
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  fontSize: 13, cursor: "pointer", outline: "none",
+};
+
+const ghostBtnStyle: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 6,
+  height: 36, padding: "0 14px",
+  borderRadius: "var(--r-xl, 16px)",
+  border: "1px solid var(--border)",
+  background: "transparent",
+  color: "var(--muted-foreground)",
+  fontSize: 13, fontWeight: 500, cursor: "pointer",
+  whiteSpace: "nowrap",
+};
