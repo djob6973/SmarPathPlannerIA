@@ -315,8 +315,12 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const currentCol = columns.find((c) => c.id === request?.status_column_id);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+    <div className="relative z-50">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      {/* Scrollable centering container */}
+      <div className="fixed inset-0 overflow-y-auto">
+        <div className="flex min-h-full items-center justify-center p-4">
       <div className="relative flex h-[85vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-card shadow-2xl overflow-hidden">
 
         {/* Header */}
@@ -685,6 +689,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
               </>
             )}
           </div>
+        </div>
+      </div>
         </div>
       </div>
     </div>
