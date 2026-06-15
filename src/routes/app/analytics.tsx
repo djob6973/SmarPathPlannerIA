@@ -3,12 +3,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
 import { getAreas } from "@/lib/data.functions";
-import { Card } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, CartesianGrid, AreaChart, Area,
-  LineChart, Line,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { TrendingUp, CheckCircle2, Clock, Kanban } from "lucide-react";
 
@@ -17,24 +13,31 @@ export const Route = createFileRoute("/app/analytics")({
 });
 
 type Request = Pick<RequestRow, "id" | "priority" | "status_column_id" | "created_at" | "updated_at">;
-type Column = Pick<ColumnRow, "id" | "name" | "color" | "is_completed">;
+type Column  = Pick<ColumnRow,  "id" | "name" | "color" | "is_completed">;
+
+const CORAL = "#ED5650";
+const GREEN = "#9DDD05";
+const GREEN_TEXT = "#7AAE1B";
 
 const PRIORITY_COLORS: Record<string, string> = {
   urgent: "#EF4444", high: "#F97316", medium: "#EAB308", low: "#6366F1",
 };
+const PRIORITY_LABELS: Record<string, string> = {
+  urgent: "Urgente", high: "Alta", medium: "Media", low: "Baja",
+};
 
 function AnalyticsPage() {
   const { areaId, isSuperAdmin } = useAuth();
-  const [columns, setColumns] = useState<Column[]>([]);
-  const [requests, setRequests] = useState<Request[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const [columns, setColumns]             = useState<Column[]>([]);
+  const [requests, setRequests]           = useState<Request[]>([]);
+  const [loading, setLoading]             = useState(true);
+  const [mounted, setMounted]             = useState(false);
+  const [selectedArea, setSelectedArea]   = useState<string | null>(null);
+  const [areas, setAreas]                 = useState<any[]>([]);
+  const [completedPeriod, setCompletedPeriod] = useState<"week" | "month" | "quarter">("month");
+  const [selectedYear, setSelectedYear]   = useState<number>(new Date().getFullYear());
 
   useEffect(() => { setMounted(true); }, []);
-  const [selectedArea, setSelectedArea] = useState<string | null>(null);
-  const [areas, setAreas] = useState<any[]>([]);
-  const [completedPeriod, setCompletedPeriod] = useState<"week" | "month" | "quarter">("week");
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   useEffect(() => {
     const effectiveAreaId = isSuperAdmin ? selectedArea : areaId;
@@ -44,278 +47,255 @@ function AnalyticsPage() {
       setRequests(reqs);
       setLoading(false);
     });
-
     if (isSuperAdmin) {
       getAreas().then(({ areas: data }) => setAreas(data));
     }
   }, [areaId, isSuperAdmin, selectedArea]);
 
-  const skeleton = (
-    <div className="p-6 space-y-4 max-w-6xl mx-auto">
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
-        ))}
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="h-72 animate-pulse rounded-xl bg-muted" />
-        <div className="h-72 animate-pulse rounded-xl bg-muted" />
-      </div>
-    </div>
-  );
+  if (!mounted || loading) return <Skeleton />;
 
-  if (!mounted) return skeleton;
-
-  const completedIds = new Set(columns.filter((c) => c.is_completed).map((c) => c.id));
-  const completed  = requests.filter((r) => r.status_column_id && completedIds.has(r.status_column_id)).length;
-  const inProgress = requests.filter((r) => r.status_column_id && !completedIds.has(r.status_column_id)).length;
-  const pending    = requests.filter((r) => !r.status_column_id).length;
+  /* ── KPI computations ── */
+  const completedIds = new Set(columns.filter(c => c.is_completed).map(c => c.id));
+  const completed    = requests.filter(r => r.status_column_id && completedIds.has(r.status_column_id)).length;
+  const inProgress   = requests.filter(r => r.status_column_id && !completedIds.has(r.status_column_id)).length;
+  const pending      = requests.filter(r => !r.status_column_id).length;
   const completionRate = requests.length > 0 ? Math.round((completed / requests.length) * 100) : 0;
 
-  const byCol = columns.map((c) => ({
-    name: c.name.length > 12 ? c.name.slice(0, 12) + "…" : c.name,
-    fullName: c.name,
-    count: requests.filter((r) => r.status_column_id === c.id).length,
+  /* ── Bar chart — Por estado ── */
+  const byCol    = columns.map(c => ({
+    name: c.name.length > 14 ? c.name.slice(0, 14) + "…" : c.name,
+    count: requests.filter(r => r.status_column_id === c.id).length,
     color: c.color,
   }));
+  const maxByCol = Math.max(...byCol.map(c => c.count), 1);
 
-  const priorityData = (["urgent", "high", "medium", "low"] as const).map((p) => ({
-    name: p.charAt(0).toUpperCase() + p.slice(1),
-    value: requests.filter((r) => r.priority === p).length,
+  /* ── Donut chart — Por prioridad ── */
+  const priorityData = (["urgent", "high", "medium", "low"] as const).map(p => ({
+    key: p, label: PRIORITY_LABELS[p],
+    value: requests.filter(r => r.priority === p).length,
     color: PRIORITY_COLORS[p],
-  })).filter((d) => d.value > 0);
+  })).filter(d => d.value > 0);
+  const donutTotal = priorityData.reduce((s, d) => s + d.value, 0) || 1;
 
-  const completedRequests = requests.filter(
-    (r) => r.status_column_id && completedIds.has(r.status_column_id)
-  );
+  let cum = 0;
+  const conicGradient = priorityData.length > 0
+    ? `conic-gradient(${priorityData.map(d => {
+        const pct = (d.value / donutTotal) * 100;
+        const part = `${d.color} ${cum.toFixed(1)}% ${(cum + pct).toFixed(1)}%`;
+        cum += pct;
+        return part;
+      }).join(", ")})`
+    : "var(--muted)";
 
-  const isoWeekNumber = (date: Date) => {
+  /* ── Area chart — Proyectos completados ── */
+  const completedRequests = requests.filter(r => r.status_column_id && completedIds.has(r.status_column_id));
+
+  const isoWeek = (date: Date) => {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+    const ys = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil(((d.getTime() - ys.getTime()) / 86400000 + 1) / 7);
   };
 
   const availableYears = Array.from(
-    new Set(completedRequests.map((r) => new Date(r.updated_at).getFullYear()))
+    new Set(completedRequests.map(r => new Date(r.updated_at).getFullYear()))
   ).sort((a, b) => b - a);
   if (!availableYears.includes(new Date().getFullYear())) availableYears.unshift(new Date().getFullYear());
 
   const completedOverTime = (() => {
     const now = new Date();
-    const currentYear = selectedYear;
     const isCurrentYear = selectedYear === now.getFullYear();
-
     if (completedPeriod === "week") {
-      const totalWeeks = isCurrentYear ? isoWeekNumber(now) : 52;
-      return Array.from({ length: totalWeeks }, (_, i) => {
-        const weekNum = i + 1;
-        return {
-          name: `S${weekNum}`,
-          completadas: completedRequests.filter((r) => {
-            const rd = new Date(r.updated_at);
-            return rd.getFullYear() === currentYear && isoWeekNumber(rd) === weekNum;
-          }).length,
-        };
-      });
-    }
-
-    if (completedPeriod === "month") {
-      const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-      return Array.from({ length: 12 }, (_, i) => ({
-        name: months[i],
-        completadas: completedRequests.filter((r) => {
+      const totalWeeks = isCurrentYear ? isoWeek(now) : 52;
+      return Array.from({ length: Math.min(totalWeeks, 26) }, (_, i) => ({
+        name: `S${i + 1}`,
+        completadas: completedRequests.filter(r => {
           const rd = new Date(r.updated_at);
-          return rd.getFullYear() === currentYear && rd.getMonth() === i;
+          return rd.getFullYear() === selectedYear && isoWeek(rd) === i + 1;
         }).length,
       }));
     }
-
-    return ["Q1", "Q2", "Q3", "Q4"].map((q, i) => ({
-      name: q,
-      completadas: completedRequests.filter((r) => {
+    if (completedPeriod === "month") {
+      const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+      return months.map((name, i) => ({
+        name,
+        completadas: completedRequests.filter(r => {
+          const rd = new Date(r.updated_at);
+          return rd.getFullYear() === selectedYear && rd.getMonth() === i;
+        }).length,
+      }));
+    }
+    return ["Q1", "Q2", "Q3", "Q4"].map((name, i) => ({
+      name,
+      completadas: completedRequests.filter(r => {
         const rd = new Date(r.updated_at);
-        return rd.getFullYear() === currentYear && Math.floor(rd.getMonth() / 3) === i;
+        return rd.getFullYear() === selectedYear && Math.floor(rd.getMonth() / 3) === i;
       }).length,
     }));
   })();
 
+  /* ── Actividad bars ── */
   const activityData = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    const dateStr = d.toISOString().slice(0, 10);
-    const label = d.toLocaleDateString("es", { weekday: "short" });
-    const count = requests.filter((r) => new Date(r.created_at).toISOString().slice(0, 10) === dateStr).length;
-    return { name: label, count };
+    const ds = d.toISOString().slice(0, 10);
+    return {
+      name: d.toLocaleDateString("es", { weekday: "short" }),
+      count: requests.filter(r => new Date(r.created_at).toISOString().slice(0, 10) === ds).length,
+    };
   });
-
-  const kpis = [
-    { label: "Total solicitudes", value: requests.length,  icon: Kanban,       color: "text-primary",     bg: "bg-primary/10"      },
-    { label: "En progreso",       value: inProgress,       icon: TrendingUp,   color: "text-blue-400",    bg: "bg-blue-400/10"     },
-    { label: "Pendientes",        value: pending,          icon: Clock,        color: "text-yellow-400",  bg: "bg-yellow-400/10"   },
-    { label: "Completadas",       value: completed,        icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-400/10"  },
-  ];
-
-  if (loading) return skeleton;
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-lg">
-        <p className="font-medium">{payload[0]?.payload?.fullName ?? label}</p>
-        <p className="text-muted-foreground">{payload[0]?.value} solicitudes</p>
-      </div>
-    );
-  };
+  const maxAct = Math.max(...activityData.map(d => d.count), 1);
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div style={{ padding: "36px 40px 64px", maxWidth: 1180, margin: "0 auto", animation: "spIn .35s ease both" }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32 }}>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Analítica</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Métricas y estado del roadmap</p>
+          <h1 style={{
+            fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+            fontSize: 30, fontWeight: 500, color: "var(--foreground)", margin: 0, lineHeight: 1.2,
+          }}>
+            Analítica
+          </h1>
+          <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 6 }}>
+            Métricas y estado del roadmap
+          </p>
         </div>
         {isSuperAdmin && (
-          <Select value={selectedArea || "all"} onValueChange={(value) => setSelectedArea(value === "all" ? null : value)}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Todas las áreas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las áreas</SelectItem>
-              {areas.map((area) => (
-                <SelectItem key={area.id} value={area.id}>
-                  {area.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <select
+            value={selectedArea ?? "all"}
+            onChange={e => setSelectedArea(e.target.value === "all" ? null : e.target.value)}
+            style={sel}
+          >
+            <option value="all">Todas las áreas</option>
+            {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
         )}
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {kpis.map((k) => (
-          <Card key={k.label} className="p-4 border-border/50">
-            <div className="flex items-start justify-between">
+      {/* ── KPI Cards ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, marginBottom: 20 }}>
+        {[
+          { label: "Total solicitudes", value: requests.length, icon: <Kanban size={18} color={CORAL} />,                      iconBg: "rgba(237,86,80,.12)"  },
+          { label: "En progreso",       value: inProgress,      icon: <TrendingUp size={18} color="var(--muted-foreground)" />, iconBg: "var(--muted)"        },
+          { label: "Pendientes",        value: pending,         icon: <Clock size={18} color="var(--muted-foreground)" />,      iconBg: "var(--muted)"        },
+          { label: "Completadas",       value: completed,       icon: <CheckCircle2 size={18} color={GREEN_TEXT} />,           iconBg: "rgba(157,221,5,.15)" },
+        ].map(k => (
+          <div key={k.label} style={card}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
               <div>
-                <p className="text-xs text-muted-foreground">{k.label}</p>
-                <p className="mt-1 text-3xl font-bold">{k.value}</p>
+                <p style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", margin: 0 }}>{k.label}</p>
+                <p style={{ fontSize: 36, fontWeight: 700, color: "var(--foreground)", margin: "8px 0 0", lineHeight: 1 }}>{k.value}</p>
               </div>
-              <div className={`rounded-lg p-2 ${k.bg}`}>
-                <k.icon className={`h-4 w-4 ${k.color}`} />
+              <div style={{
+                width: 40, height: 40, borderRadius: "var(--r-md, 10px)",
+                background: k.iconBg,
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              }}>
+                {k.icon}
               </div>
             </div>
-          </Card>
+          </div>
         ))}
       </div>
 
-      {/* Completion rate */}
-      <Card className="border-border/50 p-4">
-        <div className="flex items-center justify-between mb-3">
+      {/* ── Tasa de completado ── */}
+      <div style={{ ...card, marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <div>
-            <p className="text-sm font-medium">Tasa de completado</p>
-            <p className="text-xs text-muted-foreground">{completed} de {requests.length} solicitudes completadas</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Tasa de completado</p>
+            <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "4px 0 0" }}>
+              {completed} de {requests.length} solicitudes completadas
+            </p>
           </div>
-          <span className="text-2xl font-bold text-emerald-400">{completionRate}%</span>
+          <span style={{ fontSize: 28, fontWeight: 700, color: GREEN_TEXT }}>{completionRate}%</span>
         </div>
-        <div className="h-2 rounded-full bg-muted overflow-hidden">
-          <div
-            className="h-full rounded-full bg-emerald-400 transition-all duration-700"
-            style={{ width: `${completionRate}%` }}
-          />
+        <div style={{ height: 8, borderRadius: 99, background: "var(--muted)", overflow: "hidden" }}>
+          <div style={{ width: `${completionRate}%`, height: "100%", borderRadius: 99, background: GREEN, transition: "width 700ms" }} />
         </div>
-      </Card>
-
-      {/* Charts row 1 */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* By status */}
-        <Card className="border-border/50 p-4">
-          <h3 className="text-sm font-semibold mb-4">Por estado</h3>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byCol} barSize={28}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="name" fontSize={11} tick={{ fill: "var(--color-muted-foreground)" }} />
-                <YAxis allowDecimals={false} fontSize={11} tick={{ fill: "var(--color-muted-foreground)" }} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "var(--color-muted)" }} />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {byCol.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* By priority */}
-        <Card className="border-border/50 p-4">
-          <h3 className="text-sm font-semibold mb-4">Por prioridad</h3>
-          {priorityData.length === 0 ? (
-            <div className="h-56 flex items-center justify-center text-muted-foreground text-sm">Sin datos</div>
-          ) : (
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={priorityData}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={80}
-                    innerRadius={40}
-                    paddingAngle={2}
-                  >
-                    {priorityData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Legend
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(v) => <span style={{ fontSize: 11, color: "var(--color-muted-foreground)" }}>{v}</span>}
-                  />
-                  <Tooltip
-                    formatter={(v: any, n: any) => [v, n]}
-                    contentStyle={{
-                      background: "var(--color-popover)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </Card>
       </div>
 
-      {/* Completed over time */}
-      <Card className="border-border/50 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <h3 className="text-sm font-semibold">Proyectos completados</h3>
-          <div className="flex items-center gap-2">
-            <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-              <SelectTrigger className="h-7 w-24 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {availableYears.map((y) => (
-                  <SelectItem key={y} value={String(y)} className="text-xs">{y}</SelectItem>
+      {/* ── Two-column charts ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+
+        {/* Por estado — custom bar chart */}
+        <div style={card}>
+          <h3 style={ctitle}>Por estado</h3>
+          {byCol.length === 0 ? <EmptyChart /> : (
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 180, paddingTop: 16 }}>
+              {byCol.map((c, i) => (
+                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end", gap: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--foreground)" }}>{c.count}</span>
+                  <div style={{
+                    width: "100%", minWidth: 14,
+                    height: Math.max((c.count / maxByCol) * 120, c.count > 0 ? 6 : 0),
+                    background: c.color,
+                    borderRadius: "5px 5px 0 0",
+                  }} />
+                  <span style={{
+                    fontSize: 10, color: "var(--muted-foreground)",
+                    textAlign: "center" as const, lineHeight: 1.2, maxWidth: 70,
+                    wordBreak: "break-word" as const,
+                  }}>
+                    {c.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Por prioridad — CSS conic donut */}
+        <div style={card}>
+          <h3 style={ctitle}>Por prioridad</h3>
+          {priorityData.length === 0 ? <EmptyChart /> : (
+            <div style={{ display: "flex", alignItems: "center", gap: 28, marginTop: 8 }}>
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <div style={{ width: 130, height: 130, borderRadius: "50%", background: conicGradient }} />
+                <div style={{ position: "absolute", inset: 22, borderRadius: "50%", background: "var(--card)" }} />
+              </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11 }}>
+                {priorityData.map(d => (
+                  <div key={d.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 13, color: "var(--foreground)" }}>{d.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" }}>
+                      {Math.round((d.value / donutTotal) * 100)}%
+                    </span>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
-            <div className="flex gap-1 rounded-lg border border-border p-0.5">
-              {(["week", "month", "quarter"] as const).map((p) => (
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Proyectos completados — AreaChart coral ── */}
+      <div style={{ ...card, marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+          <h3 style={{ ...ctitle, margin: 0 }}>Proyectos completados</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <select
+              value={String(selectedYear)}
+              onChange={e => setSelectedYear(Number(e.target.value))}
+              style={{ ...sel, height: 32, fontSize: 12, padding: "0 10px" }}
+            >
+              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <div style={{ display: "flex", gap: 2, background: "var(--muted)", borderRadius: "var(--r-md, 10px)", padding: 3 }}>
+              {(["week", "month", "quarter"] as const).map(p => (
                 <button
                   key={p}
                   onClick={() => setCompletedPeriod(p)}
-                  className={`rounded px-2 py-1 text-xs transition-colors ${
-                    completedPeriod === p
-                      ? "bg-primary text-primary-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  style={{
+                    padding: "4px 13px", borderRadius: 7,
+                    border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                    background: completedPeriod === p ? "var(--card)" : "transparent",
+                    color: completedPeriod === p ? "var(--foreground)" : "var(--muted-foreground)",
+                    boxShadow: completedPeriod === p ? "0 1px 3px rgba(0,0,0,.08)" : "none",
+                    transition: "all 120ms",
+                  }}
                 >
                   {p === "week" ? "Semana" : p === "month" ? "Mes" : "Trimestre"}
                 </button>
@@ -323,71 +303,125 @@ function AnalyticsPage() {
             </div>
           </div>
         </div>
-        <div className="h-48">
+        <div style={{ height: 200 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={completedOverTime}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis dataKey="name" fontSize={11} tick={{ fill: "var(--color-muted-foreground)" }} />
-              <YAxis allowDecimals={false} fontSize={11} tick={{ fill: "var(--color-muted-foreground)" }} />
+            <AreaChart data={completedOverTime} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+              <defs>
+                <linearGradient id="coralGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={CORAL} stopOpacity={0.22} />
+                  <stop offset="95%" stopColor={CORAL} stopOpacity={0}    />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="name" fontSize={11} tick={{ fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} fontSize={11} tick={{ fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{
-                  background: "var(--color-popover)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: 8,
-                  fontSize: 12,
+                  background: "var(--card)", border: "1px solid var(--border)",
+                  borderRadius: 10, fontSize: 12, color: "var(--foreground)",
                 }}
                 formatter={(v: any) => [v, "Completadas"]}
               />
-              <Line
-                type="monotone"
-                dataKey="completadas"
-                stroke="#10b981"
-                strokeWidth={2}
-                dot={{ fill: "#10b981", r: 4 }}
-                activeDot={{ r: 5 }}
-                name="Completadas"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      {/* Activity */}
-      <Card className="border-border/50 p-4">
-        <h3 className="text-sm font-semibold mb-4">Actividad — últimos 7 días</h3>
-        <div className="h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={activityData}>
-              <defs>
-                <linearGradient id="actGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis dataKey="name" fontSize={11} tick={{ fill: "var(--color-muted-foreground)" }} />
-              <YAxis allowDecimals={false} fontSize={11} tick={{ fill: "var(--color-muted-foreground)" }} />
-              <Tooltip
-                contentStyle={{
-                  background: "var(--color-popover)",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-              />
               <Area
                 type="monotone"
-                dataKey="count"
-                stroke="var(--color-primary)"
+                dataKey="completadas"
+                stroke={CORAL}
                 strokeWidth={2}
-                fill="url(#actGrad)"
-                dot={{ fill: "var(--color-primary)", r: 3 }}
-                name="Solicitudes"
+                fill="url(#coralGrad)"
+                dot={{ fill: CORAL, r: 4, strokeWidth: 0 }}
+                activeDot={{ r: 5, fill: CORAL }}
+                name="Completadas"
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </Card>
+      </div>
+
+      {/* ── Actividad — últimos 7 días ── */}
+      <div style={card}>
+        <h3 style={ctitle}>Actividad — últimos 7 días</h3>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {activityData.map((d, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{
+                fontSize: 12, color: "var(--muted-foreground)",
+                width: 34, textAlign: "right" as const, textTransform: "capitalize" as const,
+              }}>
+                {d.name}
+              </span>
+              <div style={{ flex: 1, height: 10, borderRadius: 5, background: "var(--muted)", overflow: "hidden" }}>
+                <div style={{
+                  width: `${(d.count / maxAct) * 100}%`,
+                  height: "100%", borderRadius: 5,
+                  background: "rgba(237,86,80,.7)",
+                  transition: "width 600ms",
+                }} />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)", width: 20, textAlign: "right" as const }}>
+                {d.count}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
+
+/* ── Sub-components ── */
+
+function Skeleton() {
+  return (
+    <div style={{ padding: "36px 40px 64px", maxWidth: 1180, margin: "0 auto" }}>
+      <div style={{ height: 52, width: 200, borderRadius: 12, background: "var(--muted)", marginBottom: 32, animation: "pulse 1.5s ease-in-out infinite" }} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, marginBottom: 20 }}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} style={{ height: 96, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", animation: "pulse 1.5s ease-in-out infinite" }} />
+        ))}
+      </div>
+      <div style={{ height: 64, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", marginBottom: 20, animation: "pulse 1.5s ease-in-out infinite" }} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} style={{ height: 260, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", animation: "pulse 1.5s ease-in-out infinite" }} />
+        ))}
+      </div>
+      <div style={{ height: 280, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", marginBottom: 20, animation: "pulse 1.5s ease-in-out infinite" }} />
+      <div style={{ height: 200, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", animation: "pulse 1.5s ease-in-out infinite" }} />
+    </div>
+  );
+}
+
+function EmptyChart() {
+  return (
+    <div style={{
+      height: 160, display: "flex", alignItems: "center", justifyContent: "center",
+      color: "var(--muted-foreground)", fontSize: 13,
+    }}>
+      Sin datos
+    </div>
+  );
+}
+
+/* ── Shared styles ── */
+
+const card: React.CSSProperties = {
+  background: "var(--card)",
+  borderRadius: "var(--r-card, 20px)",
+  border: "1px solid var(--border)",
+  padding: "24px",
+};
+
+const ctitle: React.CSSProperties = {
+  fontSize: 14, fontWeight: 600,
+  color: "var(--foreground)",
+  margin: "0 0 20px",
+};
+
+const sel: React.CSSProperties = {
+  height: 36, padding: "0 14px",
+  borderRadius: "var(--r-xl, 16px)",
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  fontSize: 13, cursor: "pointer", outline: "none",
+};
