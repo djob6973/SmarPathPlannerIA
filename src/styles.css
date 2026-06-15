@@ -248,6 +248,8 @@
 
   /* SmartPath interactive card states */
   .sp-row:hover { background: var(--muted) !important; }
+  .sp-row .row-actions { opacity: 0; transition: opacity 120ms; }
+  .sp-row:hover .row-actions { opacity: 1; }
   .sp-kcard     { transition: transform 140ms ease, box-shadow 140ms ease, border-color 120ms ease; }
   .sp-kcard:hover {
     transform: translateY(-2px);

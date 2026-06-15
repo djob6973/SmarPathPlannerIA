@@ -3,42 +3,45 @@ import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, deleteRequest, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
 import { getAreas } from "@/lib/data.functions";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RequestDetailModal } from "@/components/requests/request-detail-modal";
 import { ManualRequestModal } from "@/components/requests/manual-request-modal";
 import { toast } from "sonner";
-import { Search, SlidersHorizontal, Trash2, ExternalLink, Plus } from "lucide-react";
+import { Search, MessageSquare, Trash2, ExternalLink, Plus } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/requests")({
   component: RequestsPage,
 });
 
-const PRIORITY_CLASS: Record<string, string> = {
-  urgent: "priority-urgent", high: "priority-high",
-  medium: "priority-medium", low: "priority-low",
+const priStyle: Record<string, React.CSSProperties> = {
+  urgent: { background: "rgba(239,68,68,.12)", color: "#ef4444", border: "1px solid rgba(239,68,68,.25)" },
+  high:   { background: "rgba(249,115,22,.12)", color: "#f97316", border: "1px solid rgba(249,115,22,.25)" },
+  medium: { background: "rgba(234,179,8,.12)",  color: "#ca8a04", border: "1px solid rgba(234,179,8,.25)" },
+  low:    { background: "rgba(100,116,139,.12)", color: "#64748b", border: "1px solid rgba(100,116,139,.25)" },
 };
-const PRIORITIES = ["all", "urgent", "high", "medium", "low"];
+
+const priLabel: Record<string, string> = {
+  urgent: "Urgente", high: "Alta", medium: "Media", low: "Baja",
+};
+
+const PRIORITIES = ["urgent", "high", "medium", "low"];
+
+const GRID = "1fr 150px 110px 130px 56px";
 
 function RequestsPage() {
   const { user, hasPermission, areaId, isSuperAdmin } = useAuth();
-  const [requests, setRequests] = useState<RequestRow[]>([]);
-  const [columns, setColumns] = useState<ColumnRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [requests, setRequests]   = useState<RequestRow[]>([]);
+  const [columns, setColumns]     = useState<ColumnRow[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState("");
   const [filterPriority, setFilterPriority] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showManualRequestModal, setShowManualRequestModal] = useState(false);
-  const [selectedArea, setSelectedArea] = useState<string | null>(null);
-  const [areas, setAreas] = useState<any[]>([]);
+  const [filterStatus, setFilterStatus]     = useState("all");
+  const [selectedId, setSelectedId]         = useState<string | null>(null);
+  const [showManual, setShowManual]         = useState(false);
+  const [selectedArea, setSelectedArea]     = useState<string | null>(null);
+  const [areas, setAreas]                   = useState<{ id: string; name: string }[]>([]);
 
   const canDeleteAll = hasPermission("delete_all_requests");
   const canDeleteOwn = hasPermission("delete_own_requests");
@@ -55,18 +58,21 @@ function RequestsPage() {
   useEffect(() => {
     reload();
     if (isSuperAdmin) {
-      getAreas().then(({ areas }) => setAreas(areas));
+      getAreas().then(({ areas: a }) => setAreas(a));
     }
   }, [selectedArea, isSuperAdmin]);
 
-  const filtered = useMemo(() => {
-    return requests.filter((r) => {
-      const matchSearch = !search || r.title.toLowerCase().includes(search.toLowerCase());
+  const filtered = useMemo(() =>
+    requests.filter((r) => {
+      const matchSearch   = !search || r.title.toLowerCase().includes(search.toLowerCase());
       const matchPriority = filterPriority === "all" || r.priority === filterPriority;
-      const matchStatus = filterStatus === "all" || r.status_column_id === filterStatus;
+      const matchStatus   = filterStatus === "all" || r.status_column_id === filterStatus;
       return matchSearch && matchPriority && matchStatus;
-    });
-  }, [requests, search, filterPriority, filterStatus]);
+    }),
+    [requests, search, filterPriority, filterStatus]
+  );
+
+  const colMap = useMemo(() => Object.fromEntries(columns.map((c) => [c.id, c])), [columns]);
 
   const remove = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -80,178 +86,213 @@ function RequestsPage() {
     }
   };
 
-  const colMap = useMemo(() => Object.fromEntries(columns.map((c) => [c.id, c])), [columns]);
-
   return (
-    <div className="p-6 space-y-4 max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div style={{ padding: "28px 32px", maxWidth: 1080, margin: "0 auto", animation: "spIn .35s ease both" }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Solicitudes</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 style={{
+            fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+            fontSize: 30, fontWeight: 500,
+            color: "var(--sp-text, #1a1a1a)",
+            margin: 0, lineHeight: 1.2,
+          }}>
+            Solicitudes
+          </h1>
+          <p style={{ fontSize: 14, color: "var(--sp-muted, #888)", marginTop: 4 }}>
             {filtered.length} de {requests.length} solicitudes
           </p>
         </div>
-        <div className="flex gap-2">
+
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           {isSuperAdmin && (
-            <Select value={selectedArea || "all"} onValueChange={(value) => setSelectedArea(value === "all" ? null : value)}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Todas las áreas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las áreas</SelectItem>
-                {areas.map((area) => (
-                  <SelectItem key={area.id} value={area.id}>
-                    {area.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              value={selectedArea ?? "all"}
+              onChange={(e) => setSelectedArea(e.target.value === "all" ? null : e.target.value)}
+              style={selectStyle}
+            >
+              <option value="all">Todas las áreas</option>
+              {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
           )}
-          <Button onClick={() => setShowManualRequestModal(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> Nueva solicitud manual
-          </Button>
-          <Button asChild variant="outline" className="gap-2">
-            <Link to="/app/chat">
-              <Plus className="h-4 w-4" /> Nueva solicitud con IA
-            </Link>
-          </Button>
+
+          <button onClick={() => setShowManual(true)} style={btnOutlineStyle}>
+            <Plus size={14} /> Nueva manual
+          </button>
+
+          <Link to="/app/chat" style={btnCoralStyle}>
+            <MessageSquare size={14} /> Nueva con IA
+          </Link>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
+      {/* ── Filters ── */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 18, alignItems: "center" }}>
+        <div style={{ position: "relative", flex: 1 }}>
+          <Search
+            size={14}
+            style={{
+              position: "absolute", left: 14, top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--sp-muted, #888)", pointerEvents: "none",
+            }}
+          />
+          <input
+            type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por título..."
-            className="pl-9 h-9 text-sm"
+            style={{ ...filterInputStyle, paddingLeft: 38, width: "100%" }}
           />
         </div>
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
-          <Select value={filterPriority} onValueChange={setFilterPriority}>
-            <SelectTrigger className="h-9 w-36 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PRIORITIES.map((p) => (
-                <SelectItem key={p} value={p} className="text-xs capitalize">{p === "all" ? "Todas las prioridades" : p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="h-9 w-40 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">Todos los estados</SelectItem>
-              {columns.map((c) => (
-                <SelectItem key={c.id} value={c.id} className="text-xs">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full" style={{ background: c.color }} />
-                    {c.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+
+        <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={filterInputStyle}>
+          <option value="all">Todas las prioridades</option>
+          {PRIORITIES.map((p) => <option key={p} value={p}>{priLabel[p]}</option>)}
+        </select>
+
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={filterInputStyle}>
+          <option value="all">Todos los estados</option>
+          {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
       </div>
 
-      {/* Table */}
-      <Card className="border-border/50 overflow-hidden">
+      {/* ── Table ── */}
+      <div style={{
+        background: "white",
+        borderRadius: "var(--r-card, 20px)",
+        border: "1px solid var(--sp-border, #E4E5E6)",
+        overflow: "hidden",
+      }}>
+        {/* Column headers */}
+        <div style={{
+          display: "grid", gridTemplateColumns: GRID,
+          padding: "10px 20px",
+          borderBottom: "1px solid var(--sp-border, #E4E5E6)",
+        }}>
+          {["Título", "Estado", "Prioridad", "Actualizado", ""].map((h, i) => (
+            <span key={i} style={{
+              fontSize: 11, fontWeight: 600,
+              textTransform: "uppercase" as const,
+              letterSpacing: ".06em",
+              color: "var(--sp-muted, #888)",
+            }}>
+              {h}
+            </span>
+          ))}
+        </div>
+
+        {/* Rows */}
         {loading ? (
-          <div className="space-y-0">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border/50">
-                <div className="h-4 w-2/5 animate-pulse rounded bg-muted" />
-                <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                <div className="h-4 w-16 animate-pulse rounded bg-muted ml-auto" />
-              </div>
-            ))}
+          <SkeletonRows />
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: "60px 20px", textAlign: "center", color: "var(--sp-muted, #888)", fontSize: 14 }}>
+            {search || filterPriority !== "all" || filterStatus !== "all"
+              ? "No hay solicitudes que coincidan con los filtros."
+              : "Sin solicitudes aún. Usa el Chat IA para crear una."}
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border/50 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-3">Título</th>
-                <th className="px-4 py-3 hidden md:table-cell">Estado</th>
-                <th className="px-4 py-3">Prioridad</th>
-                <th className="px-4 py-3 hidden lg:table-cell">Actualizado</th>
-                <th className="px-4 py-3 w-20" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground text-sm">
-                    {search || filterPriority !== "all" || filterStatus !== "all"
-                      ? "No hay solicitudes que coincidan con los filtros."
-                      : "Sin solicitudes aún. Usa el Chat IA para crear una."}
-                  </td>
-                </tr>
-              )}
-              {filtered.map((r) => {
-                const col = r.status_column_id ? colMap[r.status_column_id] : null;
-                return (
-                  <tr
-                    key={r.id}
+          filtered.map((r, idx) => {
+            const col    = r.status_column_id ? colMap[r.status_column_id] : null;
+            const canDel = canDeleteAll || (canDeleteOwn && r.created_by === user?.id);
+
+            return (
+              <div
+                key={r.id}
+                className="sp-row"
+                onClick={() => setSelectedId(r.id)}
+                style={{
+                  display: "grid", gridTemplateColumns: GRID,
+                  padding: "14px 20px",
+                  borderBottom: idx < filtered.length - 1 ? "1px solid var(--sp-divider, #f0f0f0)" : "none",
+                  alignItems: "center",
+                  cursor: "pointer",
+                  transition: "background 120ms",
+                }}
+              >
+                {/* Title + description */}
+                <div style={{ minWidth: 0, paddingRight: 16 }}>
+                  <p style={{
+                    margin: 0, fontSize: 14, fontWeight: 500,
+                    color: "var(--sp-text, #1a1a1a)",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {r.title}
+                  </p>
+                  {r.description && (
+                    <p style={{
+                      margin: "2px 0 0", fontSize: 12,
+                      color: "var(--sp-muted, #888)",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {r.description}
+                    </p>
+                  )}
+                </div>
+
+                {/* Status */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {col ? (
+                    <>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: col.color, flexShrink: 0 }} />
+                      <span style={{
+                        fontSize: 13, color: "var(--sp-text, #1a1a1a)",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {col.name}
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 13, color: "var(--sp-muted, #888)" }}>Sin estado</span>
+                  )}
+                </div>
+
+                {/* Priority pill */}
+                <div>
+                  <span style={{
+                    display: "inline-flex", alignItems: "center",
+                    padding: "3px 10px", borderRadius: 20,
+                    fontSize: 11, fontWeight: 600,
+                    ...(priStyle[r.priority] ?? {}),
+                  }}>
+                    {priLabel[r.priority] ?? r.priority}
+                  </span>
+                </div>
+
+                {/* Updated at */}
+                <span style={{ fontSize: 12, color: "var(--sp-muted, #888)" }}>
+                  {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true, locale: es })}
+                </span>
+
+                {/* Actions — revealed on row hover via .sp-row .row-actions CSS */}
+                <div
+                  className="row-actions"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 2 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
                     onClick={() => setSelectedId(r.id)}
-                    className="hover:bg-muted/30 cursor-pointer transition-colors group"
+                    title="Ver detalle"
+                    style={iconBtnStyle}
                   >
-                    <td className="px-4 py-3">
-                      <p className="font-medium truncate max-w-xs">{r.title}</p>
-                      {r.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{r.description}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      {col ? (
-                        <span className="flex items-center gap-1.5 text-xs">
-                          <span className="h-2 w-2 rounded-full shrink-0" style={{ background: col.color }} />
-                          {col.name}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Sin estado</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge className={cn("text-[10px] px-1.5 py-0.5 capitalize", PRIORITY_CLASS[r.priority])}>
-                        {r.priority}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 hidden lg:table-cell text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true, locale: es })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost" size="icon" className="h-7 w-7"
-                          onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Button>
-                        {(canDeleteAll || (canDeleteOwn && r.created_by === user?.id)) && (
-                          <Button
-                            variant="ghost" size="icon"
-                            className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={(e) => remove(r.id, e)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    <ExternalLink size={13} />
+                  </button>
+                  {canDel && (
+                    <button
+                      onClick={(e) => remove(r.id, e)}
+                      title="Eliminar"
+                      style={{ ...iconBtnStyle, color: "#ef4444" }}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })
         )}
-      </Card>
+      </div>
 
       <RequestDetailModal
         requestId={selectedId}
@@ -259,12 +300,90 @@ function RequestsPage() {
         onUpdated={reload}
       />
 
-      {showManualRequestModal && (
+      {showManual && (
         <ManualRequestModal
-          onClose={() => setShowManualRequestModal(false)}
+          onClose={() => setShowManual(false)}
           onCreated={reload}
         />
       )}
     </div>
   );
+}
+
+function SkeletonRows() {
+  return (
+    <>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} style={{
+          display: "grid", gridTemplateColumns: GRID,
+          padding: "14px 20px",
+          borderBottom: "1px solid var(--sp-divider, #f0f0f0)",
+          alignItems: "center",
+        }}>
+          <div style={skBar("55%")} />
+          <div style={skBar("70%")} />
+          <div style={{ ...skBar(60), borderRadius: 20 }} />
+          <div style={skBar("60%")} />
+          <div />
+        </div>
+      ))}
+    </>
+  );
+}
+
+// ── Shared styles ──────────────────────────────────────────────
+
+const filterInputStyle: React.CSSProperties = {
+  height: 42, padding: "0 14px",
+  borderRadius: "var(--r-md, 10px)",
+  border: "1px solid var(--sp-border, #E4E5E6)",
+  background: "white", fontSize: 13,
+  color: "var(--sp-text, #1a1a1a)",
+  cursor: "pointer", outline: "none",
+  minWidth: 160, boxSizing: "border-box",
+};
+
+const selectStyle: React.CSSProperties = {
+  height: 40, padding: "0 14px",
+  borderRadius: "var(--r-xl, 16px)",
+  border: "1px solid var(--sp-border, #E4E5E6)",
+  background: "white", fontSize: 13,
+  color: "var(--sp-text, #1a1a1a)",
+  cursor: "pointer", outline: "none",
+};
+
+const btnOutlineStyle: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 7,
+  height: 40, padding: "0 18px",
+  borderRadius: "var(--r-xl, 16px)",
+  border: "1px solid var(--sp-border, #E4E5E6)",
+  background: "white", fontSize: 13, fontWeight: 500,
+  color: "var(--sp-text, #1a1a1a)",
+  cursor: "pointer", whiteSpace: "nowrap",
+};
+
+const btnCoralStyle: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 7,
+  height: 40, padding: "0 18px",
+  borderRadius: "var(--r-xl, 16px)",
+  background: "#ED5650", color: "white",
+  textDecoration: "none", fontSize: 13, fontWeight: 500,
+  whiteSpace: "nowrap",
+};
+
+const iconBtnStyle: React.CSSProperties = {
+  width: 28, height: 28, borderRadius: 8,
+  border: "none", background: "transparent",
+  cursor: "pointer", display: "flex",
+  alignItems: "center", justifyContent: "center",
+  color: "var(--sp-muted, #888)",
+};
+
+function skBar(w: number | string): React.CSSProperties {
+  return {
+    height: 14, borderRadius: 6,
+    background: "#f0f0f0",
+    width: w,
+    animation: "pulse 1.5s ease-in-out infinite",
+  };
 }
