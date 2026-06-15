@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { checkUserPermission } from "@/lib/permissions.functions";
@@ -76,103 +77,110 @@ export function ManualRequestModal({ onClose, onCreated }: ManualRequestModalPro
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      {/* Centering overlay — pointer-events-none so backdrop click works */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 pointer-events-none">
-      <div className="pointer-events-auto relative flex w-full max-w-2xl flex-col rounded-xl border border-border bg-card shadow-2xl" style={{ maxHeight: "min(88vh, calc(100dvh - 3rem))" }}>
+    <DialogPrimitive.Root open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogPrimitive.Portal>
+        {/* Backdrop */}
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
 
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-lg font-semibold">Nueva solicitud manual</h2>
-          <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 h-8 w-8">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        {/* Panel — centered via translate trick; always relative to viewport via Portal */}
+        <DialogPrimitive.Content
+          className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl flex flex-col rounded-xl border border-border bg-card shadow-2xl focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          style={{ maxHeight: "90vh" }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border px-6 py-4 shrink-0">
+            <DialogPrimitive.Title className="text-lg font-semibold">
+              Nueva solicitud manual
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Close asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogPrimitive.Close>
+          </div>
 
-        {/* Body */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
-          {loadingInitial ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Título *</label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título de la solicitud" required />
+          {/* Body — scrollable */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+            {loadingInitial ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Descripción</label>
-                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descripción detallada de la solicitud" rows={3} />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Objetivo</label>
-                <Textarea value={objective} onChange={(e) => setObjective(e.target.value)} placeholder="Objetivo de la solicitud" rows={2} />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Procesos/Pasos</label>
-                <Textarea value={process} onChange={(e) => setProcess(e.target.value)} placeholder="Procesos o pasos a seguir" rows={2} />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Prioridad</label>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Baja</SelectItem>
-                    <SelectItem value="medium">Media</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                    <SelectItem value="urgent">Urgente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {canAssignRequests && (
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">Estado</label>
-                  <Select value={statusColumnId || ""} onValueChange={setStatusColumnId}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar estado" /></SelectTrigger>
+                  <label className="text-sm font-medium mb-1.5 block">Título *</label>
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título de la solicitud" required />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Descripción</label>
+                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descripción detallada de la solicitud" rows={3} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Objetivo</label>
+                  <Textarea value={objective} onChange={(e) => setObjective(e.target.value)} placeholder="Objetivo de la solicitud" rows={2} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Procesos/Pasos</label>
+                  <Textarea value={process} onChange={(e) => setProcess(e.target.value)} placeholder="Procesos o pasos a seguir" rows={2} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Prioridad</label>
+                  <Select value={priority} onValueChange={setPriority}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {columns.map((col) => (
-                        <SelectItem key={col.id} value={col.id}>
-                          <span className="flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full" style={{ background: col.color }} />
-                            {col.name}
-                          </span>
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="low">low</SelectItem>
+                      <SelectItem value="medium">medium</SelectItem>
+                      <SelectItem value="high">high</SelectItem>
+                      <SelectItem value="urgent">urgent</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              )}
-              {canAssignRequests && (
-                <div>
-                  <label className="text-sm font-medium mb-1.5 block">Asignar a</label>
-                  <Select value={assignedTo || "unassigned"} onValueChange={(v) => setAssignedTo(v === "unassigned" ? null : v)}>
-                    <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Sin asignar</SelectItem>
-                      {availableUsers.map((u) => (
-                        <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </form>
-          )}
-        </div>
+                {canAssignRequests && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Estado</label>
+                    <Select value={statusColumnId || ""} onValueChange={setStatusColumnId}>
+                      <SelectTrigger><SelectValue placeholder="Seleccionar estado" /></SelectTrigger>
+                      <SelectContent>
+                        {columns.map((col) => (
+                          <SelectItem key={col.id} value={col.id}>
+                            <span className="flex items-center gap-1.5">
+                              <span className="h-2 w-2 rounded-full" style={{ background: col.color }} />
+                              {col.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {canAssignRequests && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Asignar a</label>
+                    <Select value={assignedTo || "unassigned"} onValueChange={(v) => setAssignedTo(v === "unassigned" ? null : v)}>
+                      <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Sin asignar</SelectItem>
+                        {availableUsers.map((u) => (
+                          <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </form>
+            )}
+          </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
-          <Button onClick={() => handleSubmit()} disabled={loading || loadingInitial}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Crear solicitud
-          </Button>
-        </div>
-      </div>
-      </div>
-    </>
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4 shrink-0">
+            <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+            <Button onClick={() => handleSubmit()} disabled={loading || loadingInitial}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Crear solicitud
+            </Button>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

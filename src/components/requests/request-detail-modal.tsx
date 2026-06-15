@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -315,12 +316,15 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const currentCol = columns.find((c) => c.id === request?.status_column_id);
 
   return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      {/* Centering overlay */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 pointer-events-none">
-      <div className="pointer-events-auto relative flex w-full max-w-3xl flex-col rounded-xl border border-border bg-card shadow-2xl" style={{ maxHeight: "min(88vh, calc(100dvh - 3rem))" }}>
+    <DialogPrimitive.Root open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl flex flex-col rounded-xl border border-border bg-card shadow-2xl focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          style={{ maxHeight: "90vh" }}
+        >
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden rounded-xl">
 
         {/* Header */}
         <div className="flex items-start gap-4 border-b border-border px-6 py-4">
@@ -690,7 +694,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
           </div>
         </div>
       </div>
-      </div>
-    </>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
