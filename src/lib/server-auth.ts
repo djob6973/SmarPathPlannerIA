@@ -30,8 +30,33 @@ export async function getAuthContext(): Promise<AuthContext | AuthError> {
   await runMigrations();
 
   const req = getRequest();
+  const cookieHeader = req?.headers?.get("cookie") ?? null;
 
-  // 1. X-Forwarded-Email from oauth2-proxy (if platform puts the app behind it)
+  // 1. Session cookie — always checked first (email/password auth)
+  const sessionId = parseCookie(cookieHeader, "smartpath_session");
+
+  if (sessionId) {
+    try {
+      const sessions = await db<{ user_id: string }[]>`
+        SELECT user_id FROM sessions
+        WHERE id = ${sessionId}
+          AND expires_at > NOW()
+      `;
+      if (sessions.length) {
+        const profiles = await db<UserProfile[]>`
+          SELECT id, full_name, email, area_id FROM profiles WHERE id = ${sessions[0].user_id}
+        `;
+        if (profiles.length) {
+          const profile = profiles[0];
+          return { db, userId: profile.id, userEmail: profile.email, userProfile: profile };
+        }
+      }
+    } catch (e: any) {
+      console.error("[server-auth] session auth error:", e?.message ?? e);
+    }
+  }
+
+  // 2. X-Forwarded-Email from oauth2-proxy (fallback for platforms that inject this header)
   const forwardedEmail =
     req?.headers?.get("x-forwarded-email") ??
     process.env.DEV_USER_EMAIL ??
@@ -47,33 +72,7 @@ export async function getAuthContext(): Promise<AuthContext | AuthError> {
     }
   }
 
-  // 2. Session cookie from the app's own Google OAuth flow
-  const cookieHeader = req?.headers?.get("cookie") ?? null;
-  const sessionId = parseCookie(cookieHeader, "smartpath_session");
-
-  if (!sessionId) {
-    return { error: "No autenticado" };
-  }
-
-  try {
-    const sessions = await db<{ user_id: string }[]>`
-      SELECT user_id FROM sessions
-      WHERE id = ${sessionId}
-        AND expires_at > NOW()
-    `;
-    if (!sessions.length) return { error: "Sesión expirada o inválida" };
-
-    const profiles = await db<UserProfile[]>`
-      SELECT id, full_name, email, area_id FROM profiles WHERE id = ${sessions[0].user_id}
-    `;
-    if (!profiles.length) return { error: "Perfil no encontrado" };
-
-    const profile = profiles[0];
-    return { db, userId: profile.id, userEmail: profile.email, userProfile: profile };
-  } catch (e: any) {
-    console.error("[server-auth] session auth error:", e?.message ?? e);
-    return { error: "Error de sesión" };
-  }
+  return { error: "No autenticado" };
 }
 
 export async function getOrCreateProfile(email: string): Promise<UserProfile> {
