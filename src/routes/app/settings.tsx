@@ -13,11 +13,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { listAreas, updateUserOwnArea } from "@/lib/admin.functions";
 import { changeOwnPassword } from "@/lib/auth.functions";
 import { getColumns, createColumn, updateColumn, deleteColumn, getAiSettings, updateAiSettings } from "@/lib/data.functions";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,7 +21,6 @@ import {
   Settings, Columns3, Bot, GripVertical, Plus, Trash2, Save,
   Pencil, Check, X, Lock, Shield, Building, User,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { PermissionsManager } from "@/components/admin/permissions-manager";
 import { AreasManager } from "@/components/admin/areas-manager";
 
@@ -36,84 +30,124 @@ export const Route = createFileRoute("/app/settings")({
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type Column   = { id: string; name: string; position: number; color: string; is_completed: boolean };
+type Column    = { id: string; name: string; position: number; color: string; is_completed: boolean };
 type EditState = { id: string; name: string; color: string } | null;
-type Tab      = "columns" | "ai" | "permissions" | "areas" | "profile";
+type Tab       = "columns" | "ai" | "permissions" | "areas" | "profile";
+
+// ── Shared card style ─────────────────────────────────────────────────────────
+
+const cardStyle: React.CSSProperties = {
+  background: "var(--card)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--r-card, 20px)",
+  overflow: "hidden",
+};
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 function SettingsPage() {
-  // AppLayout already shows a spinner while loading=true/unauthenticated,
-  // so when this component renders, roles are populated.
-  // Using a render-time guard (not useEffect+navigate) avoids the race condition.
   const { roles } = useAuth();
   const [tab, setTab] = useState<Tab>("columns");
 
-  // Handle roles as objects or strings
-  const roleStrings = roles.map(r => typeof r === 'object' && r !== null && 'role' in r ? r.role : r);
+  const roleStrings = roles.map(r => typeof r === 'object' && r !== null && 'role' in r ? (r as any).role : r);
   const hasSuperAdmin = roleStrings.includes("super_admin");
 
   if (!hasSuperAdmin) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
-          <Lock className="h-5 w-5 text-muted-foreground" />
+      <div style={{
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        height: "100%", gap: 12,
+        animation: "spIn .35s ease both",
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: "50%",
+          background: "var(--muted)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <Lock size={22} style={{ color: "var(--muted-foreground)" }} />
         </div>
-        <p className="text-sm font-medium">Acceso restringido</p>
-        <p className="text-xs text-muted-foreground">
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
+          Acceso restringido
+        </p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
           Solo los super administradores pueden acceder a la configuración.
         </p>
       </div>
     );
   }
 
-  const tabs: { key: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { key: "columns", label: "Columnas Kanban", icon: Columns3 },
-    { key: "ai",      label: "Agente IA",       icon: Bot      },
-    { key: "permissions", label: "Permisos",      icon: Shield   },
-    { key: "areas", label: "Áreas", icon: Building },
-    { key: "profile", label: "Mi Perfil", icon: User },
+  const tabs: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[] = [
+    { key: "columns",     label: "Columnas Kanban", Icon: Columns3 },
+    { key: "ai",          label: "Agente IA",       Icon: Bot      },
+    { key: "permissions", label: "Permisos",        Icon: Shield   },
+    { key: "areas",       label: "Áreas",           Icon: Building },
+    { key: "profile",     label: "Mi Perfil",       Icon: User     },
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-          <Settings className="h-5 w-5 text-primary" />
+    <div style={{
+      padding: "36px 40px 64px",
+      maxWidth: 1100, margin: "0 auto",
+      animation: "spIn .35s ease both",
+    }}>
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32 }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: "50%", flexShrink: 0,
+          background: "rgba(237,86,80,.12)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <Settings size={22} style={{ color: "#ED5650" }} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Configuración</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Gestiona columnas del tablero y el agente IA
+          <h1 style={{
+            fontFamily: "var(--font-display,'Space Grotesk',sans-serif)",
+            fontSize: 24, fontWeight: 600,
+            color: "var(--foreground)",
+            margin: 0, lineHeight: 1.2,
+          }}>
+            Configuración
+          </h1>
+          <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "3px 0 0" }}>
+            Personaliza el tablero, agente IA, permisos y áreas
           </p>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-border/50">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
-              tab === t.key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <t.icon className="h-4 w-4" />
-            {t.label}
-          </button>
-        ))}
+      {/* ── Tabs ── */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 28 }}>
+        {tabs.map(({ key, label, Icon }) => {
+          const active = tab === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              style={{
+                display: "flex", alignItems: "center", gap: 7,
+                padding: "8px 16px",
+                borderRadius: "var(--r-pill, 999px)",
+                border: active ? "none" : "1px solid var(--border)",
+                background: active ? "#ED5650" : "var(--card)",
+                color: active ? "white" : "var(--muted-foreground)",
+                fontSize: 13, fontWeight: 500, cursor: "pointer",
+                transition: "all 120ms",
+                whiteSpace: "nowrap" as const,
+              }}
+            >
+              <Icon size={14} style={{ color: active ? "white" : "var(--muted-foreground)" }} />
+              {label}
+            </button>
+          );
+        })}
       </div>
 
-      {tab === "columns" && <ColumnsSettings />}
-      {tab === "ai"      && <AISettings />}
+      {/* ── Tab content ── */}
+      {tab === "columns"     && <ColumnsSettings />}
+      {tab === "ai"          && <AISettings />}
       {tab === "permissions" && <PermissionsManager />}
-      {tab === "areas" && <AreasManager />}
-      {tab === "profile" && <ProfileSettings />}
+      {tab === "areas"       && <AreasManager />}
+      {tab === "profile"     && <ProfileSettings />}
     </div>
   );
 }
@@ -137,20 +171,23 @@ function SortableColumnRow({
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className={cn(
-        "flex items-center gap-3 px-4 py-3 group hover:bg-muted/20 transition-colors",
-        isDragging && "opacity-40"
-      )}
+      style={{
+        ...style,
+        display: "flex", alignItems: "center", gap: 12,
+        padding: "12px 18px",
+        borderBottom: "1px solid var(--border)",
+        background: isDragging ? "var(--muted)" : "transparent",
+        transition: "background 120ms",
+      }}
     >
       <button
         {...attributes}
         {...listeners}
         tabIndex={-1}
-        className="cursor-grab active:cursor-grabbing touch-none shrink-0"
+        style={{ cursor: "grab", background: "none", border: "none", padding: 0, flexShrink: 0 }}
         aria-label="Reordenar"
       >
-        <GripVertical className="h-4 w-4 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors" />
+        <GripVertical size={16} style={{ color: "var(--border)" }} />
       </button>
 
       {isEditing ? (
@@ -159,58 +196,99 @@ function SortableColumnRow({
             type="color"
             value={editing!.color}
             onChange={(e) => setEditing((p) => p ? { ...p, color: e.target.value } : p)}
-            className="h-7 w-7 cursor-pointer rounded border border-border bg-card p-0.5 shrink-0"
+            style={{
+              width: 28, height: 28, cursor: "pointer",
+              borderRadius: "50%", border: "2px solid var(--border)",
+              background: "none", padding: 0, flexShrink: 0,
+            }}
           />
-          <Input
+          <input
             value={editing!.name}
             onChange={(e) => setEditing((p) => p ? { ...p, name: e.target.value } : p)}
-            className="h-7 text-sm flex-1"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter") onSaveEdit();
               if (e.key === "Escape") setEditing(null);
             }}
+            style={{
+              flex: 1, height: 32,
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-md, 10px)",
+              background: "var(--muted)",
+              color: "var(--foreground)",
+              padding: "0 10px",
+              fontSize: 13, outline: "none",
+            }}
           />
-          <Button size="icon" variant="ghost"
-            className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-50 shrink-0"
+          <button
             onClick={onSaveEdit}
+            style={{
+              width: 28, height: 28, borderRadius: "50%",
+              background: "rgba(157,221,5,.15)", border: "none",
+              color: "#7AAE1B", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
           >
-            <Check className="h-3.5 w-3.5" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0"
+            <Check size={13} />
+          </button>
+          <button
             onClick={() => setEditing(null)}
+            style={{
+              width: 28, height: 28, borderRadius: "50%",
+              background: "var(--muted)", border: "none",
+              color: "var(--muted-foreground)", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
           >
-            <X className="h-3.5 w-3.5" />
-          </Button>
+            <X size={13} />
+          </button>
         </>
       ) : (
         <>
-          <span className="h-4 w-4 rounded-full shrink-0 border border-white/10" style={{ background: c.color }} />
-          <span className="flex-1 text-sm font-medium">{c.name}</span>
-          <div className="flex items-center gap-3">
-            <Label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-              <Switch
-                checked={c.is_completed}
-                onCheckedChange={(v) => onToggleCompleted(c.id, v)}
-                className="scale-75"
-              />
-              Completado
-            </Label>
-            <Button variant="ghost" size="icon"
-              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => setEditing({ id: c.id, name: c.name, color: c.color })}
-              aria-label="Editar columna"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon"
-              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => onRemove(c.id)}
-              aria-label="Eliminar columna"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
+          <span style={{
+            width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
+            background: c.color,
+            boxShadow: `0 0 0 3px ${c.color}22`,
+          }} />
+          <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: "var(--foreground)" }}>
+            {c.name}
+          </span>
+          <label style={{
+            display: "flex", alignItems: "center", gap: 7,
+            fontSize: 12, color: "var(--muted-foreground)",
+            cursor: "pointer", userSelect: "none",
+          }}>
+            <Switch
+              checked={c.is_completed}
+              onCheckedChange={(v) => onToggleCompleted(c.id, v)}
+              className="scale-75"
+            />
+            Completado
+          </label>
+          <button
+            onClick={() => setEditing({ id: c.id, name: c.name, color: c.color })}
+            style={{
+              width: 28, height: 28, borderRadius: "var(--r-md, 10px)",
+              background: "var(--muted)", border: "none",
+              color: "var(--muted-foreground)", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+            aria-label="Editar columna"
+          >
+            <Pencil size={12} />
+          </button>
+          <button
+            onClick={() => onRemove(c.id)}
+            style={{
+              width: 28, height: 28, borderRadius: "var(--r-md, 10px)",
+              background: "rgba(237,86,80,.08)", border: "none",
+              color: "#ED5650", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+            aria-label="Eliminar columna"
+          >
+            <Trash2 size={12} />
+          </button>
         </>
       )}
     </div>
@@ -282,79 +360,115 @@ export function ColumnsSettings() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Add */}
-      <Card className="p-4 border-border/50">
-        <h3 className="text-sm font-semibold mb-3">Nueva columna</h3>
-        <div className="flex gap-2">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-            placeholder="Nombre de la columna"
-            className="h-9 text-sm"
-          />
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            className="h-9 w-9 cursor-pointer rounded-md border border-border bg-card p-0.5 shrink-0"
-            title="Color"
-          />
-          <Button onClick={add} className="h-9 gap-1.5 shrink-0">
-            <Plus className="h-3.5 w-3.5" /> Añadir
-          </Button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* New column form */}
+      <div style={cardStyle}>
+        <div style={{ padding: "18px 20px" }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", margin: "0 0 12px" }}>
+            Nueva columna
+          </p>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
+              placeholder="Nombre de la columna"
+              style={{
+                flex: 1, height: 38,
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-md, 10px)",
+                background: "var(--muted)",
+                color: "var(--foreground)",
+                padding: "0 12px",
+                fontSize: 13, outline: "none",
+              }}
+            />
+            <input
+              type="color"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              style={{
+                width: 38, height: 38, cursor: "pointer",
+                borderRadius: "var(--r-md, 10px)",
+                border: "1px solid var(--border)",
+                background: "none", padding: 2, flexShrink: 0,
+              }}
+              title="Color"
+            />
+            <button
+              onClick={add}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                height: 38, padding: "0 16px",
+                borderRadius: "var(--r-md, 10px)",
+                background: "#ED5650", border: "none",
+                color: "white", fontSize: 13, fontWeight: 500,
+                cursor: "pointer", flexShrink: 0,
+              }}
+            >
+              <Plus size={14} /> Añadir
+            </button>
+          </div>
         </div>
-      </Card>
+      </div>
 
-      {/* List */}
-      <Card className="border-border/50 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Columnas actuales</h3>
-          <span className="text-xs text-muted-foreground">{cols.length} columnas</span>
+      {/* Columns list */}
+      <div style={cardStyle}>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "14px 18px",
+          borderBottom: "1px solid var(--border)",
+        }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
+            Columnas actuales
+          </p>
+          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            {cols.length} columnas
+          </span>
         </div>
 
-        <div className="divide-y divide-border/50">
-          {loading && Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 px-4 py-3">
-              <div className="h-4 w-4 animate-pulse rounded-full bg-muted" />
-              <div className="h-4 flex-1 animate-pulse rounded bg-muted" />
-            </div>
-          ))}
+        {loading && Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} style={{
+            display: "flex", gap: 12, padding: "13px 18px",
+            borderBottom: "1px solid var(--border)",
+          }}>
+            <div className="animate-pulse" style={{ width: 16, height: 16, borderRadius: "50%", background: "var(--muted)" }} />
+            <div className="animate-pulse" style={{ flex: 1, height: 16, borderRadius: 8, background: "var(--muted)" }} />
+          </div>
+        ))}
 
-          {!loading && cols.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Sin columnas. Añade la primera arriba.
-            </p>
-          )}
-
-          {!loading && cols.length > 0 && (
-            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <SortableContext items={cols.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-                {cols.map((c) => (
-                  <SortableColumnRow
-                    key={c.id}
-                    c={c}
-                    editing={editing}
-                    setEditing={setEditing}
-                    onSaveEdit={saveEdit}
-                    onToggleCompleted={toggleCompleted}
-                    onRemove={remove}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          )}
-        </div>
+        {!loading && cols.length === 0 && (
+          <p style={{ padding: "32px 20px", textAlign: "center", fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
+            Sin columnas. Añade la primera arriba.
+          </p>
+        )}
 
         {!loading && cols.length > 0 && (
-          <div className="px-4 py-2.5 border-t border-border/50 bg-muted/20">
-            <p className="text-xs text-muted-foreground">
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            <SortableContext items={cols.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+              {cols.map((c) => (
+                <SortableColumnRow
+                  key={c.id}
+                  c={c}
+                  editing={editing}
+                  setEditing={setEditing}
+                  onSaveEdit={saveEdit}
+                  onToggleCompleted={toggleCompleted}
+                  onRemove={remove}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        )}
+
+        {!loading && cols.length > 0 && (
+          <div style={{ padding: "10px 18px", background: "var(--muted)" }}>
+            <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: 0 }}>
               Arrastra las filas para reordenar · El switch <strong>Completado</strong> marca columnas que cierran solicitudes en analítica
             </p>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
@@ -362,9 +476,9 @@ export function ColumnsSettings() {
 // ── AI settings ───────────────────────────────────────────────────────────────
 
 const PRESET_MODELS = [
-  { value: "gpt-4o-mini",  label: "GPT-4o Mini"  },
-  { value: "gpt-4o",       label: "GPT-4o"        },
-  { value: "gpt-4-turbo",  label: "GPT-4 Turbo"  },
+  { value: "gpt-4o-mini",   label: "GPT-4o Mini"   },
+  { value: "gpt-4o",        label: "GPT-4o"         },
+  { value: "gpt-4-turbo",   label: "GPT-4 Turbo"   },
   { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
 ];
 
@@ -406,140 +520,210 @@ function AISettings() {
     setSaving(false);
   };
 
+  const subLabel: React.CSSProperties = {
+    fontSize: 11, fontWeight: 600,
+    textTransform: "uppercase" as const, letterSpacing: "0.06em",
+    color: "var(--muted-foreground)", margin: "0 0 8px", display: "block",
+  };
+
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-32 animate-pulse rounded-xl bg-muted" />
+          <div key={i} className="animate-pulse" style={{ height: 120, borderRadius: "var(--r-card, 20px)", background: "var(--muted)" }} />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* ── Model & parameters ── */}
-      <Card className="p-5 border-border/50 space-y-5">
-        <h3 className="text-sm font-semibold">Modelo y parámetros</h3>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-        {/* Model selector */}
-        <div className="space-y-2">
-          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Modelo
-          </Label>
-          <div className="flex flex-wrap gap-2">
-            {PRESET_MODELS.map((m) => (
-              <button
-                key={m.value}
-                onClick={() => setModel(m.value)}
-                className={cn(
-                  "px-3 py-1 text-xs rounded-full border transition-colors",
-                  model === m.value
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
-                )}
-              >
-                {m.label}
-              </button>
-            ))}
+      {/* Model & parameters */}
+      <div style={cardStyle}>
+        <div style={{ padding: "20px 22px" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 18px" }}>
+            Modelo y parámetros
+          </p>
+
+          <span style={subLabel}>Modelo</span>
+          <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 12 }}>
+            {PRESET_MODELS.map((m) => {
+              const active = model === m.value;
+              return (
+                <button
+                  key={m.value}
+                  onClick={() => setModel(m.value)}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "var(--r-pill, 999px)",
+                    border: active ? "none" : "1px solid var(--border)",
+                    background: active ? "#ED5650" : "var(--muted)",
+                    color: active ? "white" : "var(--muted-foreground)",
+                    fontSize: 12, fontWeight: 500, cursor: "pointer",
+                    transition: "all 120ms",
+                  }}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
-          <Input
+          <input
             value={model}
             onChange={(e) => setModel(e.target.value)}
             placeholder="Modelo personalizado, ej: o3-mini"
-            className="h-8 text-xs"
+            style={{
+              width: "100%", height: 36, boxSizing: "border-box" as const,
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-md, 10px)",
+              background: "var(--muted)",
+              color: "var(--foreground)",
+              padding: "0 12px",
+              fontSize: 12, outline: "none",
+            }}
           />
-        </div>
 
-        {/* Temperature + Max tokens */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Temperature */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center justify-between">
-              Temperatura
-              <span className="font-mono text-foreground text-sm">{temperature.toFixed(1)}</span>
-            </Label>
-            <Slider
-              value={[temperature]}
-              onValueChange={([v]) => setTemp(v)}
-              min={0}
-              max={2}
-              step={0.1}
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground select-none">
-              <span>0 — Preciso</span>
-              <span>1 — Balanceado</span>
-              <span>2 — Creativo</span>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={subLabel}>Temperatura</span>
+                <span style={{ fontSize: 14, fontWeight: 600, fontFamily: "monospace", color: "var(--foreground)" }}>
+                  {temperature.toFixed(1)}
+                </span>
+              </div>
+              <Slider
+                value={[temperature]}
+                onValueChange={([v]) => setTemp(v)}
+                min={0} max={2} step={0.1}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+                <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Preciso</span>
+                <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Balanceado</span>
+                <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Creativo</span>
+              </div>
+            </div>
+
+            <div>
+              <span style={subLabel}>Tokens máximos</span>
+              <input
+                type="number"
+                value={maxTokens}
+                onChange={(e) => setMaxTokens(e.target.value)}
+                min={1}
+                max={128000}
+                style={{
+                  width: "100%", height: 38, boxSizing: "border-box" as const,
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r-md, 10px)",
+                  background: "var(--muted)",
+                  color: "var(--foreground)",
+                  padding: "0 12px",
+                  fontSize: 13, outline: "none",
+                }}
+              />
+              <p style={{ fontSize: 10, color: "var(--muted-foreground)", margin: "6px 0 0" }}>
+                GPT-4o soporta hasta 128 000 tokens
+              </p>
             </div>
           </div>
-
-          {/* Max tokens */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Tokens máximos
-            </Label>
-            <Input
-              type="number"
-              value={maxTokens}
-              onChange={(e) => setMaxTokens(e.target.value)}
-              min={1}
-              max={128000}
-              className="h-9 text-sm"
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Longitud máxima de la respuesta. GPT-4o soporta hasta 128 000.
-            </p>
-          </div>
         </div>
-      </Card>
+      </div>
 
-      {/* ── System prompt ── */}
-      <Card className="p-5 border-border/50 space-y-3">
-        <h3 className="text-sm font-semibold">Prompt del sistema</h3>
-        <Textarea
-          rows={10}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Eres un agente de intake de proyectos. Tu objetivo es..."
-          className="text-sm resize-none font-mono"
-        />
-      </Card>
+      {/* System prompt */}
+      <div style={cardStyle}>
+        <div style={{ padding: "20px 22px" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 12px" }}>
+            Prompt del sistema
+          </p>
+          <textarea
+            rows={10}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Eres un agente de intake de proyectos. Tu objetivo es..."
+            style={{
+              width: "100%", boxSizing: "border-box" as const,
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-md, 10px)",
+              background: "var(--muted)",
+              color: "var(--foreground)",
+              padding: "12px 14px",
+              fontSize: 13, resize: "vertical" as const,
+              fontFamily: "monospace", outline: "none",
+              lineHeight: 1.6,
+            }}
+          />
+        </div>
+      </div>
 
-      {/* ── Intake questions ── */}
-      <Card className="p-5 border-border/50 space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold">Preguntas guía</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
+      {/* Intake questions */}
+      <div style={cardStyle}>
+        <div style={{ padding: "20px 22px" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
+            Preguntas guía
+          </p>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "4px 0 12px" }}>
             Una por línea. El agente las usa para estructurar la conversación de intake.
           </p>
+          <textarea
+            rows={6}
+            value={questions}
+            onChange={(e) => setQuestions(e.target.value)}
+            placeholder={"¿Cuál es el objetivo principal del proyecto?\n¿Quiénes son los usuarios finales?\n¿Cuál es el plazo estimado?"}
+            style={{
+              width: "100%", boxSizing: "border-box" as const,
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-md, 10px)",
+              background: "var(--muted)",
+              color: "var(--foreground)",
+              padding: "12px 14px",
+              fontSize: 13, resize: "vertical" as const,
+              fontFamily: "monospace", outline: "none",
+              lineHeight: 1.6,
+            }}
+          />
         </div>
-        <Textarea
-          rows={6}
-          value={questions}
-          onChange={(e) => setQuestions(e.target.value)}
-          placeholder={"¿Cuál es el objetivo principal del proyecto?\n¿Quiénes son los usuarios finales?\n¿Cuál es el plazo estimado?"}
-          className="text-sm resize-none font-mono"
-        />
-      </Card>
+      </div>
 
-      {/* ── Save ── */}
-      <div className="flex items-center justify-between py-1">
-        <p className="text-xs text-muted-foreground">
-          Requiere <code className="font-mono">OPENAI_API_KEY</code> configurada en el servidor.
+      {/* Save bar */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "4px 0",
+      }}>
+        <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>
+          Requiere{" "}
+          <code style={{ fontFamily: "monospace", background: "var(--muted)", padding: "1px 5px", borderRadius: 4 }}>
+            OPENAI_API_KEY
+          </code>{" "}
+          configurada en el servidor.
         </p>
-        <Button onClick={save} disabled={saving} className="gap-2">
+        <button
+          onClick={save}
+          disabled={saving}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 7,
+            height: 38, padding: "0 18px",
+            borderRadius: "var(--r-md, 10px)",
+            background: saving ? "var(--muted)" : "#ED5650",
+            border: "none",
+            color: saving ? "var(--muted-foreground)" : "white",
+            fontSize: 13, fontWeight: 500,
+            cursor: saving ? "not-allowed" : "pointer",
+            transition: "background 120ms",
+          }}
+        >
           {saving
-            ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            : <Save className="h-3.5 w-3.5" />
+            ? <span className="animate-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", display: "inline-block" }} />
+            : <Save size={14} />
           }
           Guardar cambios
-        </Button>
+        </button>
       </div>
     </div>
   );
 }
 
-// ── Profile settings ─────────────────────────────────────────────────────────────
+// ── Profile settings ──────────────────────────────────────────────────────────
 
 function ProfileSettings() {
   const { profile } = useAuth();
@@ -560,16 +744,14 @@ function ProfileSettings() {
   });
 
   const [currentPwd, setCurrentPwd] = useState("");
-  const [newPwd, setNewPwd] = useState("");
+  const [newPwd, setNewPwd]         = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
 
   const changePwdMutation = useMutation({
     mutationFn: changeOwnPassword,
     onSuccess: () => {
       toast.success("Contraseña actualizada correctamente");
-      setCurrentPwd("");
-      setNewPwd("");
-      setConfirmPwd("");
+      setCurrentPwd(""); setNewPwd(""); setConfirmPwd("");
     },
     onError: (error: any) => {
       toast.error(error.message ?? "Error al cambiar contraseña");
@@ -578,125 +760,160 @@ function ProfileSettings() {
 
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPwd !== confirmPwd) {
-      toast.error("Las contraseñas nuevas no coinciden");
-      return;
-    }
-    if (newPwd.length < 6) {
-      toast.error("La nueva contraseña debe tener al menos 6 caracteres");
-      return;
-    }
+    if (newPwd !== confirmPwd) { toast.error("Las contraseñas nuevas no coinciden"); return; }
+    if (newPwd.length < 6) { toast.error("La nueva contraseña debe tener al menos 6 caracteres"); return; }
     changePwdMutation.mutate({ currentPassword: currentPwd, newPassword: newPwd });
   };
 
-  const handleAreaChange = (areaId: string | null) => {
-    updateAreaMutation.mutate({ areaId });
-  };
-
-  const areas = areasData?.areas || [];
+  const areas        = areasData?.areas || [];
   const currentAreaId = profile?.area_id || null;
 
-  return (
-    <div className="space-y-6">
-      <Card className="p-5 border-border/50">
-        <h3 className="text-sm font-semibold mb-4">Mi Área</h3>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="area-select">Área asignada</Label>
-            <p className="text-xs text-muted-foreground mt-1 mb-2">
-              Selecciona el área organizacional a la que perteneces. Esto determinará qué solicitudes y datos puedes ver.
-            </p>
-            <Select
-              value={currentAreaId || "none"}
-              onValueChange={(value) => handleAreaChange(value === "none" ? null : value)}
-              disabled={areasLoading || updateAreaMutation.isPending}
-            >
-              <SelectTrigger id="area-select">
-                <SelectValue placeholder="Selecciona un área" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin área</SelectItem>
-                {areas.map((area) => (
-                  <SelectItem key={area.id} value={area.id}>
-                    {area.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+  const inputStyle: React.CSSProperties = {
+    width: "100%", height: 38, boxSizing: "border-box" as const,
+    border: "1px solid var(--border)",
+    borderRadius: "var(--r-md, 10px)",
+    background: "var(--muted)",
+    color: "var(--foreground)",
+    padding: "0 12px",
+    fontSize: 13, outline: "none",
+  };
 
-          {currentAreaId && (
-            <div className="p-3 bg-muted/50 rounded-lg">
-              <p className="text-xs text-muted-foreground">
-                Área actual: <span className="font-medium text-foreground">
-                  {areas.find((a) => a.id === currentAreaId)?.name || "Desconocida"}
-                </span>
+  const subLabelStyle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 600,
+    textTransform: "uppercase" as const, letterSpacing: "0.06em",
+    color: "var(--muted-foreground)", display: "block", marginBottom: 6,
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* Profile info */}
+      <div style={cardStyle}>
+        <div style={{ padding: "20px 22px" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 16px" }}>
+            Información del perfil
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div>
+              <span style={subLabelStyle}>Nombre</span>
+              <p style={{ fontSize: 14, color: "var(--foreground)", margin: 0, padding: "6px 0" }}>
+                {profile?.full_name || "No especificado"}
               </p>
             </div>
+            <div>
+              <span style={subLabelStyle}>Email</span>
+              <p style={{ fontSize: 14, color: "var(--foreground)", margin: 0, padding: "6px 0" }}>
+                {profile?.email || "No especificado"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Area */}
+      <div style={cardStyle}>
+        <div style={{ padding: "20px 22px" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 4px" }}>
+            Mi Área
+          </p>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "0 0 14px" }}>
+            Selecciona el área organizacional a la que perteneces.
+          </p>
+          <Select
+            value={currentAreaId || "none"}
+            onValueChange={(value) => updateAreaMutation.mutate({ areaId: value === "none" ? null : value })}
+            disabled={areasLoading || updateAreaMutation.isPending}
+          >
+            <SelectTrigger style={{ borderRadius: "var(--r-md, 10px)" }}>
+              <SelectValue placeholder="Selecciona un área" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sin área</SelectItem>
+              {areas.map((area) => (
+                <SelectItem key={area.id} value={area.id}>{area.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {currentAreaId && (
+            <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "8px 0 0" }}>
+              Área actual:{" "}
+              <strong style={{ color: "var(--foreground)" }}>
+                {areas.find((a) => a.id === currentAreaId)?.name || "Desconocida"}
+              </strong>
+            </p>
           )}
         </div>
-      </Card>
+      </div>
 
-      <Card className="p-5 border-border/50">
-        <h3 className="text-sm font-semibold mb-4">Información del Perfil</h3>
-        <div className="space-y-3">
-          <div>
-            <Label>Nombre</Label>
-            <p className="text-sm text-muted-foreground mt-1">{profile?.full_name || "No especificado"}</p>
-          </div>
-          <div>
-            <Label>Email</Label>
-            <p className="text-sm text-muted-foreground mt-1">{profile?.email || "No especificado"}</p>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-5 border-border/50">
-        <h3 className="text-sm font-semibold mb-4">Cambiar Contraseña</h3>
-        <form onSubmit={handleChangePassword} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="current-pwd">Contraseña actual</Label>
-            <Input
-              id="current-pwd"
-              type="password"
-              value={currentPwd}
-              onChange={(e) => setCurrentPwd(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="new-pwd">Nueva contraseña</Label>
-            <Input
-              id="new-pwd"
-              type="password"
-              value={newPwd}
-              onChange={(e) => setNewPwd(e.target.value)}
-              required
-              minLength={6}
-              autoComplete="new-password"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="confirm-pwd">Confirmar nueva contraseña</Label>
-            <Input
-              id="confirm-pwd"
-              type="password"
-              value={confirmPwd}
-              onChange={(e) => setConfirmPwd(e.target.value)}
-              required
-              autoComplete="new-password"
-            />
-          </div>
-          <Button type="submit" disabled={changePwdMutation.isPending} className="gap-2">
-            {changePwdMutation.isPending
-              ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              : <Lock className="h-3.5 w-3.5" />
-            }
+      {/* Change password */}
+      <div style={cardStyle}>
+        <div style={{ padding: "20px 22px" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 16px" }}>
             Cambiar contraseña
-          </Button>
-        </form>
-      </Card>
+          </p>
+          <form onSubmit={handleChangePassword} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label htmlFor="current-pwd" style={subLabelStyle}>Contraseña actual</label>
+              <input
+                id="current-pwd"
+                type="password"
+                value={currentPwd}
+                onChange={(e) => setCurrentPwd(e.target.value)}
+                required
+                autoComplete="current-password"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label htmlFor="new-pwd" style={subLabelStyle}>Nueva contraseña</label>
+              <input
+                id="new-pwd"
+                type="password"
+                value={newPwd}
+                onChange={(e) => setNewPwd(e.target.value)}
+                required
+                minLength={6}
+                autoComplete="new-password"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label htmlFor="confirm-pwd" style={subLabelStyle}>Confirmar nueva contraseña</label>
+              <input
+                id="confirm-pwd"
+                type="password"
+                value={confirmPwd}
+                onChange={(e) => setConfirmPwd(e.target.value)}
+                required
+                autoComplete="new-password"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <button
+                type="submit"
+                disabled={changePwdMutation.isPending}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7,
+                  height: 38, padding: "0 18px",
+                  borderRadius: "var(--r-md, 10px)",
+                  background: changePwdMutation.isPending ? "var(--muted)" : "#ED5650",
+                  border: "none",
+                  color: changePwdMutation.isPending ? "var(--muted-foreground)" : "white",
+                  fontSize: 13, fontWeight: 500,
+                  cursor: changePwdMutation.isPending ? "not-allowed" : "pointer",
+                }}
+              >
+                {changePwdMutation.isPending
+                  ? <span className="animate-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", display: "inline-block" }} />
+                  : <Lock size={14} />
+                }
+                Cambiar contraseña
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
