@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { listUsers, setUserRole, assignUserToArea, listAreas, adminResetPassword } from "@/lib/admin.functions";
+import { listUsers, setUserRole, assignUserToArea, listAreas, adminResetPassword, updateUserProfile } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth-context";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Users, Building, KeyRound, ShieldCheck } from "lucide-react";
+import { Users, Building, KeyRound, ShieldCheck, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/app/team")({
   component: TeamPage,
@@ -40,11 +40,12 @@ function getRoleKey(r: string): string {
 
 function TeamPage() {
   const { hasRole } = useAuth();
-  const list       = useServerFn(listUsers);
-  const setRole    = useServerFn(setUserRole);
-  const assignArea = useServerFn(assignUserToArea);
-  const getAreas   = useServerFn(listAreas);
-  const resetPwd   = useServerFn(adminResetPassword);
+  const list          = useServerFn(listUsers);
+  const setRole       = useServerFn(setUserRole);
+  const assignArea    = useServerFn(assignUserToArea);
+  const getAreas      = useServerFn(listAreas);
+  const resetPwd      = useServerFn(adminResetPassword);
+  const editProfile   = useServerFn(updateUserProfile);
 
   const [users, setUsers]             = useState<TeamUser[]>([]);
   const [areas, setAreas]             = useState<any[]>([]);
@@ -53,6 +54,10 @@ function TeamPage() {
   const [newPwd, setNewPwd]           = useState("");
   const [confirmPwd, setConfirmPwd]   = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+  const [editTarget, setEditTarget]   = useState<TeamUser | null>(null);
+  const [editName, setEditName]       = useState("");
+  const [editEmail, setEditEmail]     = useState("");
+  const [editLoading, setEditLoading] = useState(false);
 
   const isAdmin        = hasRole("super_admin");
   const isAreaAdmin    = hasRole("area_admin");
@@ -120,6 +125,30 @@ function TeamPage() {
     }
   };
 
+  const openEditDialog = (user: TeamUser) => {
+    setEditTarget(user);
+    setEditName(user.full_name ?? "");
+    setEditEmail(user.email);
+  };
+
+  const handleEditProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTarget) return;
+    if (!editName.trim()) { toast.error("El nombre es obligatorio"); return; }
+    if (!editEmail.trim()) { toast.error("El email es obligatorio"); return; }
+    setEditLoading(true);
+    try {
+      await editProfile({ data: { userId: editTarget.id, full_name: editName.trim(), email: editEmail.trim() } });
+      toast.success("Perfil actualizado");
+      setEditTarget(null);
+      reload();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al actualizar perfil");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   return (
     <div style={{ padding: "36px 40px 64px", maxWidth: 1180, margin: "0 auto", animation: "spIn .35s ease both" }}>
 
@@ -182,10 +211,75 @@ function TeamPage() {
               onToggleRole={toggle}
               onAreaChange={handleAreaChange}
               onResetPassword={openResetDialog}
+              onEdit={openEditDialog}
             />
           ))}
         </div>
       )}
+
+      {/* ── Edit profile dialog ── */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Editar miembro</DialogTitle>
+          </DialogHeader>
+          {/* Avatar preview */}
+          {editTarget && (() => {
+            const idx   = users.findIndex((u) => u.id === editTarget.id);
+            const color = AVATAR_PALETTE[(idx >= 0 ? idx : 0) % AVATAR_PALETTE.length];
+            const initials = (editTarget.full_name ?? editTarget.email).slice(0, 2).toUpperCase();
+            return (
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+                <div style={{
+                  width: 42, height: 42, borderRadius: "999px", flexShrink: 0,
+                  background: color + "22", border: `2px solid ${color}55`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  color, fontSize: 14, fontWeight: 700,
+                }}>
+                  {initials}
+                </div>
+                <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
+                  Actualiza el nombre y email del miembro.
+                </p>
+              </div>
+            );
+          })()}
+          <form onSubmit={handleEditProfile} className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-name">Nombre completo</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Nombre completo"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                placeholder="email@ejemplo.com"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={editLoading}>
+                {editLoading
+                  ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  : "Guardar"
+                }
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Reset password dialog ── */}
       <Dialog open={!!resetTarget} onOpenChange={(open) => !open && setResetTarget(null)}>
@@ -252,9 +346,10 @@ interface MemberCardProps {
   onToggleRole: (userId: string, role: string, enabled: boolean) => void;
   onAreaChange: (userId: string, areaId: string) => void;
   onResetPassword: (user: TeamUser) => void;
+  onEdit: (user: TeamUser) => void;
 }
 
-function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole, onAreaChange, onResetPassword }: MemberCardProps) {
+function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole, onAreaChange, onResetPassword, onEdit }: MemberCardProps) {
   const initials    = (u.full_name ?? u.email).slice(0, 2).toUpperCase();
   const avatarColor = AVATAR_PALETTE[idx % AVATAR_PALETTE.length];
   const areaName    = areas.find((a) => a.id === u.area_id)?.name;
@@ -280,6 +375,7 @@ function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole
           }}>
             {initials}
           </div>
+
           {/* Name + email */}
           <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
             <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--foreground)", margin: 0, lineHeight: 1.3 }}>
@@ -292,6 +388,24 @@ function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole
               {u.email}
             </p>
           </div>
+
+          {/* Edit button */}
+          {canManageAreas && (
+            <button
+              onClick={() => onEdit(u)}
+              title="Editar miembro"
+              style={{
+                width: 30, height: 30, borderRadius: "var(--r-md, 10px)",
+                border: "1px solid var(--border)",
+                background: "var(--muted)",
+                cursor: "pointer", flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "var(--muted-foreground)",
+              }}
+            >
+              <Pencil size={13} />
+            </button>
+          )}
         </div>
 
         {/* Role pills */}

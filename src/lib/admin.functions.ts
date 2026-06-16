@@ -214,3 +214,30 @@ export const adminResetPassword = createServerFn({ method: "POST" })
     await db`UPDATE profiles SET password_hash = ${hashPassword(data.newPassword)} WHERE id = ${data.userId}`;
     return { ok: true };
   });
+
+export const updateUserProfile = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z.object({
+      userId: z.string().uuid(),
+      full_name: z.string().min(1).optional(),
+      email: z.string().email().optional(),
+    }).parse(input)
+  )
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    await assertSuperAdminOrAreaAdmin(auth.userId);
+
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    if (data.full_name !== undefined) { updates.push(`full_name = $${updates.length + 1}`); values.push(data.full_name); }
+    if (data.email !== undefined) { updates.push(`email = $${updates.length + 1}`); values.push(data.email); }
+    if (updates.length === 0) return { ok: true };
+
+    values.push(data.userId);
+    await db.unsafe(
+      `UPDATE profiles SET ${updates.join(", ")} WHERE id = $${values.length}`,
+      values as any[]
+    );
+    return { ok: true };
+  });
