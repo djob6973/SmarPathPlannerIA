@@ -112,11 +112,13 @@ export async function handleRegister(request: Request): Promise<Response> {
       RETURNING id
     `;
 
-    await db`
-      INSERT INTO user_roles_smart_path (user_id, role)
-      VALUES (${profile.id}, ${isFirst ? "super_admin" : "client"})
-      ON CONFLICT (user_id, role) DO NOTHING
-    `;
+    if (isFirst) {
+      await db`
+        INSERT INTO user_roles_smart_path (user_id, role)
+        VALUES (${profile.id}, 'super_admin')
+        ON CONFLICT (user_id, role) DO NOTHING
+      `;
+    }
 
     const sessionId = await createSession(profile.id);
     const isHttps = new URL(request.url).protocol === "https:";

@@ -109,12 +109,13 @@ export async function getOrCreateProfile(email: string): Promise<UserProfile> {
     RETURNING id, full_name, email, area_id
   `;
 
-  const role = isFirst ? "super_admin" : "client";
-  await db`
-    INSERT INTO user_roles_smart_path (user_id, role)
-    VALUES (${created.id}, ${role})
-    ON CONFLICT (user_id, role) DO NOTHING
-  `;
+  if (isFirst) {
+    await db`
+      INSERT INTO user_roles_smart_path (user_id, role)
+      VALUES (${created.id}, 'super_admin')
+      ON CONFLICT (user_id, role) DO NOTHING
+    `;
+  }
 
   return created;
 }
