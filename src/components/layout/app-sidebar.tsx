@@ -157,7 +157,7 @@ import type { AppPermission } from "@/lib/permissions.types";
 
 const NAV_ITEMS: { to: string; icon: React.ComponentType; label: string; permission?: AppPermission }[] = [
   { to: "/app/dashboard", icon: IconDashboard, label: "Dashboard",   permission: "view_dashboard" },
-  { to: "/app/board",     icon: IconBoard,     label: "Tablero"     },
+  { to: "/app/board",     icon: IconBoard,     label: "Tablero",     permission: "view_board"      },
   { to: "/app/requests",  icon: IconRequests,  label: "Solicitudes" },
   { to: "/app/chat",      icon: IconChat,      label: "Chat IA"     },
   { to: "/app/analytics", icon: IconAnalytics, label: "Analítica"   },

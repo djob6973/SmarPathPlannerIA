@@ -5,7 +5,7 @@ import { db } from "./db";
 import type { AppPermission, AppRole } from "./permissions.types";
 
 const ALL_PERMISSIONS = [
-  "view_dashboard", "view_team",
+  "view_dashboard", "view_board", "view_team",
   "create_requests", "edit_own_requests", "edit_all_requests",
   "delete_own_requests", "delete_all_requests", "view_all_requests",
   "assign_requests", "manage_users", "manage_roles", "manage_permissions",
@@ -16,19 +16,19 @@ const ALL_PERMISSIONS = [
 const DEFAULT_PERMISSIONS: Record<string, AppPermission[]> = {
   super_admin: [...ALL_PERMISSIONS] as AppPermission[],
   area_admin: [
-    "view_dashboard","view_team",
+    "view_dashboard","view_board","view_team",
     "create_requests","edit_own_requests","edit_all_requests","delete_own_requests",
     "delete_all_requests","view_all_requests","assign_requests","manage_users",
     "manage_roles","view_analytics","export_data","use_ai_features","manage_request_expiration",
   ],
   manager: [
-    "view_dashboard","view_team",
+    "view_dashboard","view_board","view_team",
     "create_requests","edit_own_requests","edit_all_requests","delete_own_requests",
     "delete_all_requests","view_all_requests","assign_requests","view_analytics",
     "export_data","use_ai_features","manage_request_expiration",
   ],
-  client: ["view_dashboard","create_requests","edit_own_requests","delete_own_requests","use_ai_features"],
-  viewer: ["view_dashboard","view_all_requests"],
+  client: ["view_dashboard","view_board","create_requests","edit_own_requests","delete_own_requests","use_ai_features"],
+  viewer: ["view_dashboard","view_board","view_all_requests"],
 };
 
 async function assertSuperAdmin(userId: string) {

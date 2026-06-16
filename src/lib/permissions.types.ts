@@ -1,5 +1,6 @@
 export type AppPermission =
   | "view_dashboard"
+  | "view_board"
   | "view_team"
   | "create_requests"
   | "edit_own_requests"
@@ -45,7 +46,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     name: "Acceso a Módulos",
     description: "Permisos para acceder a módulos de la plataforma",
-    permissions: ["view_dashboard", "view_team"],
+    permissions: ["view_dashboard", "view_board", "view_team"],
   },
   {
     name: "Gestión de Solicitudes",
@@ -90,6 +91,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
 
 export const PERMISSION_LABELS: Record<AppPermission, string> = {
   view_dashboard: "Ver dashboard",
+  view_board: "Ver tablero",
   view_team: "Ver equipo",
   create_requests: "Crear solicitudes",
   edit_own_requests: "Editar mis solicitudes",
@@ -121,6 +123,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
   super_admin: [
     "view_dashboard",
+    "view_board",
     "view_team",
     "create_requests",
     "edit_own_requests",
@@ -141,6 +144,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
   ],
   area_admin: [
     "view_dashboard",
+    "view_board",
     "view_team",
     "create_requests",
     "edit_own_requests",
@@ -158,6 +162,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
   ],
   admin: [
     "view_dashboard",
+    "view_board",
     "view_team",
     "create_requests",
     "edit_own_requests",
@@ -177,6 +182,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
   ],
   manager: [
     "view_dashboard",
+    "view_board",
     "view_team",
     "create_requests",
     "edit_own_requests",
@@ -190,6 +196,6 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "use_ai_features",
     "manage_request_expiration",
   ],
-  client: ["view_dashboard", "create_requests", "edit_own_requests", "delete_own_requests", "use_ai_features"],
-  viewer: ["view_dashboard", "view_all_requests"],
+  client: ["view_dashboard", "view_board", "create_requests", "edit_own_requests", "delete_own_requests", "use_ai_features"],
+  viewer: ["view_dashboard", "view_board", "view_all_requests"],
 };

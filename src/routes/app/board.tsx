@@ -233,7 +233,17 @@ function KanbanColumn({ col, requests, canEdit, onCardClick, profiles, isBacklog
 // ── BoardPage ─────────────────────────────────────────────────────────────────
 
 function BoardPage() {
-  const { isSuperAdmin, isAreaAdmin, hasRole, areaId } = useAuth();
+  const { isSuperAdmin, isAreaAdmin, hasRole, areaId, hasPermission } = useAuth();
+
+  if (!hasPermission("view_board")) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Sin acceso</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No tienes permiso para ver el tablero.</p>
+      </div>
+    );
+  }
+
   const [columns, setColumns] = useState<ColumnRow[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
