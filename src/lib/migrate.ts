@@ -213,6 +213,7 @@ async function _run() {
   // Role permissions — idempotent (UNIQUE on role, permission)
   await db`
     INSERT INTO public.role_permissions (role, permission, enabled) VALUES
+      ('super_admin','view_dashboard',true),('super_admin','view_team',true),
       ('super_admin','create_requests',true),('super_admin','edit_own_requests',true),
       ('super_admin','edit_all_requests',true),('super_admin','delete_own_requests',true),
       ('super_admin','delete_all_requests',true),('super_admin','view_all_requests',true),
@@ -221,6 +222,7 @@ async function _run() {
       ('super_admin','manage_areas',true),('super_admin','view_analytics',true),
       ('super_admin','export_data',true),('super_admin','use_ai_features',true),
       ('super_admin','manage_settings',true),('super_admin','manage_request_expiration',true),
+      ('area_admin','view_dashboard',true),('area_admin','view_team',true),
       ('area_admin','create_requests',true),('area_admin','edit_own_requests',true),
       ('area_admin','edit_all_requests',true),('area_admin','delete_own_requests',true),
       ('area_admin','delete_all_requests',true),('area_admin','view_all_requests',true),
@@ -228,15 +230,17 @@ async function _run() {
       ('area_admin','manage_roles',true),('area_admin','view_analytics',true),
       ('area_admin','export_data',true),('area_admin','use_ai_features',true),
       ('area_admin','manage_request_expiration',true),
+      ('manager','view_dashboard',true),('manager','view_team',true),
       ('manager','create_requests',true),('manager','edit_own_requests',true),
       ('manager','edit_all_requests',true),('manager','delete_own_requests',true),
       ('manager','delete_all_requests',true),('manager','view_all_requests',true),
       ('manager','assign_requests',true),('manager','view_analytics',true),
       ('manager','export_data',true),('manager','use_ai_features',true),
       ('manager','manage_request_expiration',true),
-      ('client','create_requests',true),('client','edit_own_requests',true),
-      ('client','delete_own_requests',true),('client','use_ai_features',true),
-      ('viewer','view_all_requests',true)
+      ('client','view_dashboard',true),('client','create_requests',true),
+      ('client','edit_own_requests',true),('client','delete_own_requests',true),
+      ('client','use_ai_features',true),
+      ('viewer','view_dashboard',true),('viewer','view_all_requests',true)
     ON CONFLICT (role, permission) DO NOTHING
   `;
 

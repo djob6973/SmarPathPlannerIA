@@ -1,4 +1,6 @@
 export type AppPermission =
+  | "view_dashboard"
+  | "view_team"
   | "create_requests"
   | "edit_own_requests"
   | "edit_all_requests"
@@ -41,6 +43,11 @@ export interface PermissionGroup {
 
 export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
+    name: "Acceso a Módulos",
+    description: "Permisos para acceder a módulos de la plataforma",
+    permissions: ["view_dashboard", "view_team"],
+  },
+  {
     name: "Gestión de Solicitudes",
     description: "Permisos para crear, editar y eliminar solicitudes",
     permissions: [
@@ -82,6 +89,8 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
 ];
 
 export const PERMISSION_LABELS: Record<AppPermission, string> = {
+  view_dashboard: "Ver dashboard",
+  view_team: "Ver equipo",
   create_requests: "Crear solicitudes",
   edit_own_requests: "Editar mis solicitudes",
   edit_all_requests: "Editar todas las solicitudes",
@@ -111,6 +120,8 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
   super_admin: [
+    "view_dashboard",
+    "view_team",
     "create_requests",
     "edit_own_requests",
     "edit_all_requests",
@@ -129,6 +140,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "manage_areas",
   ],
   area_admin: [
+    "view_dashboard",
+    "view_team",
     "create_requests",
     "edit_own_requests",
     "edit_all_requests",
@@ -144,6 +157,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "manage_request_expiration",
   ],
   admin: [
+    "view_dashboard",
+    "view_team",
     "create_requests",
     "edit_own_requests",
     "edit_all_requests",
@@ -161,6 +176,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "manage_request_expiration",
   ],
   manager: [
+    "view_dashboard",
+    "view_team",
     "create_requests",
     "edit_own_requests",
     "edit_all_requests",
@@ -173,6 +190,6 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "use_ai_features",
     "manage_request_expiration",
   ],
-  client: ["create_requests", "edit_own_requests", "delete_own_requests", "use_ai_features"],
-  viewer: ["view_all_requests"],
+  client: ["view_dashboard", "create_requests", "edit_own_requests", "delete_own_requests", "use_ai_features"],
+  viewer: ["view_dashboard", "view_all_requests"],
 };

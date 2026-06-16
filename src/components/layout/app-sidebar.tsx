@@ -153,13 +153,15 @@ function DataicoMark({ size = 24 }: { size?: number }) {
 
 // ─── Nav item data ────────────────────────────────────────────────────────────
 
-const NAV_ITEMS = [
-  { to: "/app/dashboard", icon: IconDashboard, label: "Dashboard"   },
+import type { AppPermission } from "@/lib/permissions.types";
+
+const NAV_ITEMS: { to: string; icon: React.ComponentType; label: string; permission?: AppPermission }[] = [
+  { to: "/app/dashboard", icon: IconDashboard, label: "Dashboard",   permission: "view_dashboard" },
   { to: "/app/board",     icon: IconBoard,     label: "Tablero"     },
   { to: "/app/requests",  icon: IconRequests,  label: "Solicitudes" },
   { to: "/app/chat",      icon: IconChat,      label: "Chat IA"     },
   { to: "/app/analytics", icon: IconAnalytics, label: "Analítica"   },
-  { to: "/app/team",      icon: IconTeam,      label: "Equipo"      },
+  { to: "/app/team",      icon: IconTeam,      label: "Equipo",      permission: "view_team"      },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -173,7 +175,7 @@ interface AppSidebarProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClick }: AppSidebarProps) {
-  const { user, roles, hasRole, signOut, profile } = useAuth();
+  const { user, roles, hasRole, hasPermission, signOut, profile } = useAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const routerState = useRouterState();
@@ -256,7 +258,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
 
       {/* ── Navigation ── */}
       <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV_ITEMS.map(({ to, icon: Icon, label }) => {
+        {NAV_ITEMS.filter(({ permission }) => !permission || hasPermission(permission)).map(({ to, icon: Icon, label }) => {
           const isActive = pathname.startsWith(to);
           return (
             <Link

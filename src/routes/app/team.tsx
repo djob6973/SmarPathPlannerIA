@@ -39,7 +39,16 @@ function getRoleKey(r: string): string {
 }
 
 function TeamPage() {
-  const { hasRole } = useAuth();
+  const { hasRole, hasPermission } = useAuth();
+
+  if (!hasPermission("view_team")) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Sin acceso</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No tienes permiso para ver el módulo de equipo.</p>
+      </div>
+    );
+  }
   const list          = useServerFn(listUsers);
   const setRole       = useServerFn(setUserRole);
   const assignArea    = useServerFn(assignUserToArea);

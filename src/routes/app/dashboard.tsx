@@ -175,7 +175,16 @@ function QuickAction({ to, title, desc, icon, iconStyle }: QuickActionProps) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 function DashboardPage() {
-  const { profile, user, areaId, isSuperAdmin } = useAuth();
+  const { profile, user, areaId, isSuperAdmin, hasPermission } = useAuth();
+
+  if (!hasPermission("view_dashboard")) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Sin acceso</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No tienes permiso para ver el dashboard.</p>
+      </div>
+    );
+  }
   const [columns, setColumns] = useState<ColumnRow[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
