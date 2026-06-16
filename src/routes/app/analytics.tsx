@@ -23,7 +23,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   urgent: "#EF4444", high: "#F97316", medium: "#EAB308", low: "#6366F1",
 };
 const PRIORITY_LABELS: Record<string, string> = {
-  urgent: "Urgente", high: "Alta", medium: "Media", low: "Baja",
+  urgent: "Urgent", high: "High", medium: "Medium", low: "Low",
 };
 
 function AnalyticsPage() {
