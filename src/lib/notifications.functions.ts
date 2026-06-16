@@ -1,9 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getAuthContext } from "./server-auth";
-import { db } from "./db";
+import type { db as DbType } from "./db";
 
 // Internal helper — called from other server handlers to fan-out notifications.
+// Receives `db` as a parameter to avoid importing postgres at module level
+// (which would leak the Node.js-only package into the client bundle).
 export async function insertNotification(
+  db: typeof DbType,
   recipientId: string,
   type: string,
   title: string,

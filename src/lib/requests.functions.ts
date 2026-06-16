@@ -122,6 +122,7 @@ export const createRequest = createServerFn({ method: "POST" })
     // Notify assignee if different from creator
     if (req.assigned_to && req.assigned_to !== userId) {
       await insertNotification(
+        db,
         req.assigned_to,
         "request_assigned",
         "Solicitud asignada",
@@ -198,6 +199,7 @@ export const updateRequest = createServerFn({ method: "POST" })
         fields.assigned_to !== userId
       ) {
         await insertNotification(
+          db,
           fields.assigned_to,
           "request_assigned",
           "Solicitud asignada",
@@ -218,6 +220,7 @@ export const updateRequest = createServerFn({ method: "POST" })
 
         for (const recipientId of notify) {
           await insertNotification(
+            db,
             recipientId,
             "status_changed",
             "Estado actualizado",
@@ -309,6 +312,7 @@ export const addComment = createServerFn({ method: "POST" })
 
       for (const recipientId of notify) {
         await insertNotification(
+          db,
           recipientId,
           "comment_added",
           "Nuevo comentario",
