@@ -1,5 +1,24 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getAuthContext } from "./server-auth";
+import { db } from "./db";
+
+// Internal helper — called from other server handlers to fan-out notifications.
+export async function insertNotification(
+  recipientId: string,
+  type: string,
+  title: string,
+  body: string,
+  data: Record<string, unknown> = {}
+): Promise<void> {
+  try {
+    await db`
+      INSERT INTO notifications (user_id, type, title, body, data)
+      VALUES (${recipientId}, ${type}, ${title}, ${body}, ${JSON.stringify(data)}::jsonb)
+    `;
+  } catch (e) {
+    console.error("[notifications] insertNotification error:", e);
+  }
+}
 
 export type NotificationRow = {
   id: string; type: string; title: string; body: string | null;

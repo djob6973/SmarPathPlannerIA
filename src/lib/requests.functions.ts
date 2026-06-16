@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAuthContext } from "./server-auth";
+import { insertNotification } from "./notifications.functions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type RequestRow = {
@@ -116,7 +117,20 @@ export const createRequest = createServerFn({ method: "POST" })
       )
       RETURNING *
     `;
-    return { request: rows[0] };
+    const req = rows[0];
+
+    // Notify assignee if different from creator
+    if (req.assigned_to && req.assigned_to !== userId) {
+      await insertNotification(
+        req.assigned_to,
+        "request_assigned",
+        "Solicitud asignada",
+        `Se te asignó la solicitud: ${req.title}`,
+        { requestId: req.id }
+      );
+    }
+
+    return { request: req };
   });
 
 // ── Update request ─────────────────────────────────────────────────────────────
@@ -139,9 +153,18 @@ export const updateRequest = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
-    const { db } = auth;
+    const { db, userId } = auth;
 
     const { requestId, ...fields } = data;
+
+    // Fetch current state when changing status or assignee (for notifications)
+    const needsPrev = fields.status_column_id !== undefined || fields.assigned_to !== undefined;
+    let prev: RequestRow | null = null;
+    if (needsPrev) {
+      const rows = await db<RequestRow[]>`SELECT * FROM requests WHERE id = ${requestId}`;
+      prev = rows[0] ?? null;
+    }
+
     const updates: string[] = [];
     const values: unknown[] = [];
 
@@ -163,6 +186,48 @@ export const updateRequest = createServerFn({ method: "POST" })
       `UPDATE requests SET ${updates.join(", ")} WHERE id = $${values.length}`,
       values as any[]
     );
+
+    if (prev) {
+      const requestTitle = fields.title ?? prev.title;
+
+      // Notify newly assigned user (if changed and different from updater)
+      if (
+        fields.assigned_to !== undefined &&
+        fields.assigned_to &&
+        fields.assigned_to !== prev.assigned_to &&
+        fields.assigned_to !== userId
+      ) {
+        await insertNotification(
+          fields.assigned_to,
+          "request_assigned",
+          "Solicitud asignada",
+          `Se te asignó la solicitud: ${requestTitle}`,
+          { requestId }
+        );
+      }
+
+      // Notify creator and assignee when status changes
+      if (
+        fields.status_column_id !== undefined &&
+        fields.status_column_id !== prev.status_column_id
+      ) {
+        const notify = new Set<string>();
+        if (prev.created_by && prev.created_by !== userId) notify.add(prev.created_by);
+        const currentAssignee = fields.assigned_to ?? prev.assigned_to;
+        if (currentAssignee && currentAssignee !== userId) notify.add(currentAssignee);
+
+        for (const recipientId of notify) {
+          await insertNotification(
+            recipientId,
+            "status_changed",
+            "Estado actualizado",
+            `La solicitud "${requestTitle}" cambió de estado`,
+            { requestId }
+          );
+        }
+      }
+    }
+
     return { ok: true };
   });
 
@@ -231,6 +296,28 @@ export const addComment = createServerFn({ method: "POST" })
       VALUES (${data.requestId}, ${userId}, ${data.content})
       RETURNING *
     `;
+
+    // Notify request creator and assignee (excluding commenter)
+    const reqRows = await db<RequestRow[]>`
+      SELECT title, created_by, assigned_to FROM requests WHERE id = ${data.requestId}
+    `;
+    const req = reqRows[0];
+    if (req) {
+      const notify = new Set<string>();
+      if (req.created_by && req.created_by !== userId) notify.add(req.created_by);
+      if (req.assigned_to && req.assigned_to !== userId) notify.add(req.assigned_to);
+
+      for (const recipientId of notify) {
+        await insertNotification(
+          recipientId,
+          "comment_added",
+          "Nuevo comentario",
+          `Nuevo comentario en la solicitud: ${req.title}`,
+          { requestId: data.requestId }
+        );
+      }
+    }
+
     return { comment: rows[0] };
   });
 
