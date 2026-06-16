@@ -21,6 +21,7 @@ import {
   copyRequest as copyRequestFn,
   addComment as addCommentFn,
   updateComment as updateCommentFn,
+  deleteComment as deleteCommentFn,
   type RequestRow,
   type ColumnRow,
   type CommentRow,
@@ -378,6 +379,14 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
 
   const cancelEditingComment = () => { setEditingCommentId(null); setEditingCommentContent(""); };
 
+  const removeComment = async (commentId: string) => {
+    if (!confirm("¿Eliminar este comentario?")) return;
+    try {
+      await deleteCommentFn({ data: { commentId } });
+      setComments((c) => c.filter((com) => com.id !== commentId));
+    } catch (err: any) { toast.error(err?.message); }
+  };
+
   const saveCommentEdit = async () => {
     if (!editingCommentId || !editingCommentContent.trim()) return;
     setUpdatingComment(true);
@@ -640,9 +649,14 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                               {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: es })}
                             </span>
                             {canEditComment && !isEditing && (
-                              <Button variant="ghost" size="icon" className="h-5 w-5 ml-auto" onClick={() => startEditingComment(c)}>
-                                <Edit2 className="h-3 w-3" />
-                              </Button>
+                              <div className="ml-auto flex items-center gap-0.5">
+                                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => startEditingComment(c)}>
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-destructive" onClick={() => removeComment(c.id)}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
                             )}
                           </div>
                           {isEditing ? (
