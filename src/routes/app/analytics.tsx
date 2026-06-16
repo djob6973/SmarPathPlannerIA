@@ -27,7 +27,17 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 function AnalyticsPage() {
-  const { areaId, isSuperAdmin } = useAuth();
+  const { areaId, isSuperAdmin, hasPermission } = useAuth();
+
+  if (!hasPermission("view_analytics")) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Sin acceso</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No tienes permiso para ver el módulo de analítica.</p>
+      </div>
+    );
+  }
+
   const [columns, setColumns]             = useState<Column[]>([]);
   const [requests, setRequests]           = useState<Request[]>([]);
   const [loading, setLoading]             = useState(true);

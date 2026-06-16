@@ -160,7 +160,7 @@ const NAV_ITEMS: { to: string; icon: React.ComponentType; label: string; permiss
   { to: "/app/board",     icon: IconBoard,     label: "Tablero",     permission: "view_board"      },
   { to: "/app/requests",  icon: IconRequests,  label: "Solicitudes" },
   { to: "/app/chat",      icon: IconChat,      label: "Chat IA"     },
-  { to: "/app/analytics", icon: IconAnalytics, label: "Analítica"   },
+  { to: "/app/analytics", icon: IconAnalytics, label: "Analítica",   permission: "view_analytics" },
   { to: "/app/team",      icon: IconTeam,      label: "Equipo",      permission: "view_team"      },
 ];
 
