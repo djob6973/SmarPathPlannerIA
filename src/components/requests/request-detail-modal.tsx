@@ -50,6 +50,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [canManageExpiration, setCanManageExpiration] = useState(false);
   const [expiresAt, setExpiresAt] = useState("");
   const [updatingExpiration, setUpdatingExpiration] = useState(false);
+  const [completedAt, setCompletedAt] = useState("");
+  const [updatingCompletedAt, setUpdatingCompletedAt] = useState(false);
   const [canEditCreatedAt, setCanEditCreatedAt] = useState(false);
   const [createdAt, setCreatedAt] = useState("");
   const [updatingCreatedAt, setUpdatingCreatedAt] = useState(false);
@@ -140,6 +142,16 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   }, [request]);
 
   useEffect(() => {
+    if (request?.completed_at) {
+      const date = new Date(request.completed_at);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setCompletedAt(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`);
+    } else {
+      setCompletedAt("");
+    }
+  }, [request]);
+
+  useEffect(() => {
     if (request?.created_at) {
       const date = new Date(request.created_at);
       const pad = (n: number) => String(n).padStart(2, "0");
@@ -205,6 +217,23 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       setExpiresAt(request.expires_at ?? "");
     }
     setUpdatingExpiration(false);
+  };
+
+  const updateCompletedAt = async (value: string) => {
+    if (!request) return;
+    setUpdatingCompletedAt(true);
+    const completedValue = value || null;
+    try {
+      await updateRequestFn({ data: { requestId: request.id, completed_at: completedValue } });
+      setRequest((r) => r ? { ...r, completed_at: completedValue } : r);
+      setCompletedAt(value);
+      onUpdated?.();
+      toast.success("Fecha de completado actualizada");
+    } catch (err: any) {
+      toast.error(err?.message);
+      setCompletedAt(request.completed_at ?? "");
+    }
+    setUpdatingCompletedAt(false);
   };
 
   const startEditingRequest = () => {
@@ -656,6 +685,29 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 </div>
 
                 <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Completado</p>
+                  {canEditCreatedAt ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="datetime-local"
+                        value={completedAt}
+                        onChange={(e) => setCompletedAt(e.target.value)}
+                        onBlur={() => updateCompletedAt(completedAt)}
+                        disabled={updatingCompletedAt}
+                        className="h-8 w-full text-xs rounded border border-input bg-background px-2 py-1"
+                      />
+                      {updatingCompletedAt && <Loader2 className="h-3 w-3 animate-spin" />}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {request.completed_at
+                        ? new Date(request.completed_at).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" })
+                        : "—"}
+                    </p>
+                  )}
+                </div>
+
+                <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Actualizado</p>
                   <p className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(request.updated_at), { addSuffix: true, locale: es })}
@@ -689,6 +741,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                     </div>
                   )}
                 </div>
+
               </>
             )}
           </div>

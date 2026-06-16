@@ -8,7 +8,8 @@ export type RequestRow = {
   id: string; title: string; description: string | null; objective: string | null;
   process: string | null; priority: string; status_column_id: string | null;
   created_by: string; assigned_to: string | null; area_id: string | null;
-  position: number; expires_at: string | null; created_at: string; updated_at: string;
+  position: number; expires_at: string | null; completed_at: string | null;
+  created_at: string; updated_at: string;
 };
 export type ColumnRow = { id: string; name: string; position: number; color: string; is_completed: boolean; area_id: string | null };
 export type CommentRow = { id: string; request_id: string; user_id: string; content: string; created_at: string; updated_at: string };
@@ -148,6 +149,7 @@ export const updateRequest = createServerFn({ method: "POST" })
       assigned_to: z.string().uuid().nullable().optional(),
       position: z.number().int().optional(),
       expires_at: z.string().nullable().optional(),
+      completed_at: z.string().nullable().optional(),
       created_at: z.string().optional(),
     }).parse(input)
   )
@@ -166,6 +168,23 @@ export const updateRequest = createServerFn({ method: "POST" })
       prev = rows[0] ?? null;
     }
 
+    // Auto-manage completed_at when status column changes
+    if (fields.status_column_id !== undefined && fields.completed_at === undefined) {
+      if (fields.status_column_id) {
+        const cols = await db<{ is_completed: boolean }[]>`
+          SELECT is_completed FROM kanban_columns WHERE id = ${fields.status_column_id}
+        `;
+        const targetIsCompleted = cols[0]?.is_completed ?? false;
+        if (targetIsCompleted && !prev?.completed_at) {
+          fields.completed_at = new Date().toISOString();
+        } else if (!targetIsCompleted) {
+          fields.completed_at = null;
+        }
+      } else {
+        fields.completed_at = null;
+      }
+    }
+
     const updates: string[] = [];
     const values: unknown[] = [];
 
@@ -178,6 +197,7 @@ export const updateRequest = createServerFn({ method: "POST" })
     if (fields.assigned_to !== undefined) { updates.push(`assigned_to = $${updates.length + 1}`); values.push(fields.assigned_to); }
     if (fields.position !== undefined) { updates.push(`position = $${updates.length + 1}`); values.push(fields.position); }
     if (fields.expires_at !== undefined) { updates.push(`expires_at = $${updates.length + 1}`); values.push(fields.expires_at); }
+    if (fields.completed_at !== undefined) { updates.push(`completed_at = $${updates.length + 1}`); values.push(fields.completed_at); }
     if (fields.created_at !== undefined) { updates.push(`created_at = $${updates.length + 1}`); values.push(fields.created_at); }
 
     if (updates.length === 0) return { ok: true };

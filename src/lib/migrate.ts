@@ -115,13 +115,16 @@ async function _run() {
       position         INT  NOT NULL DEFAULT 0,
       area_id          UUID REFERENCES public.areas(id) ON DELETE SET NULL,
       expires_at       TIMESTAMPTZ,
+      completed_at     TIMESTAMPTZ,
       created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
     );
-    CREATE INDEX IF NOT EXISTS idx_requests_status     ON public.requests(status_column_id);
-    CREATE INDEX IF NOT EXISTS idx_requests_created_by ON public.requests(created_by);
-    CREATE INDEX IF NOT EXISTS idx_requests_area       ON public.requests(area_id);
-    CREATE INDEX IF NOT EXISTS idx_requests_expires_at ON public.requests(expires_at);
+    ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+    CREATE INDEX IF NOT EXISTS idx_requests_status       ON public.requests(status_column_id);
+    CREATE INDEX IF NOT EXISTS idx_requests_created_by   ON public.requests(created_by);
+    CREATE INDEX IF NOT EXISTS idx_requests_area         ON public.requests(area_id);
+    CREATE INDEX IF NOT EXISTS idx_requests_expires_at   ON public.requests(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_requests_completed_at ON public.requests(completed_at);
     DROP TRIGGER IF EXISTS trg_requests_updated_at ON public.requests;
     CREATE TRIGGER trg_requests_updated_at
       BEFORE UPDATE ON public.requests

@@ -74,6 +74,8 @@ export interface Database {
           position: number
           created_at: string
           updated_at: string
+          expires_at: string | null
+          completed_at: string | null
           area_id: string | null
         }
         Insert: {
@@ -90,6 +92,8 @@ export interface Database {
           position?: number
           created_at?: string
           updated_at?: string
+          expires_at?: string | null
+          completed_at?: string | null
           area_id?: string | null
         }
         Update: {
@@ -104,6 +108,8 @@ export interface Database {
           custom_data?: Json
           position?: number
           updated_at?: string
+          expires_at?: string | null
+          completed_at?: string | null
           area_id?: string | null
         }
       }
