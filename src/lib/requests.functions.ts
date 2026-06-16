@@ -9,6 +9,7 @@ export type RequestRow = {
   process: string | null; priority: string; status_column_id: string | null;
   created_by: string; assigned_to: string | null; area_id: string | null;
   position: number; expires_at: string | null; completed_at: string | null;
+  parent_request_id: string | null;
   created_at: string; updated_at: string;
 };
 export type ColumnRow = { id: string; name: string; position: number; color: string; is_completed: boolean; area_id: string | null };
@@ -49,21 +50,27 @@ export const getRequestDetails = createServerFn({ method: "GET" })
     if ("error" in auth) throw new Error(auth.error);
     const { db } = auth;
 
-    const [requests, columns, comments] = await Promise.all([
+    const [requests, columns, comments, children] = await Promise.all([
       db<RequestRow[]>`SELECT * FROM requests WHERE id = ${data.requestId}`,
       db<ColumnRow[]>`SELECT id, name, color, position, is_completed FROM kanban_columns ORDER BY position`,
       db<CommentRow[]>`SELECT * FROM comments WHERE request_id = ${data.requestId} ORDER BY created_at`,
+      db<RequestRow[]>`SELECT * FROM requests WHERE parent_request_id = ${data.requestId} ORDER BY created_at`,
     ]);
 
     const request = requests[0] ?? null;
+
+    let parent: RequestRow | null = null;
+    if (request?.parent_request_id) {
+      const parentRows = await db<RequestRow[]>`SELECT * FROM requests WHERE id = ${request.parent_request_id}`;
+      parent = parentRows[0] ?? null;
+    }
+
     const profileMap: Record<string, ProfileRow> = {};
 
     if (request) {
       const userIds = [
         ...new Set(
-          [request.created_by, request.assigned_to, ...comments.map((c) => c.user_id)].filter(
-            Boolean
-          )
+          [request.created_by, request.assigned_to, ...comments.map((c) => c.user_id)].filter(Boolean)
         ),
       ] as string[];
 
@@ -79,7 +86,7 @@ export const getRequestDetails = createServerFn({ method: "GET" })
       SELECT id, full_name, email FROM profiles ORDER BY full_name
     `;
 
-    return { request, columns, comments, profiles: profileMap, availableUsers: allUsers };
+    return { request, columns, comments, profiles: profileMap, availableUsers: allUsers, parent, children };
   });
 
 // ── Create request ─────────────────────────────────────────────────────────────
@@ -94,6 +101,7 @@ export const createRequest = createServerFn({ method: "POST" })
       status_column_id: z.string().uuid().nullable().optional(),
       assigned_to: z.string().uuid().nullable().optional(),
       area_id: z.string().uuid().nullable().optional(),
+      parent_request_id: z.string().uuid().nullable().optional(),
     }).parse(input)
   )
   .handler(async ({ data }) => {
@@ -104,7 +112,7 @@ export const createRequest = createServerFn({ method: "POST" })
     const areaId = data.area_id ?? userProfile.area_id;
 
     const rows = await db<RequestRow[]>`
-      INSERT INTO requests (title, description, objective, process, priority, status_column_id, assigned_to, created_by, area_id)
+      INSERT INTO requests (title, description, objective, process, priority, status_column_id, assigned_to, created_by, area_id, parent_request_id)
       VALUES (
         ${data.title},
         ${data.description ?? null},
@@ -114,7 +122,8 @@ export const createRequest = createServerFn({ method: "POST" })
         ${data.status_column_id ?? null},
         ${data.assigned_to ?? null},
         ${userId},
-        ${areaId}
+        ${areaId},
+        ${data.parent_request_id ?? null}
       )
       RETURNING *
     `;
@@ -151,6 +160,7 @@ export const updateRequest = createServerFn({ method: "POST" })
       expires_at: z.string().nullable().optional(),
       completed_at: z.string().nullable().optional(),
       created_at: z.string().optional(),
+      parent_request_id: z.string().uuid().nullable().optional(),
     }).parse(input)
   )
   .handler(async ({ data }) => {
@@ -199,6 +209,7 @@ export const updateRequest = createServerFn({ method: "POST" })
     if (fields.expires_at !== undefined) { updates.push(`expires_at = $${updates.length + 1}`); values.push(fields.expires_at); }
     if (fields.completed_at !== undefined) { updates.push(`completed_at = $${updates.length + 1}`); values.push(fields.completed_at); }
     if (fields.created_at !== undefined) { updates.push(`created_at = $${updates.length + 1}`); values.push(fields.created_at); }
+    if (fields.parent_request_id !== undefined) { updates.push(`parent_request_id = $${updates.length + 1}`); values.push(fields.parent_request_id); }
 
     if (updates.length === 0) return { ok: true };
 

@@ -3,7 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { checkUserPermission } from "@/lib/permissions.functions";
-import { createRequest } from "@/lib/requests.functions";
+import { createRequest, getRequestsData, type RequestRow } from "@/lib/requests.functions";
 import { getColumns } from "@/lib/data.functions";
 import { listProfiles } from "@/lib/data.functions";
 import { Button } from "@/components/ui/button";
@@ -31,14 +31,18 @@ export function ManualRequestModal({ onClose, onCreated }: ManualRequestModalPro
   const [loading, setLoading] = useState(false);
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [canAssignRequests, setCanAssignRequests] = useState(false);
+  const [parentRequestId, setParentRequestId] = useState<string | null>(null);
+  const [topLevelRequests, setTopLevelRequests] = useState<RequestRow[]>([]);
 
   useEffect(() => {
     Promise.all([
       getColumns({ data: {} }),
       listProfiles(),
-    ]).then(([{ columns: cols }, { profiles: users }]) => {
+      getRequestsData({ data: {} }),
+    ]).then(([{ columns: cols }, { profiles: users }, { requests: reqs }]) => {
       setColumns(cols);
       setAvailableUsers(users);
+      setTopLevelRequests(reqs.filter((r) => !r.parent_request_id));
       const firstCol = cols[0];
       if (firstCol?.id) setStatusColumnId(firstCol.id);
       setLoadingInitial(false);
@@ -66,6 +70,7 @@ export function ManualRequestModal({ onClose, onCreated }: ManualRequestModalPro
         priority: priority as any,
         status_column_id: statusColumnId || null,
         assigned_to: assignedTo || null,
+        parent_request_id: parentRequestId || null,
       }});
       toast.success("Solicitud creada exitosamente");
       onCreated();
@@ -165,6 +170,21 @@ export function ManualRequestModal({ onClose, onCreated }: ManualRequestModalPro
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                )}
+                {topLevelRequests.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Vincular a iniciativa</label>
+                    <Select value={parentRequestId || "none"} onValueChange={(v) => setParentRequestId(v === "none" ? null : v)}>
+                      <SelectTrigger><SelectValue placeholder="Sin iniciativa (independiente)" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sin iniciativa (independiente)</SelectItem>
+                        {topLevelRequests.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">Asocia esta solicitud a un trabajo existente para agrupar iniciativas relacionadas.</p>
                   </div>
                 )}
               </form>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2 } from "lucide-react";
+import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2, GitBranch, Link2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { es } from "date-fns/locale";
 import { checkUserPermission } from "@/lib/permissions.functions";
 import {
   getRequestDetails,
+  getRequestsData,
   updateRequest as updateRequestFn,
   deleteRequest as deleteRequestFn,
   copyRequest as copyRequestFn,
@@ -71,6 +72,13 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [canCopyRequest, setCanCopyRequest] = useState(false);
   const [copyingRequest, setCopyingRequest] = useState(false);
   const [canDeleteRequest, setCanDeleteRequest] = useState(false);
+  const [parent, setParent] = useState<RequestRow | null>(null);
+  const [children, setChildren] = useState<RequestRow[]>([]);
+  const [isLinkingParent, setIsLinkingParent] = useState(false);
+  const [linkableRequests, setLinkableRequests] = useState<RequestRow[]>([]);
+  const [loadingLinkable, setLoadingLinkable] = useState(false);
+  const [selectedParentId, setSelectedParentId] = useState("");
+  const [updatingParent, setUpdatingParent] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   const canEdit = isSuperAdmin || isAreaAdmin || hasRole("manager") || hasRole("client");
@@ -78,12 +86,16 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   useEffect(() => {
     if (!requestId) return;
     setLoading(true);
-    getRequestDetails({ data: { requestId } }).then(({ request: req, columns: cols, comments: comms, profiles: prof, availableUsers: users }) => {
+    getRequestDetails({ data: { requestId } }).then(({ request: req, columns: cols, comments: comms, profiles: prof, availableUsers: users, parent: p, children: ch }) => {
       setRequest(req);
       setColumns(cols);
       setComments(comms);
       setProfiles(prof);
       setAvailableUsers(users);
+      setParent(p);
+      setChildren(ch);
+      setIsLinkingParent(false);
+      setSelectedParentId("");
       setLoading(false);
     }).catch((err) => {
       toast.error("Error al cargar la solicitud: " + err?.message);
@@ -165,6 +177,46 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       .then(({ hasPermission }) => setCanEditCreatedAt(hasPermission))
       .catch(() => setCanEditCreatedAt(false));
   }, [user]);
+
+  const loadLinkableRequests = async () => {
+    if (!request) return;
+    setIsLinkingParent(true);
+    setLoadingLinkable(true);
+    try {
+      const { requests: all } = await getRequestsData({ data: {} });
+      setLinkableRequests(all.filter((r) => r.id !== request.id && !r.parent_request_id));
+    } catch {}
+    setLoadingLinkable(false);
+  };
+
+  const linkParent = async () => {
+    if (!request || !selectedParentId) return;
+    setUpdatingParent(true);
+    try {
+      await updateRequestFn({ data: { requestId: request.id, parent_request_id: selectedParentId } });
+      const found = linkableRequests.find((r) => r.id === selectedParentId) ?? null;
+      setParent(found);
+      setRequest((r) => r ? { ...r, parent_request_id: selectedParentId } : r);
+      setIsLinkingParent(false);
+      setSelectedParentId("");
+      onUpdated?.();
+      toast.success("Solicitud vinculada a la iniciativa");
+    } catch (err: any) { toast.error(err?.message); }
+    setUpdatingParent(false);
+  };
+
+  const unlinkParent = async () => {
+    if (!request) return;
+    setUpdatingParent(true);
+    try {
+      await updateRequestFn({ data: { requestId: request.id, parent_request_id: null } });
+      setParent(null);
+      setRequest((r) => r ? { ...r, parent_request_id: null } : r);
+      onUpdated?.();
+      toast.success("Iniciativa desvinculada");
+    } catch (err: any) { toast.error(err?.message); }
+    setUpdatingParent(false);
+  };
 
   const updateCreatedAt = async (value: string) => {
     if (!request || !value) return;
@@ -505,6 +557,57 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 </>
               )}
 
+              {/* Related requests (children) */}
+              {children.length > 0 && (() => {
+                const completedCount = children.filter((c) => c.completed_at !== null).length;
+                const percent = Math.round((completedCount / children.length) * 100);
+                const statusBreakdown = columns
+                  .map((col) => ({ ...col, count: children.filter((c) => c.status_column_id === col.id).length }))
+                  .filter((c) => c.count > 0);
+                return (
+                  <div className="border border-border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <GitBranch className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Solicitudes relacionadas ({children.length})</span>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                        <span>{completedCount} de {children.length} completadas</span>
+                        <span>{percent}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-1.5">
+                        <div className="bg-primary h-1.5 rounded-full transition-all" style={{ width: `${percent}%` }} />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1">
+                      {statusBreakdown.map((s) => (
+                        <span key={s.id} className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <span className="h-2 w-2 rounded-full shrink-0" style={{ background: s.color }} />
+                          {s.name} ({s.count})
+                        </span>
+                      ))}
+                    </div>
+                    <div className="space-y-1.5">
+                      {children.map((child) => {
+                        const childCol = columns.find((c) => c.id === child.status_column_id);
+                        return (
+                          <div key={child.id} className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-muted/50 text-xs">
+                            <span className="flex-1 font-medium truncate">{child.title}</span>
+                            <Badge className={cn("text-[10px] px-1.5 py-0 shrink-0", PRIORITY_CLASS[child.priority])}>{child.priority}</Badge>
+                            {childCol && (
+                              <span className="flex items-center gap-1 text-muted-foreground shrink-0">
+                                <span className="h-1.5 w-1.5 rounded-full" style={{ background: childCol.color }} />
+                                {childCol.name}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Comments */}
               <div className="mt-6">
                 <div className="flex items-center gap-2 mb-3">
@@ -593,6 +696,52 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
           <div className="w-56 shrink-0 min-h-0 overflow-y-auto px-4 py-4 space-y-5">
             {request && (
               <>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Iniciativa</p>
+                  {parent ? (
+                    <div className="flex items-start gap-1.5">
+                      <GitBranch className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                      <span className="text-xs flex-1 leading-tight">{parent.title}</span>
+                      {canEditRequest && (
+                        <button onClick={unlinkParent} disabled={updatingParent} className="text-muted-foreground hover:text-destructive shrink-0" title="Desvincular">
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  ) : isLinkingParent ? (
+                    <div className="space-y-1.5">
+                      <Select value={selectedParentId} onValueChange={setSelectedParentId}>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Seleccionar iniciativa..." /></SelectTrigger>
+                        <SelectContent>
+                          {loadingLinkable ? (
+                            <div className="p-2 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                          ) : linkableRequests.length === 0 ? (
+                            <div className="p-2 text-xs text-muted-foreground">Sin iniciativas disponibles</div>
+                          ) : (
+                            linkableRequests.map((r) => (
+                              <SelectItem key={r.id} value={r.id} className="text-xs">{r.title}</SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-1">
+                        <Button size="sm" className="h-6 text-xs flex-1" onClick={linkParent} disabled={!selectedParentId || updatingParent}>
+                          {updatingParent ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
+                          Vincular
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setIsLinkingParent(false)}>Cancelar</Button>
+                      </div>
+                    </div>
+                  ) : canEditRequest ? (
+                    <button onClick={loadLinkableRequests} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                      <Link2 className="h-3 w-3" />
+                      Vincular a iniciativa
+                    </button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">Sin iniciativa</p>
+                  )}
+                </div>
+
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Asignado a</p>
                   {canEdit ? (

@@ -125,6 +125,8 @@ async function _run() {
     CREATE INDEX IF NOT EXISTS idx_requests_area         ON public.requests(area_id);
     CREATE INDEX IF NOT EXISTS idx_requests_expires_at   ON public.requests(expires_at);
     CREATE INDEX IF NOT EXISTS idx_requests_completed_at ON public.requests(completed_at);
+    ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS parent_request_id UUID REFERENCES public.requests(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS idx_requests_parent ON public.requests(parent_request_id);
     DROP TRIGGER IF EXISTS trg_requests_updated_at ON public.requests;
     CREATE TRIGGER trg_requests_updated_at
       BEFORE UPDATE ON public.requests
