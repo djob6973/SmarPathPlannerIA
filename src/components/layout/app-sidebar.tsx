@@ -141,8 +141,10 @@ function IconChevronRight() {
 // ─── Dataico anagram mark ─────────────────────────────────────────────────────
 
 function DataicoMark({ size = 24 }: { size?: number }) {
+  // viewBox is 46×55 — preserve aspect ratio: width = size * (46/55)
+  const w = Math.round(size * (46 / 55));
   return (
-    <svg viewBox="0 0 46 55" width={size} height={size} fill="currentColor">
+    <svg viewBox="0 0 46 55" width={w} height={size} fill="currentColor">
       <path d="M46 28.003 35.958 18 29.61 24.34l7.153 7.152c2.07 2.14 2.05 5.549-.063 7.663Z" />
       <path d="M45.985 35.27 39.455 41.8l-3.885-3.887 6.531-6.531c2.147 2.148 2.147 5.626-.116 7.888Z" />
       <path d="M33.82 28.003 23.777 18l-6.348 6.34 7.153 7.152c2.07 2.14 2.05 5.549-.063 7.663Z" />
@@ -244,7 +246,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
       {/* ── Logo ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 11, paddingLeft: 8, marginBottom: 24 }}>
         <span style={{ color: "#ED5650", display: "flex", flexShrink: 0 }}>
-          <DataicoMark size={26} />
+          <DataicoMark size={30} />
         </span>
         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
           <span style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 17, color: "var(--sb-text)", letterSpacing: "-0.01em" }}>
