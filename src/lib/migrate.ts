@@ -204,6 +204,22 @@ async function _run() {
     CREATE TRIGGER trg_ai_settings_updated_at
       BEFORE UPDATE ON public.ai_settings
       FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+    CREATE TABLE IF NOT EXISTS public.request_deliverables (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      request_id   UUID NOT NULL REFERENCES public.requests(id) ON DELETE CASCADE,
+      title        TEXT NOT NULL,
+      notes        TEXT,
+      delivered_at TIMESTAMPTZ,
+      created_by   UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_deliverables_request ON public.request_deliverables(request_id);
+    DROP TRIGGER IF EXISTS trg_deliverables_updated_at ON public.request_deliverables;
+    CREATE TRIGGER trg_deliverables_updated_at
+      BEFORE UPDATE ON public.request_deliverables
+      FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
   `);
 
   // ── Seeds (idempotent via ON CONFLICT) ─────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2, GitBranch, Link2 } from "lucide-react";
+import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2, GitBranch, Link2, PackageCheck, Plus, CheckCircle2, Circle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,14 @@ import {
   addComment as addCommentFn,
   updateComment as updateCommentFn,
   deleteComment as deleteCommentFn,
+  addDeliverable as addDeliverableFn,
+  toggleDeliverable as toggleDeliverableFn,
+  deleteDeliverable as deleteDeliverableFn,
   type RequestRow,
   type ColumnRow,
   type CommentRow,
   type ProfileRow,
+  type DeliverableRow,
 } from "@/lib/requests.functions";
 
 const PRIORITY_CLASS: Record<string, string> = {
@@ -75,6 +79,12 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [canDeleteRequest, setCanDeleteRequest] = useState(false);
   const [parent, setParent] = useState<RequestRow | null>(null);
   const [children, setChildren] = useState<RequestRow[]>([]);
+  const [deliverables, setDeliverables] = useState<DeliverableRow[]>([]);
+  const [newDeliverableTitle, setNewDeliverableTitle] = useState("");
+  const [newDeliverableNotes, setNewDeliverableNotes] = useState("");
+  const [showAddDeliverable, setShowAddDeliverable] = useState(false);
+  const [addingDeliverable, setAddingDeliverable] = useState(false);
+  const [togglingDeliverableId, setTogglingDeliverableId] = useState<string | null>(null);
   const [isLinkingParent, setIsLinkingParent] = useState(false);
   const [linkableRequests, setLinkableRequests] = useState<RequestRow[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
@@ -87,7 +97,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   useEffect(() => {
     if (!requestId) return;
     setLoading(true);
-    getRequestDetails({ data: { requestId } }).then(({ request: req, columns: cols, comments: comms, profiles: prof, availableUsers: users, parent: p, children: ch }) => {
+    getRequestDetails({ data: { requestId } }).then(({ request: req, columns: cols, comments: comms, profiles: prof, availableUsers: users, parent: p, children: ch, deliverables: del }) => {
       setRequest(req);
       setColumns(cols);
       setComments(comms);
@@ -95,8 +105,12 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       setAvailableUsers(users);
       setParent(p);
       setChildren(ch);
+      setDeliverables(del);
       setIsLinkingParent(false);
       setSelectedParentId("");
+      setShowAddDeliverable(false);
+      setNewDeliverableTitle("");
+      setNewDeliverableNotes("");
       setLoading(false);
     }).catch((err) => {
       toast.error("Error al cargar la solicitud: " + err?.message);
@@ -361,6 +375,36 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
     setCopyingRequest(false);
   };
 
+  const submitDeliverable = async () => {
+    if (!newDeliverableTitle.trim() || !requestId) return;
+    setAddingDeliverable(true);
+    try {
+      const { deliverable } = await addDeliverableFn({ data: { requestId, title: newDeliverableTitle.trim(), notes: newDeliverableNotes.trim() || null } });
+      setDeliverables((d) => [...d, deliverable]);
+      setNewDeliverableTitle("");
+      setNewDeliverableNotes("");
+      setShowAddDeliverable(false);
+    } catch (err: any) { toast.error(err?.message); }
+    setAddingDeliverable(false);
+  };
+
+  const handleToggleDeliverable = async (deliverable: DeliverableRow) => {
+    setTogglingDeliverableId(deliverable.id);
+    try {
+      const { delivered_at } = await toggleDeliverableFn({ data: { deliverableId: deliverable.id, delivered: !deliverable.delivered_at } });
+      setDeliverables((d) => d.map((item) => item.id === deliverable.id ? { ...item, delivered_at } : item));
+    } catch (err: any) { toast.error(err?.message); }
+    setTogglingDeliverableId(null);
+  };
+
+  const handleDeleteDeliverable = async (deliverableId: string) => {
+    if (!confirm("¿Eliminar este entregable?")) return;
+    try {
+      await deleteDeliverableFn({ data: { deliverableId } });
+      setDeliverables((d) => d.filter((item) => item.id !== deliverableId));
+    } catch (err: any) { toast.error(err?.message); }
+  };
+
   const sendComment = async () => {
     if (!newComment.trim() || !requestId) return;
     setSending(true);
@@ -608,6 +652,111 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: childCol.color }} />
                                 {childCol.name}
                               </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Deliverables */}
+              {(deliverables.length > 0 || canEditRequest) && (() => {
+                const deliveredCount = deliverables.filter((d) => d.delivered_at !== null).length;
+                const total = deliverables.length;
+                const percent = total > 0 ? Math.round((deliveredCount / total) * 100) : 0;
+                return (
+                  <div className="border border-border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <PackageCheck className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Entregables ({total})</span>
+                      </div>
+                      {canEditRequest && (
+                        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setShowAddDeliverable((v) => !v)}>
+                          <Plus className="h-3 w-3" />
+                          Agregar
+                        </Button>
+                      )}
+                    </div>
+
+                    {total > 0 && (
+                      <div>
+                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                          <span>{deliveredCount} de {total} entregados</span>
+                          <span>{percent}%</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-1.5">
+                          <div className="bg-emerald-500 h-1.5 rounded-full transition-all" style={{ width: `${percent}%` }} />
+                        </div>
+                      </div>
+                    )}
+
+                    {showAddDeliverable && (
+                      <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/30">
+                        <Input
+                          placeholder="Nombre del entregable..."
+                          value={newDeliverableTitle}
+                          onChange={(e) => setNewDeliverableTitle(e.target.value)}
+                          className="text-sm h-8"
+                          disabled={addingDeliverable}
+                          onKeyDown={(e) => { if (e.key === "Enter") submitDeliverable(); }}
+                        />
+                        <Input
+                          placeholder="Notas o enlace (opcional)..."
+                          value={newDeliverableNotes}
+                          onChange={(e) => setNewDeliverableNotes(e.target.value)}
+                          className="text-sm h-8"
+                          disabled={addingDeliverable}
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" className="h-7 text-xs flex-1" onClick={submitDeliverable} disabled={addingDeliverable || !newDeliverableTitle.trim()}>
+                            {addingDeliverable ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
+                            Guardar
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setShowAddDeliverable(false); setNewDeliverableTitle(""); setNewDeliverableNotes(""); }}>
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {total === 0 && !showAddDeliverable && (
+                      <p className="text-xs text-muted-foreground italic">Sin entregables registrados.</p>
+                    )}
+
+                    <div className="space-y-1.5">
+                      {deliverables.map((item) => {
+                        const isDelivered = item.delivered_at !== null;
+                        const isToggling = togglingDeliverableId === item.id;
+                        return (
+                          <div key={item.id} className={cn("flex items-start gap-2 px-2.5 py-2 rounded-lg text-xs transition-colors", isDelivered ? "bg-emerald-500/10" : "bg-muted/50")}>
+                            <button
+                              onClick={() => handleToggleDeliverable(item)}
+                              disabled={!canEditRequest || isToggling}
+                              className="shrink-0 mt-0.5 text-muted-foreground hover:text-emerald-500 disabled:opacity-50 transition-colors"
+                            >
+                              {isToggling
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : isDelivered
+                                  ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                  : <Circle className="h-4 w-4" />
+                              }
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <span className={cn("font-medium", isDelivered && "line-through text-muted-foreground")}>{item.title}</span>
+                              {item.notes && <p className="text-muted-foreground truncate mt-0.5">{item.notes}</p>}
+                              {isDelivered && item.delivered_at && (
+                                <p className="text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                  Entregado {formatDistanceToNow(new Date(item.delivered_at), { addSuffix: true, locale: es })}
+                                </p>
+                              )}
+                            </div>
+                            {canEditRequest && (
+                              <button onClick={() => handleDeleteDeliverable(item.id)} className="shrink-0 text-muted-foreground hover:text-destructive transition-colors">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
                             )}
                           </div>
                         );

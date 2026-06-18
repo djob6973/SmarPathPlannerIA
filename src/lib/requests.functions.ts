@@ -15,6 +15,10 @@ export type RequestRow = {
 export type ColumnRow = { id: string; name: string; position: number; color: string; is_completed: boolean; area_id: string | null };
 export type CommentRow = { id: string; request_id: string; user_id: string; content: string; created_at: string; updated_at: string };
 export type ProfileRow = { id: string; full_name: string | null; email: string };
+export type DeliverableRow = {
+  id: string; request_id: string; title: string; notes: string | null;
+  delivered_at: string | null; created_by: string; created_at: string; updated_at: string;
+};
 
 // ── Board / list data ──────────────────────────────────────────────────────────
 export const getRequestsData = createServerFn({ method: "GET" })
@@ -50,11 +54,12 @@ export const getRequestDetails = createServerFn({ method: "GET" })
     if ("error" in auth) throw new Error(auth.error);
     const { db } = auth;
 
-    const [requests, columns, comments, children] = await Promise.all([
+    const [requests, columns, comments, children, deliverables] = await Promise.all([
       db<RequestRow[]>`SELECT * FROM requests WHERE id = ${data.requestId}`,
       db<ColumnRow[]>`SELECT id, name, color, position, is_completed FROM kanban_columns ORDER BY position`,
       db<CommentRow[]>`SELECT * FROM comments WHERE request_id = ${data.requestId} ORDER BY created_at`,
       db<RequestRow[]>`SELECT * FROM requests WHERE parent_request_id = ${data.requestId} ORDER BY created_at`,
+      db<DeliverableRow[]>`SELECT * FROM request_deliverables WHERE request_id = ${data.requestId} ORDER BY created_at`,
     ]);
 
     const request = requests[0] ?? null;
@@ -86,7 +91,7 @@ export const getRequestDetails = createServerFn({ method: "GET" })
       SELECT id, full_name, email FROM profiles ORDER BY full_name
     `;
 
-    return { request, columns, comments, profiles: profileMap, availableUsers: allUsers, parent, children };
+    return { request, columns, comments, profiles: profileMap, availableUsers: allUsers, parent, children, deliverables };
   });
 
 // ── Create request ─────────────────────────────────────────────────────────────
@@ -385,5 +390,52 @@ export const deleteComment = createServerFn({ method: "POST" })
           WHERE user_id = ${userId} AND role IN ('super_admin','area_admin','manager')
         ))
     `;
+    return { ok: true };
+  });
+
+// ── Deliverables ───────────────────────────────────────────────────────────────
+export const addDeliverable = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z.object({
+      requestId: z.string().uuid(),
+      title: z.string().min(1),
+      notes: z.string().nullable().optional(),
+    }).parse(input)
+  )
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    const { db, userId } = auth;
+    const rows = await db<DeliverableRow[]>`
+      INSERT INTO request_deliverables (request_id, title, notes, created_by)
+      VALUES (${data.requestId}, ${data.title}, ${data.notes ?? null}, ${userId})
+      RETURNING *
+    `;
+    return { deliverable: rows[0] };
+  });
+
+export const toggleDeliverable = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z.object({
+      deliverableId: z.string().uuid(),
+      delivered: z.boolean(),
+    }).parse(input)
+  )
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    const { db } = auth;
+    const deliveredAt = data.delivered ? new Date().toISOString() : null;
+    await db`UPDATE request_deliverables SET delivered_at = ${deliveredAt} WHERE id = ${data.deliverableId}`;
+    return { ok: true, delivered_at: deliveredAt };
+  });
+
+export const deleteDeliverable = createServerFn({ method: "POST" })
+  .inputValidator((input: { deliverableId: string }) => input)
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    const { db } = auth;
+    await db`DELETE FROM request_deliverables WHERE id = ${data.deliverableId}`;
     return { ok: true };
   });
