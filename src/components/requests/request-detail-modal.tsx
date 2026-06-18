@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2, GitBranch, Link2, PackageCheck, Plus, CheckCircle2, Circle } from "lucide-react";
+import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2, GitBranch, Link2, PackageCheck, Plus, CheckCircle2, Circle, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,13 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [showAddDeliverable, setShowAddDeliverable] = useState(false);
   const [addingDeliverable, setAddingDeliverable] = useState(false);
   const [togglingDeliverableId, setTogglingDeliverableId] = useState<string | null>(null);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  const toggleNotes = (id: string) => setExpandedNotes((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const [isLinkingParent, setIsLinkingParent] = useState(false);
   const [linkableRequests, setLinkableRequests] = useState<RequestRow[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
@@ -703,12 +710,17 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                           disabled={addingDeliverable}
                           onKeyDown={(e) => { if (e.key === "Enter") submitDeliverable(); }}
                         />
-                        <Input
+                        <Textarea
                           placeholder="Notas o enlace (opcional)..."
                           value={newDeliverableNotes}
-                          onChange={(e) => setNewDeliverableNotes(e.target.value)}
-                          className="text-sm h-8"
+                          onChange={(e) => {
+                            setNewDeliverableNotes(e.target.value);
+                            e.target.style.height = "auto";
+                            e.target.style.height = `${e.target.scrollHeight}px`;
+                          }}
+                          className="text-sm min-h-[60px] resize-none overflow-hidden leading-relaxed"
                           disabled={addingDeliverable}
+                          rows={2}
                         />
                         <div className="flex gap-2">
                           <Button size="sm" className="h-7 text-xs flex-1" onClick={submitDeliverable} disabled={addingDeliverable || !newDeliverableTitle.trim()}>
@@ -745,8 +757,24 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                               }
                             </button>
                             <div className="flex-1 min-w-0">
-                              <span className={cn("font-medium", isDelivered && "line-through text-muted-foreground")}>{item.title}</span>
-                              {item.notes && <p className="text-muted-foreground truncate mt-0.5">{item.notes}</p>}
+                              <div className="flex items-center gap-1.5">
+                                <span className={cn("font-medium leading-snug", isDelivered && "line-through text-muted-foreground")}>{item.title}</span>
+                                {item.notes && (
+                                  <button
+                                    onClick={() => toggleNotes(item.id)}
+                                    className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                                    title={expandedNotes.has(item.id) ? "Ocultar notas" : "Ver notas"}
+                                  >
+                                    {expandedNotes.has(item.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                  </button>
+                                )}
+                              </div>
+                              <div className={cn(
+                                "overflow-hidden transition-all duration-300 ease-in-out",
+                                expandedNotes.has(item.id) ? "max-h-96 opacity-100 mt-1.5" : "max-h-0 opacity-0"
+                              )}>
+                                <p className="text-muted-foreground whitespace-pre-wrap text-[11px] leading-relaxed">{item.notes}</p>
+                              </div>
                               {isDelivered && item.delivered_at && (
                                 <p className="text-emerald-600 dark:text-emerald-400 mt-0.5">
                                   Entregado {formatDistanceToNow(new Date(item.delivered_at), { addSuffix: true, locale: es })}
