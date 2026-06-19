@@ -12,7 +12,7 @@ export const Route = createFileRoute("/app/analytics")({
   component: AnalyticsPage,
 });
 
-type Request = Pick<RequestRow, "id" | "priority" | "status_column_id" | "created_at" | "updated_at">;
+type Request = Pick<RequestRow, "id" | "priority" | "status_column_id" | "created_at" | "updated_at" | "completed_at">;
 type Column  = Pick<ColumnRow,  "id" | "name" | "color" | "is_completed">;
 
 const CORAL = "#ED5650";
@@ -108,7 +108,7 @@ function AnalyticsPage() {
   };
 
   const availableYears = Array.from(
-    new Set(completedRequests.map(r => new Date(r.updated_at).getFullYear()))
+    new Set(completedRequests.map(r => new Date(r.completed_at ?? r.updated_at).getFullYear()))
   ).sort((a, b) => b - a);
   if (!availableYears.includes(new Date().getFullYear())) availableYears.unshift(new Date().getFullYear());
 
@@ -120,7 +120,7 @@ function AnalyticsPage() {
       return Array.from({ length: Math.min(totalWeeks, 26) }, (_, i) => ({
         name: `S${i + 1}`,
         completadas: completedRequests.filter(r => {
-          const rd = new Date(r.updated_at);
+          const rd = new Date(r.completed_at ?? r.updated_at);
           return rd.getFullYear() === selectedYear && isoWeek(rd) === i + 1;
         }).length,
       }));
@@ -130,7 +130,7 @@ function AnalyticsPage() {
       return months.map((name, i) => ({
         name,
         completadas: completedRequests.filter(r => {
-          const rd = new Date(r.updated_at);
+          const rd = new Date(r.completed_at ?? r.updated_at);
           return rd.getFullYear() === selectedYear && rd.getMonth() === i;
         }).length,
       }));
@@ -138,7 +138,7 @@ function AnalyticsPage() {
     return ["Q1", "Q2", "Q3", "Q4"].map((name, i) => ({
       name,
       completadas: completedRequests.filter(r => {
-        const rd = new Date(r.updated_at);
+        const rd = new Date(r.completed_at ?? r.updated_at);
         return rd.getFullYear() === selectedYear && Math.floor(rd.getMonth() / 3) === i;
       }).length,
     }));

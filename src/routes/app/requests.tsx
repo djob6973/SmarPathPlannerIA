@@ -6,7 +6,7 @@ import { getAreas } from "@/lib/data.functions";
 import { RequestDetailModal } from "@/components/requests/request-detail-modal";
 import { ManualRequestModal } from "@/components/requests/manual-request-modal";
 import { toast } from "sonner";
-import { Search, MessageSquare, Trash2, ExternalLink, Plus } from "lucide-react";
+import { Search, MessageSquare, Trash2, ExternalLink, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -23,6 +23,7 @@ const priStyle: Record<string, React.CSSProperties> = {
 };
 
 const PRIORITIES = ["urgent", "high", "medium", "low"];
+const PAGE_SIZES = [10, 20, 50];
 
 const GRID = "1fr 150px 110px 130px 56px";
 
@@ -38,6 +39,8 @@ function RequestsPage() {
   const [showManual, setShowManual]         = useState(false);
   const [selectedArea, setSelectedArea]     = useState<string | null>(null);
   const [areas, setAreas]                   = useState<{ id: string; name: string }[]>([]);
+  const [page, setPage]                     = useState(1);
+  const [pageSize, setPageSize]             = useState(20);
 
   const canDeleteAll = hasPermission("delete_all_requests");
   const canDeleteOwn = hasPermission("delete_own_requests");
@@ -68,6 +71,20 @@ function RequestsPage() {
     [requests, search, filterPriority, filterStatus]
   );
 
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1); }, [search, filterPriority, filterStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage   = Math.min(page, totalPages);
+
+  const paginated = useMemo(() =>
+    filtered.slice((safePage - 1) * pageSize, safePage * pageSize),
+    [filtered, safePage, pageSize]
+  );
+
+  const firstItem = filtered.length === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const lastItem  = Math.min(safePage * pageSize, filtered.length);
+
   const colMap = useMemo(() => Object.fromEntries(columns.map((c) => [c.id, c])), [columns]);
 
   const remove = async (id: string, e: React.MouseEvent) => {
@@ -97,7 +114,9 @@ function RequestsPage() {
             Solicitudes
           </h1>
           <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 4 }}>
-            {filtered.length} de {requests.length} solicitudes
+            {filtered.length === requests.length
+              ? `${requests.length} solicitudes`
+              : `${filtered.length} de ${requests.length} solicitudes`}
           </p>
         </div>
 
@@ -191,7 +210,7 @@ function RequestsPage() {
               : "Sin solicitudes aún. Usa el Chat IA para crear una."}
           </div>
         ) : (
-          filtered.map((r, idx) => {
+          paginated.map((r, idx) => {
             const col    = r.status_column_id ? colMap[r.status_column_id] : null;
             const canDel = canDeleteAll || (canDeleteOwn && r.created_by === user?.id);
 
@@ -203,7 +222,7 @@ function RequestsPage() {
                 style={{
                   display: "grid", gridTemplateColumns: GRID,
                   padding: "14px 20px",
-                  borderBottom: idx < filtered.length - 1 ? "1px solid var(--border)" : "none",
+                  borderBottom: idx < paginated.length - 1 ? "1px solid var(--border)" : "none",
                   alignItems: "center",
                   cursor: "pointer",
                   transition: "background 120ms",
@@ -293,6 +312,80 @@ function RequestsPage() {
         )}
       </div>
 
+      {/* ── Pagination ── */}
+      {!loading && filtered.length > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginTop: 16, flexWrap: "wrap", gap: 12,
+        }}>
+          {/* Left: rows per page + range info */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--muted-foreground)" }}>
+            <span>Filas por página:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              style={pageSizeSelectStyle}
+            >
+              {PAGE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <span style={{ marginLeft: 4 }}>
+              {firstItem}–{lastItem} de {filtered.length}
+            </span>
+          </div>
+
+          {/* Right: page navigation */}
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <button
+              onClick={() => setPage(1)}
+              disabled={safePage === 1}
+              style={pageNavBtn(safePage === 1)}
+              title="Primera página"
+            >
+              <ChevronsLeft size={14} />
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={safePage === 1}
+              style={pageNavBtn(safePage === 1)}
+              title="Página anterior"
+            >
+              <ChevronLeft size={14} />
+            </button>
+
+            {getPageNumbers(safePage, totalPages).map((p, i) =>
+              p === "..." ? (
+                <span key={`e${i}`} style={{ padding: "0 6px", color: "var(--muted-foreground)", fontSize: 13 }}>…</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p as number)}
+                  style={pageNumBtn(p === safePage)}
+                >
+                  {p}
+                </button>
+              )
+            )}
+
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={safePage === totalPages}
+              style={pageNavBtn(safePage === totalPages)}
+              title="Página siguiente"
+            >
+              <ChevronRight size={14} />
+            </button>
+            <button
+              onClick={() => setPage(totalPages)}
+              disabled={safePage === totalPages}
+              style={pageNavBtn(safePage === totalPages)}
+              title="Última página"
+            >
+              <ChevronsRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <RequestDetailModal
         requestId={selectedId}
         onClose={() => setSelectedId(null)}
@@ -307,6 +400,23 @@ function RequestsPage() {
       )}
     </div>
   );
+}
+
+function getPageNumbers(current: number, total: number): (number | "...")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const pages: (number | "...")[] = [1];
+
+  if (current > 3) pages.push("...");
+
+  const start = Math.max(2, current - 1);
+  const end   = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+
+  if (current < total - 2) pages.push("...");
+  pages.push(total);
+
+  return pages;
 }
 
 function SkeletonRows() {
@@ -380,6 +490,44 @@ const iconBtnStyle: React.CSSProperties = {
   alignItems: "center", justifyContent: "center",
   color: "var(--muted-foreground)",
 };
+
+const pageSizeSelectStyle: React.CSSProperties = {
+  height: 32, padding: "0 10px",
+  borderRadius: "var(--r-md, 10px)",
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  fontSize: 13,
+  cursor: "pointer", outline: "none",
+};
+
+function pageNavBtn(disabled: boolean): React.CSSProperties {
+  return {
+    width: 32, height: 32, borderRadius: 8,
+    border: "1px solid var(--border)",
+    background: "var(--card)",
+    color: disabled ? "var(--muted-foreground)" : "var(--foreground)",
+    cursor: disabled ? "not-allowed" : "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    opacity: disabled ? 0.45 : 1,
+    transition: "background 120ms",
+  };
+}
+
+function pageNumBtn(active: boolean): React.CSSProperties {
+  return {
+    minWidth: 32, height: 32,
+    padding: "0 6px",
+    borderRadius: 8,
+    border: active ? "1px solid #ED5650" : "1px solid var(--border)",
+    background: active ? "#ED5650" : "var(--card)",
+    color: active ? "white" : "var(--foreground)",
+    fontSize: 13, fontWeight: active ? 600 : 400,
+    cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    transition: "background 120ms",
+  };
+}
 
 function skBar(w: number | string): React.CSSProperties {
   return {
