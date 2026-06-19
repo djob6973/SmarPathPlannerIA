@@ -6,18 +6,27 @@ import { getAreas } from "@/lib/data.functions";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
-import { TrendingUp, CheckCircle2, Clock, Kanban } from "lucide-react";
+import { TrendingUp, CheckCircle2, Clock, Kanban, GitBranch, Link2 } from "lucide-react";
 
 export const Route = createFileRoute("/app/analytics")({
   component: AnalyticsPage,
 });
 
-type Request = Pick<RequestRow, "id" | "priority" | "status_column_id" | "created_at" | "updated_at" | "completed_at">;
+type Request = Pick<RequestRow, "id" | "title" | "priority" | "status_column_id" | "created_at" | "updated_at" | "completed_at" | "parent_request_id">;
 type Column  = Pick<ColumnRow,  "id" | "name" | "color" | "is_completed">;
 
-const CORAL = "#ED5650";
-const GREEN = "#9DDD05";
+const CORAL      = "#ED5650";
+const GREEN      = "#9DDD05";
 const GREEN_TEXT = "#7AAE1B";
+const INDIGO     = "#6366F1";
+const INDIGO_BG  = "rgba(99,102,241,.12)";
+
+const priStyle: Record<string, React.CSSProperties> = {
+  urgent: { background: "rgba(239,68,68,.12)",  color: "#ef4444", border: "1px solid rgba(239,68,68,.25)"  },
+  high:   { background: "rgba(249,115,22,.12)", color: "#f97316", border: "1px solid rgba(249,115,22,.25)" },
+  medium: { background: "rgba(234,179,8,.12)",  color: "#ca8a04", border: "1px solid rgba(234,179,8,.25)"  },
+  low:    { background: "rgba(100,116,139,.12)", color: "#64748b", border: "1px solid rgba(100,116,139,.25)"},
+};
 
 const PRIORITY_COLORS: Record<string, string> = {
   urgent: "#EF4444", high: "#F97316", medium: "#EAB308", low: "#6366F1",
@@ -155,6 +164,27 @@ function AnalyticsPage() {
     };
   });
   const maxAct = Math.max(...activityData.map(d => d.count), 1);
+
+  /* ── Initiatives ── */
+  const initiatives    = requests.filter(r => r.parent_request_id === null);
+  const linkedReqs     = requests.filter(r => r.parent_request_id !== null);
+
+  const initCompleted  = initiatives.filter(r => r.status_column_id && completedIds.has(r.status_column_id)).length;
+  const initInProgress = initiatives.filter(r => r.status_column_id && !completedIds.has(r.status_column_id)).length;
+  const initPending    = initiatives.filter(r => !r.status_column_id).length;
+  const initRate       = initiatives.length > 0 ? Math.round((initCompleted / initiatives.length) * 100) : 0;
+
+  const initiativesWithProgress = initiatives
+    .map(init => {
+      const children         = linkedReqs.filter(r => r.parent_request_id === init.id);
+      const completedChildren = children.filter(r => r.status_column_id && completedIds.has(r.status_column_id));
+      const progressPct      = children.length > 0
+        ? Math.round((completedChildren.length / children.length) * 100)
+        : null;
+      const col = init.status_column_id ? columns.find(c => c.id === init.status_column_id) ?? null : null;
+      return { ...init, childCount: children.length, completedChildCount: completedChildren.length, progressPct, col };
+    })
+    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
   return (
     <div style={{ padding: "36px 40px 64px", maxWidth: 1180, margin: "0 auto", animation: "spIn .35s ease both" }}>
@@ -348,7 +378,7 @@ function AnalyticsPage() {
       </div>
 
       {/* ── Actividad — últimos 7 días ── */}
-      <div style={card}>
+      <div style={{ ...card, marginBottom: 20 }}>
         <h3 style={ctitle}>Actividad — últimos 7 días</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {activityData.map((d, i) => (
@@ -374,6 +404,155 @@ function AnalyticsPage() {
           ))}
         </div>
       </div>
+
+      {/* ══ Iniciativas principales ══════════════════════════════════════════ */}
+
+      {/* Section divider */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
+        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "6px 14px", borderRadius: 99,
+          border: "1px solid var(--border)",
+          background: "var(--card)",
+        }}>
+          <GitBranch size={13} color={INDIGO} />
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".07em", color: "var(--muted-foreground)", textTransform: "uppercase" as const }}>
+            Iniciativas principales
+          </span>
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            background: INDIGO_BG, color: INDIGO,
+            borderRadius: 99, padding: "1px 7px",
+          }}>
+            {initiatives.length}
+          </span>
+        </div>
+        <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+      </div>
+
+      {initiatives.length === 0 ? (
+        <div style={{ ...card, textAlign: "center" as const, padding: "40px 24px", color: "var(--muted-foreground)", fontSize: 13 }}>
+          No hay iniciativas todavía. Toda solicitud sin padre es una iniciativa principal.
+        </div>
+      ) : (
+        <>
+          {/* KPI cards — iniciativas */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, marginBottom: 20 }}>
+            {[
+              { label: "Total iniciativas", value: initiatives.length,  icon: <GitBranch size={18} color={INDIGO} />,                        iconBg: INDIGO_BG   },
+              { label: "En progreso",        value: initInProgress,      icon: <TrendingUp size={18} color="var(--muted-foreground)" />,       iconBg: "var(--muted)" },
+              { label: "Pendientes",          value: initPending,         icon: <Clock size={18} color="var(--muted-foreground)" />,            iconBg: "var(--muted)" },
+              { label: "Completadas",         value: initCompleted,       icon: <CheckCircle2 size={18} color={GREEN_TEXT} />,                  iconBg: "rgba(157,221,5,.15)" },
+            ].map(k => (
+              <div key={k.label} style={card}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", margin: 0 }}>{k.label}</p>
+                    <p style={{ fontSize: 36, fontWeight: 700, color: "var(--foreground)", margin: "8px 0 0", lineHeight: 1 }}>{k.value}</p>
+                  </div>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: "var(--r-md, 10px)",
+                    background: k.iconBg,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  }}>
+                    {k.icon}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tasa de completado — iniciativas */}
+          <div style={{ ...card, marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Tasa de completado</p>
+                <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "4px 0 0" }}>
+                  {initCompleted} de {initiatives.length} iniciativas completadas
+                </p>
+              </div>
+              <span style={{ fontSize: 28, fontWeight: 700, color: INDIGO }}>{initRate}%</span>
+            </div>
+            <div style={{ height: 8, borderRadius: 99, background: "var(--muted)", overflow: "hidden" }}>
+              <div style={{ width: `${initRate}%`, height: "100%", borderRadius: 99, background: INDIGO, transition: "width 700ms" }} />
+            </div>
+          </div>
+
+          {/* Avance por iniciativa */}
+          <div style={card}>
+            <h3 style={ctitle}>Avance por iniciativa</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+              {initiativesWithProgress.map((init, idx) => (
+                <div
+                  key={init.id}
+                  style={{
+                    padding: "14px 0",
+                    borderBottom: idx < initiativesWithProgress.length - 1 ? "1px solid var(--border)" : "none",
+                  }}
+                >
+                  {/* Row top: title + status + priority */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: init.childCount > 0 ? 10 : 0 }}>
+                    {/* Status dot */}
+                    <span style={{
+                      width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+                      background: init.col ? init.col.color : "var(--muted-foreground)",
+                    }} />
+                    {/* Title */}
+                    <span style={{
+                      flex: 1, fontSize: 13, fontWeight: 500, color: "var(--foreground)",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const,
+                    }}>
+                      {init.title}
+                    </span>
+                    {/* Status label */}
+                    {init.col && (
+                      <span style={{ fontSize: 11, color: "var(--muted-foreground)", flexShrink: 0 }}>
+                        {init.col.name}
+                      </span>
+                    )}
+                    {/* Priority pill */}
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99,
+                      flexShrink: 0,
+                      ...(priStyle[init.priority] ?? {}),
+                    }}>
+                      {PRIORITY_LABELS[init.priority] ?? init.priority}
+                    </span>
+                    {/* Child count badge */}
+                    <span style={{
+                      display: "flex", alignItems: "center", gap: 4,
+                      fontSize: 11, color: "var(--muted-foreground)", flexShrink: 0,
+                    }}>
+                      <Link2 size={11} />
+                      {init.childCount > 0
+                        ? `${init.completedChildCount}/${init.childCount}`
+                        : "0 vinculadas"}
+                    </span>
+                    {/* Percentage */}
+                    {init.progressPct !== null && (
+                      <span style={{ fontSize: 12, fontWeight: 700, color: INDIGO, flexShrink: 0, minWidth: 32, textAlign: "right" as const }}>
+                        {init.progressPct}%
+                      </span>
+                    )}
+                  </div>
+                  {/* Progress bar */}
+                  {init.childCount > 0 && (
+                    <div style={{ height: 5, borderRadius: 99, background: "var(--muted)", overflow: "hidden", marginLeft: 18 }}>
+                      <div style={{
+                        width: `${init.progressPct ?? 0}%`,
+                        height: "100%", borderRadius: 99,
+                        background: (init.progressPct ?? 0) === 100 ? GREEN : INDIGO,
+                        transition: "width 600ms",
+                      }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -396,7 +575,15 @@ function Skeleton() {
         ))}
       </div>
       <div style={{ height: 280, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", marginBottom: 20, animation: "pulse 1.5s ease-in-out infinite" }} />
-      <div style={{ height: 200, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", animation: "pulse 1.5s ease-in-out infinite" }} />
+      <div style={{ height: 200, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", marginBottom: 20, animation: "pulse 1.5s ease-in-out infinite" }} />
+      <div style={{ height: 32, width: 260, borderRadius: 99, background: "var(--muted)", margin: "12px auto 20px", animation: "pulse 1.5s ease-in-out infinite" }} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, marginBottom: 20 }}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} style={{ height: 96, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", animation: "pulse 1.5s ease-in-out infinite" }} />
+        ))}
+      </div>
+      <div style={{ height: 64, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", marginBottom: 20, animation: "pulse 1.5s ease-in-out infinite" }} />
+      <div style={{ height: 320, borderRadius: "var(--r-card, 20px)", background: "var(--muted)", animation: "pulse 1.5s ease-in-out infinite" }} />
     </div>
   );
 }
