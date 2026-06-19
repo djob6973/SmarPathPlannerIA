@@ -233,7 +233,7 @@ function KanbanColumn({ col, requests, canEdit, onCardClick, profiles, isBacklog
 // ── BoardPage ─────────────────────────────────────────────────────────────────
 
 function BoardPage() {
-  const { isSuperAdmin, areaId, hasPermission, user } = useAuth();
+  const { isSuperAdmin, areaId, hasPermission } = useAuth();
 
   if (!hasPermission("view_board")) {
     return (
@@ -252,7 +252,7 @@ function BoardPage() {
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [areas, setAreas] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<ProfileMap>(new Map());
-  const [filterAssigned, setFilterAssigned] = useState("all");
+  const [filterAssignedTo, setFilterAssignedTo] = useState("all");
 
   const canEdit = hasPermission("change_request_status") || hasPermission("edit_all_requests") || hasPermission("edit_own_requests");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -337,12 +337,10 @@ function BoardPage() {
   };
 
   const filteredRequests = useMemo(() =>
-    requests.filter((r) => {
-      if (filterAssigned === "assigned_to_me") return r.assigned_to === user?.id;
-      if (filterAssigned === "created_by_me")  return r.created_by  === user?.id;
-      return true;
-    }),
-    [requests, filterAssigned, user?.id]
+    requests.filter((r) =>
+      filterAssignedTo === "all" || r.assigned_to === filterAssignedTo
+    ),
+    [requests, filterAssignedTo]
   );
 
   const activeRequest  = activeId ? filteredRequests.find((r) => r.id === activeId) : null;
@@ -408,21 +406,22 @@ function BoardPage() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <select
-            value={filterAssigned}
-            onChange={(e) => setFilterAssigned(e.target.value)}
+            value={filterAssignedTo}
+            onChange={(e) => setFilterAssignedTo(e.target.value)}
             style={{
               height: 38, padding: "0 14px",
               borderRadius: 999,
               border: "1px solid var(--border)",
               background: "var(--card)",
-              color: filterAssigned !== "all" ? "var(--primary)" : "var(--foreground)",
+              color: filterAssignedTo !== "all" ? "var(--primary)" : "var(--foreground)",
               fontSize: 13, cursor: "pointer", outline: "none",
-              fontWeight: filterAssigned !== "all" ? 600 : 400,
+              fontWeight: filterAssignedTo !== "all" ? 600 : 400,
             }}
           >
-            <option value="all">Todas</option>
-            <option value="assigned_to_me">Asignadas a mí</option>
-            <option value="created_by_me">Creadas por mí</option>
+            <option value="all">Asignado a: Todos</option>
+            {Array.from(profiles.values()).map((p) => (
+              <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>
+            ))}
           </select>
 
           {isSuperAdmin && areas.length > 0 && (

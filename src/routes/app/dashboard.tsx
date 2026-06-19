@@ -175,7 +175,7 @@ function QuickAction({ to, title, desc, icon, iconStyle }: QuickActionProps) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 function DashboardPage() {
-  const { profile, user, areaId, isSuperAdmin, hasPermission } = useAuth();
+  const { profile, areaId, isSuperAdmin, hasPermission } = useAuth();
 
   if (!hasPermission("view_dashboard")) {
     return (
@@ -190,7 +190,6 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [areas, setAreas] = useState<any[]>([]);
-  const [filterAssigned, setFilterAssigned] = useState("all");
   const [filterAssignedTo, setFilterAssignedTo] = useState("all");
   const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
 
@@ -210,15 +209,10 @@ function DashboardPage() {
   }, [areaId, isSuperAdmin, selectedArea]);
 
   const filteredRequests = useMemo(() =>
-    requests.filter((r) => {
-      const matchAssigned =
-        filterAssigned === "all" ||
-        (filterAssigned === "assigned_to_me" && r.assigned_to === user?.id) ||
-        (filterAssigned === "created_by_me"  && r.created_by  === user?.id);
-      const matchAssignedTo = filterAssignedTo === "all" || r.assigned_to === filterAssignedTo;
-      return matchAssigned && matchAssignedTo;
-    }),
-    [requests, filterAssigned, filterAssignedTo, user?.id]
+    requests.filter((r) =>
+      filterAssignedTo === "all" || r.assigned_to === filterAssignedTo
+    ),
+    [requests, filterAssignedTo]
   );
 
   const completedIds = new Set(columns.filter((c) => c.is_completed).map((c) => c.id));
@@ -228,7 +222,7 @@ function DashboardPage() {
   const urgent     = filteredRequests.filter((r) => r.priority === "urgent").length;
   const recent     = filteredRequests.slice(0, 5);
 
-  const displayName = formatName(profile?.full_name) || formatName(user?.email?.split("@")[0]) || "Usuario";
+  const displayName = formatName(profile?.full_name) || formatName(profile?.email?.split("@")[0]) || "Usuario";
   const firstName = displayName.split(" ")[0];
   const selectedAreaName = selectedArea ? areas.find((a) => a.id === selectedArea)?.name : null;
 
@@ -253,24 +247,6 @@ function DashboardPage() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <select
-            value={filterAssigned}
-            onChange={(e) => setFilterAssigned(e.target.value)}
-            style={{
-              height: 38, padding: "0 14px",
-              borderRadius: 999,
-              border: "1px solid var(--border)",
-              background: "var(--card)",
-              color: filterAssigned !== "all" ? "var(--primary)" : "var(--foreground)",
-              fontSize: 13, cursor: "pointer", outline: "none",
-              fontWeight: filterAssigned !== "all" ? 600 : 400,
-            }}
-          >
-            <option value="all">Todas</option>
-            <option value="assigned_to_me">Asignadas a mí</option>
-            <option value="created_by_me">Creadas por mí</option>
-          </select>
-
           <select
             value={filterAssignedTo}
             onChange={(e) => setFilterAssignedTo(e.target.value)}

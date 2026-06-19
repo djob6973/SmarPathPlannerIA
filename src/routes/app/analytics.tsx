@@ -118,7 +118,7 @@ function buildCompletedOverTime(
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function AnalyticsPage() {
-  const { areaId, isSuperAdmin, hasPermission, user } = useAuth();
+  const { areaId, isSuperAdmin, hasPermission } = useAuth();
 
   if (!hasPermission("view_analytics")) {
     return (
@@ -139,7 +139,6 @@ function AnalyticsPage() {
   const [year, setYear]                 = useState<number>(new Date().getFullYear());
   const [activeView, setActiveView]     = useState<"solicitudes" | "iniciativas">("solicitudes");
   const [initPage, setInitPage]         = useState(1);
-  const [filterAssigned, setFilterAssigned] = useState("all");
   const [filterAssignedTo, setFilterAssignedTo] = useState("all");
   const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
 
@@ -161,15 +160,10 @@ function AnalyticsPage() {
   useEffect(() => { setInitPage(1); }, [activeView]);
 
   const filteredRequests = useMemo(() =>
-    requests.filter((r) => {
-      const matchAssigned =
-        filterAssigned === "all" ||
-        (filterAssigned === "assigned_to_me" && r.assigned_to === user?.id) ||
-        (filterAssigned === "created_by_me"  && r.created_by  === user?.id);
-      const matchAssignedTo = filterAssignedTo === "all" || r.assigned_to === filterAssignedTo;
-      return matchAssigned && matchAssignedTo;
-    }),
-    [requests, filterAssigned, filterAssignedTo, user?.id]
+    requests.filter((r) =>
+      filterAssignedTo === "all" || r.assigned_to === filterAssignedTo
+    ),
+    [requests, filterAssignedTo]
   );
 
   if (!mounted || loading) return <Skeleton />;
@@ -294,21 +288,6 @@ function AnalyticsPage() {
               </button>
             ))}
           </div>
-
-          {/* Assigned filter */}
-          <select
-            value={filterAssigned}
-            onChange={e => setFilterAssigned(e.target.value)}
-            style={{
-              ...sel,
-              color: filterAssigned !== "all" ? "var(--primary)" : "var(--foreground)",
-              fontWeight: filterAssigned !== "all" ? 600 : 400,
-            }}
-          >
-            <option value="all">Todas</option>
-            <option value="assigned_to_me">Asignadas a mí</option>
-            <option value="created_by_me">Creadas por mí</option>
-          </select>
 
           <select
             value={filterAssignedTo}
