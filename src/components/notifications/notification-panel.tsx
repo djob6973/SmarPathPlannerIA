@@ -59,15 +59,17 @@ export function NotificationPanel({ open, onClose, onUnreadCountChange }: Notifi
     return () => clearInterval(timer);
   }, [open, load]);
 
-  // Background unread-count poll (60 s) even when panel is closed
+  // Background unread-count poll — fetch immediately on mount, then every 60 s
   useEffect(() => {
     if (!user) return;
-    const timer = setInterval(async () => {
+    const fetchCount = async () => {
       try {
         const { notifications: notifs } = await getNotifications();
         onUnreadCountChange?.(notifs.filter((n) => !n.read).length);
       } catch { /* ignore */ }
-    }, 60_000);
+    };
+    fetchCount(); // load badge right away without waiting for the panel to open
+    const timer = setInterval(fetchCount, 60_000);
     return () => clearInterval(timer);
   }, [user, onUnreadCountChange]);
 
