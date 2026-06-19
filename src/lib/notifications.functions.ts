@@ -25,7 +25,7 @@ export async function insertNotification(
 
 export type NotificationRow = {
   id: string; type: string; title: string; body: string | null;
-  data: Record<string, unknown>; read: boolean; created_at: string;
+  data: Record<string, string | number | boolean | null>; read: boolean; created_at: string;
 };
 
 export const getNotifications = createServerFn({ method: "GET" }).handler(async () => {

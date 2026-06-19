@@ -49,7 +49,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [columns, setColumns] = useState<ColumnRow[]>([]);
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
-  const [availableUsers, setAvailableUsers] = useState<ProfileRow[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<{ id: string; full_name: string | null }[]>([]);
   const [newComment, setNewComment] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -569,7 +569,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                       <SelectContent>
                         <SelectItem value="unassigned">Sin asignar</SelectItem>
                         {availableUsers.map((u) => (
-                          <SelectItem key={u.id} value={u.id}>{u.full_name ?? u.email}</SelectItem>
+                          <SelectItem key={u.id} value={u.id}>{u.full_name ?? "Usuario"}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -913,7 +913,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                       <SelectContent>
                         <SelectItem value="unassigned" className="text-xs">Sin asignar</SelectItem>
                         {availableUsers.map((u) => (
-                          <SelectItem key={u.id} value={u.id} className="text-xs">{u.full_name ?? u.email}</SelectItem>
+                          <SelectItem key={u.id} value={u.id} className="text-xs">{u.full_name ?? "Usuario"}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

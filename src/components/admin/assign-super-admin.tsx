@@ -12,7 +12,7 @@ export function AssignSuperAdmin() {
   const handleAssign = async () => {
     setIsAssigning(true);
     try {
-      await assignSuperAdminToCurrentUser({ data: {} });
+      await assignSuperAdminToCurrentUser();
       toast.success("Rol super_admin asignado exitosamente. Por favor, recarga la página.");
       setTimeout(() => {
         window.location.reload();

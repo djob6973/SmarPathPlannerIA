@@ -20,6 +20,12 @@ export type DeliverableRow = {
   delivered_at: string | null; created_by: string; created_at: string; updated_at: string;
 };
 
+// ── Auth helper ────────────────────────────────────────────────────────────────
+async function getCallerRoles(db: any, userId: string): Promise<Set<string>> {
+  const rows = await db<{ role: string }[]>`SELECT role FROM user_roles_smart_path WHERE user_id = ${userId}`;
+  return new Set(rows.map((r: any) => r.role));
+}
+
 // ── Board / list data ──────────────────────────────────────────────────────────
 export const getRequestsData = createServerFn({ method: "GET" })
   .inputValidator((input: { areaId?: string | null }) => input)
@@ -87,8 +93,8 @@ export const getRequestDetails = createServerFn({ method: "GET" })
       }
     }
 
-    const allUsers = await db<ProfileRow[]>`
-      SELECT id, full_name, email FROM profiles ORDER BY full_name
+    const allUsers = await db<{ id: string; full_name: string | null }[]>`
+      SELECT id, full_name FROM profiles ORDER BY full_name
     `;
 
     return { request, columns, comments, profiles: profileMap, availableUsers: allUsers, parent, children, deliverables };
@@ -164,7 +170,6 @@ export const updateRequest = createServerFn({ method: "POST" })
       position: z.number().int().optional(),
       expires_at: z.string().nullable().optional(),
       completed_at: z.string().nullable().optional(),
-      created_at: z.string().optional(),
       parent_request_id: z.string().uuid().nullable().optional(),
     }).parse(input)
   )
@@ -175,12 +180,18 @@ export const updateRequest = createServerFn({ method: "POST" })
 
     const { requestId, ...fields } = data;
 
-    // Fetch current state when changing status or assignee (for notifications)
-    const needsPrev = fields.status_column_id !== undefined || fields.assigned_to !== undefined;
-    let prev: RequestRow | null = null;
-    if (needsPrev) {
-      const rows = await db<RequestRow[]>`SELECT * FROM requests WHERE id = ${requestId}`;
-      prev = rows[0] ?? null;
+    // Always fetch current state — needed for auth check and notifications
+    const prevRows = await db<RequestRow[]>`SELECT * FROM requests WHERE id = ${requestId}`;
+    const prev = prevRows[0] ?? null;
+    if (!prev) throw new Error("Solicitud no encontrada");
+
+    const roles = await getCallerRoles(db, userId);
+    const canEditAll = roles.has("super_admin") || roles.has("area_admin") || roles.has("manager");
+    if (!canEditAll) {
+      if (prev.created_by !== userId) throw new Error("No tienes permiso para editar esta solicitud");
+      if (prev.area_id && prev.area_id !== auth.userProfile.area_id) throw new Error("Solicitud fuera de tu área");
+    } else if (!roles.has("super_admin") && prev.area_id && prev.area_id !== auth.userProfile.area_id) {
+      throw new Error("Solicitud fuera de tu área");
     }
 
     // Auto-manage completed_at when status column changes
@@ -213,7 +224,6 @@ export const updateRequest = createServerFn({ method: "POST" })
     if (fields.position !== undefined) { updates.push(`position = $${updates.length + 1}`); values.push(fields.position); }
     if (fields.expires_at !== undefined) { updates.push(`expires_at = $${updates.length + 1}`); values.push(fields.expires_at); }
     if (fields.completed_at !== undefined) { updates.push(`completed_at = $${updates.length + 1}`); values.push(fields.completed_at); }
-    if (fields.created_at !== undefined) { updates.push(`created_at = $${updates.length + 1}`); values.push(fields.created_at); }
     if (fields.parent_request_id !== undefined) { updates.push(`parent_request_id = $${updates.length + 1}`); values.push(fields.parent_request_id); }
 
     if (updates.length === 0) return { ok: true };
@@ -276,7 +286,16 @@ export const deleteRequest = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
-    const { db } = auth;
+    const { db, userId } = auth;
+
+    const rows = await db<RequestRow[]>`SELECT created_by, area_id FROM requests WHERE id = ${data.requestId}`;
+    if (!rows.length) return { ok: true };
+    const target = rows[0];
+
+    const roles = await getCallerRoles(db, userId);
+    const canDeleteAll = roles.has("super_admin") || roles.has("area_admin") || roles.has("manager");
+    if (!canDeleteAll && target.created_by !== userId) throw new Error("No tienes permiso para eliminar esta solicitud");
+
     await db`DELETE FROM requests WHERE id = ${data.requestId}`;
     return { ok: true };
   });
@@ -287,9 +306,16 @@ export const deleteRequests = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
-    const { db } = auth;
+    const { db, userId } = auth;
     if (data.ids.length === 0) return { ok: true };
-    await db`DELETE FROM requests WHERE id = ANY(${data.ids})`;
+
+    const roles = await getCallerRoles(db, userId);
+    const canDeleteAll = roles.has("super_admin") || roles.has("area_admin") || roles.has("manager");
+    if (canDeleteAll) {
+      await db`DELETE FROM requests WHERE id = ANY(${data.ids})`;
+    } else {
+      await db`DELETE FROM requests WHERE id = ANY(${data.ids}) AND created_by = ${userId}`;
+    }
     return { ok: true };
   });
 
@@ -304,6 +330,11 @@ export const copyRequest = createServerFn({ method: "POST" })
     const rows = await db<RequestRow[]>`SELECT * FROM requests WHERE id = ${data.requestId}`;
     const original = rows[0];
     if (!original) throw new Error("Solicitud no encontrada");
+
+    const roles = await getCallerRoles(db, userId);
+    if (!roles.has("super_admin") && original.area_id && original.area_id !== auth.userProfile.area_id) {
+      throw new Error("No tienes acceso a esta solicitud");
+    }
 
     const copied = await db<RequestRow[]>`
       INSERT INTO requests (title, description, objective, process, priority, status_column_id, created_by, area_id)
@@ -406,6 +437,15 @@ export const addDeliverable = createServerFn({ method: "POST" })
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
     const { db, userId } = auth;
+
+    const roles = await getCallerRoles(db, userId);
+    if (!roles.has("super_admin")) {
+      const reqRows = await db<{ area_id: string | null }[]>`SELECT area_id FROM requests WHERE id = ${data.requestId}`;
+      if (reqRows.length && reqRows[0].area_id && reqRows[0].area_id !== auth.userProfile.area_id) {
+        throw new Error("No tienes acceso a esta solicitud");
+      }
+    }
+
     const rows = await db<DeliverableRow[]>`
       INSERT INTO request_deliverables (request_id, title, notes, created_by)
       VALUES (${data.requestId}, ${data.title}, ${data.notes ?? null}, ${userId})
@@ -424,7 +464,20 @@ export const toggleDeliverable = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
-    const { db } = auth;
+    const { db, userId } = auth;
+
+    const roles = await getCallerRoles(db, userId);
+    if (!roles.has("super_admin") && !roles.has("area_admin") && !roles.has("manager")) {
+      const delRows = await db<{ area_id: string | null }[]>`
+        SELECT r.area_id FROM request_deliverables d
+        JOIN requests r ON r.id = d.request_id
+        WHERE d.id = ${data.deliverableId}
+      `;
+      if (delRows.length && delRows[0].area_id && delRows[0].area_id !== auth.userProfile.area_id) {
+        throw new Error("No tienes acceso a este entregable");
+      }
+    }
+
     const deliveredAt = data.delivered ? new Date().toISOString() : null;
     await db`UPDATE request_deliverables SET delivered_at = ${deliveredAt} WHERE id = ${data.deliverableId}`;
     return { ok: true, delivered_at: deliveredAt };
@@ -435,7 +488,14 @@ export const deleteDeliverable = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
-    const { db } = auth;
-    await db`DELETE FROM request_deliverables WHERE id = ${data.deliverableId}`;
+    const { db, userId } = auth;
+
+    const roles = await getCallerRoles(db, userId);
+    const canDeleteAll = roles.has("super_admin") || roles.has("area_admin") || roles.has("manager");
+    if (canDeleteAll) {
+      await db`DELETE FROM request_deliverables WHERE id = ${data.deliverableId}`;
+    } else {
+      await db`DELETE FROM request_deliverables WHERE id = ${data.deliverableId} AND created_by = ${userId}`;
+    }
     return { ok: true };
   });

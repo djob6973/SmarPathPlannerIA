@@ -762,7 +762,7 @@ function ProfileSettings() {
     e.preventDefault();
     if (newPwd !== confirmPwd) { toast.error("Las contraseñas nuevas no coinciden"); return; }
     if (newPwd.length < 6) { toast.error("La nueva contraseña debe tener al menos 6 caracteres"); return; }
-    changePwdMutation.mutate({ currentPassword: currentPwd, newPassword: newPwd });
+    changePwdMutation.mutate({ data: { currentPassword: currentPwd, newPassword: newPwd } });
   };
 
   const areas        = areasData?.areas || [];
@@ -821,7 +821,7 @@ function ProfileSettings() {
           </p>
           <Select
             value={currentAreaId || "none"}
-            onValueChange={(value) => updateAreaMutation.mutate({ areaId: value === "none" ? null : value })}
+            onValueChange={(value) => updateAreaMutation.mutate({ data: { areaId: value === "none" ? null : value } })}
             disabled={areasLoading || updateAreaMutation.isPending}
           >
             <SelectTrigger style={{ borderRadius: "var(--r-md, 10px)" }}>

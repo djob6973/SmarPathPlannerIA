@@ -5,6 +5,24 @@ import { getAuthContext } from "./server-auth";
 export type AreaRow = { id: string; name: string; description: string | null; created_at: string; updated_at: string };
 export type ColumnRow = { id: string; name: string; position: number; color: string; is_completed: boolean; area_id: string | null };
 
+async function assertColumnAdmin(db: any, userId: string) {
+  const rows = await db<{ role: string }[]>`
+    SELECT role FROM user_roles_smart_path
+    WHERE user_id = ${userId} AND role IN ('super_admin', 'area_admin')
+    LIMIT 1
+  `;
+  if (rows.length === 0) throw new Error("Solo administradores pueden gestionar columnas");
+}
+
+async function assertSuperAdminLocal(db: any, userId: string) {
+  const rows = await db<{ role: string }[]>`
+    SELECT role FROM user_roles_smart_path
+    WHERE user_id = ${userId} AND role = 'super_admin'
+    LIMIT 1
+  `;
+  if (rows.length === 0) throw new Error("Solo super administradores");
+}
+
 // ── Areas ──────────────────────────────────────────────────────────────────────
 export const getAreas = createServerFn({ method: "GET" }).handler(async () => {
   const auth = await getAuthContext();
@@ -47,6 +65,7 @@ export const createColumn = createServerFn({ method: "POST" })
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
     const { db, userProfile } = auth;
+    await assertColumnAdmin(db, auth.userId);
 
     const areaId = data.area_id !== undefined ? data.area_id : userProfile.area_id;
 
@@ -80,6 +99,7 @@ export const updateColumn = createServerFn({ method: "POST" })
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
     const { db } = auth;
+    await assertColumnAdmin(db, auth.userId);
 
     const { id, ...fields } = data;
     const updates: string[] = [];
@@ -105,6 +125,7 @@ export const deleteColumn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
+    await assertColumnAdmin(auth.db, auth.userId);
     await auth.db`DELETE FROM kanban_columns WHERE id = ${data.id}`;
     return { ok: true };
   });
@@ -113,9 +134,18 @@ export const deleteColumn = createServerFn({ method: "POST" })
 export const listProfiles = createServerFn({ method: "GET" }).handler(async () => {
   const auth = await getAuthContext();
   if ("error" in auth) throw new Error(auth.error);
-  const rows = await auth.db<{ id: string; full_name: string | null; email: string }[]>`
-    SELECT id, full_name, email FROM profiles ORDER BY full_name
+  const { db, userId, userProfile } = auth;
+
+  const isSuperAdmin = await db<{ role: string }[]>`
+    SELECT role FROM user_roles_smart_path WHERE user_id = ${userId} AND role = 'super_admin' LIMIT 1
   `;
+  const rows = isSuperAdmin.length > 0
+    ? await db<{ id: string; full_name: string | null }[]>`SELECT id, full_name FROM profiles ORDER BY full_name`
+    : await db<{ id: string; full_name: string | null }[]>`
+        SELECT id, full_name FROM profiles
+        WHERE area_id = ${userProfile.area_id}
+        ORDER BY full_name
+      `;
   return { profiles: rows };
 });
 
@@ -150,6 +180,7 @@ export const updateAiSettings = createServerFn({ method: "POST" })
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
     const { db } = auth;
+    await assertSuperAdminLocal(db, auth.userId);
 
     if (data.id) {
       const updates: string[] = [];

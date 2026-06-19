@@ -56,11 +56,11 @@ export async function getAuthContext(): Promise<AuthContext | AuthError> {
     }
   }
 
-  // 2. X-Forwarded-Email from oauth2-proxy (fallback for platforms that inject this header)
+  // 2. DEV_USER_EMAIL — local dev only, never trusted in production
   const forwardedEmail =
-    req?.headers?.get("x-forwarded-email") ??
-    process.env.DEV_USER_EMAIL ??
-    null;
+    process.env.NODE_ENV !== "production"
+      ? (process.env.DEV_USER_EMAIL ?? null)
+      : null;
 
   if (forwardedEmail) {
     try {

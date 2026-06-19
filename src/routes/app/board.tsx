@@ -31,7 +31,7 @@ const PRIORITY_LABEL: Record<string, string> = {
   urgent: "Urgente", high: "Alta", medium: "Media", low: "Baja",
 };
 const BACKLOG_ID = "__backlog__";
-type ProfileMap = Map<string, { id: string; full_name: string | null; email: string }>;
+type ProfileMap = Map<string, { id: string; full_name: string | null }>;
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -53,9 +53,9 @@ function IconChevron() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function getInitials(name: string | null, email: string): string {
-  const src = name ?? email.split("@")[0];
-  return src.split(/[\s._]/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
+function getInitials(name: string | null): string {
+  const src = name ?? "?";
+  return src.split(/[\s._]/).map((w: string) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
 }
 
 // ── KanbanCard ────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ function KanbanCard({
   });
 
   const assignee = request.assigned_to ? (profiles.get(request.assigned_to) ?? null) : null;
-  const abbr = assignee ? getInitials(assignee.full_name, assignee.email) : null;
+  const abbr = assignee ? getInitials(assignee.full_name) : null;
 
   return (
     <div

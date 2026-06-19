@@ -195,11 +195,11 @@ export function PermissionsManager() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {(["super_admin", "area_admin", "admin", "manager", "client", "viewer"] as AppRole[]).map((role) => {
+            {(["super_admin", "area_admin", "manager", "client", "viewer"] as AppRole[]).map((role) => {
               const rolePerms = permissionsData?.permissions?.filter((p: any) => p.role === role && p.enabled) || [];
               return (
                 <div key={role} className="flex items-start gap-3">
-                  <Badge variant={role === "super_admin" ? "default" : role === "area_admin" || role === "admin" ? "secondary" : "outline"}>
+                  <Badge variant={role === "super_admin" ? "default" : role === "area_admin" ? "secondary" : "outline"}>
                     {ROLE_LABELS[role]}
                   </Badge>
                   <div className="flex-1">

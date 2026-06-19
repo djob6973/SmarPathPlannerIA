@@ -32,7 +32,7 @@ const DEFAULT_PERMISSIONS: Record<string, AppPermission[]> = {
 };
 
 async function assertSuperAdmin(userId: string) {
-  const rows = await db<[any]>`
+  const rows = await db<any[]>`
     SELECT 1 FROM user_roles_smart_path
     WHERE user_id = ${userId} AND role = 'super_admin' LIMIT 1
   `;

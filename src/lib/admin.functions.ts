@@ -13,7 +13,7 @@ export interface Area {
 }
 
 async function assertSuperAdmin(userId: string) {
-  const rows = await db<[{ role: string }]>`
+  const rows = await db<{ role: string }[]>`
     SELECT role FROM user_roles_smart_path
     WHERE user_id = ${userId} AND role = 'super_admin'
     LIMIT 1
@@ -22,7 +22,7 @@ async function assertSuperAdmin(userId: string) {
 }
 
 async function assertSuperAdminOrAreaAdmin(userId: string) {
-  const rows = await db<[{ role: string }]>`
+  const rows = await db<{ role: string }[]>`
     SELECT role FROM user_roles_smart_path
     WHERE user_id = ${userId} AND role IN ('super_admin', 'area_admin')
     LIMIT 1
@@ -175,6 +175,11 @@ export const assignSuperAdminToCurrentUser = createServerFn({ method: "POST" }).
     if ("error" in auth) throw new Error(auth.error);
     const { userId } = auth;
 
+    const [{ count }] = await db<[{ count: string }]>`
+      SELECT COUNT(*)::text AS count FROM user_roles_smart_path WHERE role = 'super_admin'
+    `;
+    if (count !== "0") throw new Error("Ya existe un super administrador en el sistema");
+
     await db`
       DELETE FROM user_roles_smart_path
       WHERE user_id = ${userId} AND role = 'admin'
@@ -196,6 +201,13 @@ export const updateUserOwnArea = createServerFn({ method: "POST" })
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
 
+    const isSuperAdmin = await db<{ role: string }[]>`
+      SELECT role FROM user_roles_smart_path WHERE user_id = ${auth.userId} AND role = 'super_admin' LIMIT 1
+    `;
+    if (isSuperAdmin.length === 0 && auth.userProfile.area_id !== null) {
+      throw new Error("No tienes permiso para cambiar tu área");
+    }
+
     await db`
       UPDATE profiles SET area_id = ${data.areaId}
       WHERE id = ${auth.userId}
@@ -211,6 +223,17 @@ export const adminResetPassword = createServerFn({ method: "POST" })
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
     await assertSuperAdminOrAreaAdmin(auth.userId);
+
+    const callerIsSuperAdmin = await db<{ role: string }[]>`
+      SELECT role FROM user_roles_smart_path WHERE user_id = ${auth.userId} AND role = 'super_admin' LIMIT 1
+    `;
+    if (callerIsSuperAdmin.length === 0) {
+      const targetHasSuperAdmin = await db<{ role: string }[]>`
+        SELECT role FROM user_roles_smart_path WHERE user_id = ${data.userId} AND role = 'super_admin' LIMIT 1
+      `;
+      if (targetHasSuperAdmin.length > 0) throw new Error("Los administradores de área no pueden cambiar la contraseña de un super administrador");
+    }
+
     await db`UPDATE profiles SET password_hash = ${hashPassword(data.newPassword)} WHERE id = ${data.userId}`;
     return { ok: true };
   });
