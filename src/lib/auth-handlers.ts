@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { runMigrations } from "./migrate";
 import { hashPassword, verifyPassword } from "./password";
+import { insertNotification } from "./notifications.functions";
 
 const SESSION_DAYS = 30;
 
@@ -118,6 +119,22 @@ export async function handleRegister(request: Request): Promise<Response> {
         VALUES (${profile.id}, 'super_admin')
         ON CONFLICT (user_id, role) DO NOTHING
       `;
+    } else {
+      const admins = await db<{ id: string }[]>`
+        SELECT DISTINCT user_id AS id FROM user_roles_smart_path
+        WHERE role IN ('super_admin', 'area_admin')
+      `;
+      const userName = name?.trim() || normalizedEmail.split("@")[0];
+      for (const admin of admins) {
+        await insertNotification(
+          db,
+          admin.id,
+          "user_registered",
+          "Nuevo usuario registrado",
+          `${userName} (${normalizedEmail}) se ha registrado. Asigna su rol para que pueda acceder al sistema.`,
+          { userId: profile.id }
+        );
+      }
     }
 
     const sessionId = await createSession(profile.id);

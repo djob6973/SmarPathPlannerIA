@@ -3,6 +3,15 @@ import { z } from "zod";
 import { getAuthContext } from "./server-auth";
 import { db } from "./db";
 import { hashPassword } from "./password";
+import { insertNotification } from "./notifications.functions";
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super Administrador",
+  area_admin:  "Administrador de Área",
+  manager:     "Manager",
+  client:      "Cliente",
+  viewer:      "Visualizador",
+};
 
 export interface Area {
   id: string;
@@ -73,6 +82,15 @@ export const setUserRole = createServerFn({ method: "POST" })
         VALUES (${data.userId}, ${data.role}, ${data.areaId ?? null})
         ON CONFLICT (user_id, role) DO UPDATE SET area_id = EXCLUDED.area_id
       `;
+      const roleLabel = ROLE_LABELS[data.role] ?? data.role;
+      await insertNotification(
+        db,
+        data.userId,
+        "role_changed",
+        "Rol asignado",
+        `Se te ha asignado el rol "${roleLabel}" en SmartPath Planner. Ya puedes acceder al sistema.`,
+        { role: data.role, assignedBy: auth.userId }
+      );
     } else {
       await db`
         DELETE FROM user_roles_smart_path
