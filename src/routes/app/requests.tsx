@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, deleteRequest, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
-import { getAreas } from "@/lib/data.functions";
+import { getAreas, listProfiles } from "@/lib/data.functions";
 import { RequestDetailModal } from "@/components/requests/request-detail-modal";
 import { ManualRequestModal } from "@/components/requests/manual-request-modal";
 import { toast } from "sonner";
@@ -40,6 +40,8 @@ function RequestsPage() {
   const [selectedArea, setSelectedArea]     = useState<string | null>(null);
   const [areas, setAreas]                   = useState<{ id: string; name: string }[]>([]);
   const [filterAssigned, setFilterAssigned] = useState("all");
+  const [filterAssignedTo, setFilterAssignedTo] = useState("all");
+  const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
   const [page, setPage]                     = useState(1);
   const [pageSize, setPageSize]             = useState(20);
 
@@ -60,6 +62,7 @@ function RequestsPage() {
     if (isSuperAdmin) {
       getAreas().then(({ areas: a }) => setAreas(a));
     }
+    listProfiles().then(({ profiles: p }) => setProfiles(p));
   }, [selectedArea, isSuperAdmin]);
 
   const filtered = useMemo(() =>
@@ -71,13 +74,14 @@ function RequestsPage() {
         filterAssigned === "all" ||
         (filterAssigned === "assigned_to_me" && r.assigned_to === user?.id) ||
         (filterAssigned === "created_by_me"  && r.created_by  === user?.id);
-      return matchSearch && matchPriority && matchStatus && matchAssigned;
+      const matchAssignedTo = filterAssignedTo === "all" || r.assigned_to === filterAssignedTo;
+      return matchSearch && matchPriority && matchStatus && matchAssigned && matchAssignedTo;
     }),
-    [requests, search, filterPriority, filterStatus, filterAssigned, user?.id]
+    [requests, search, filterPriority, filterStatus, filterAssigned, filterAssignedTo, user?.id]
   );
 
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [search, filterPriority, filterStatus, filterAssigned]);
+  useEffect(() => { setPage(1); }, [search, filterPriority, filterStatus, filterAssigned, filterAssignedTo]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage   = Math.min(page, totalPages);
@@ -187,6 +191,12 @@ function RequestsPage() {
           <option value="all">Todas</option>
           <option value="assigned_to_me">Asignadas a mí</option>
           <option value="created_by_me">Creadas por mí</option>
+        </select>
+        <select value={filterAssignedTo} onChange={(e) => setFilterAssignedTo(e.target.value)} style={filterInputStyle}>
+          <option value="all">Asignado a: Todos</option>
+          {profiles.map((p) => (
+            <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>
+          ))}
         </select>
       </div>
 

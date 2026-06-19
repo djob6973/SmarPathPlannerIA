@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2, GitBranch, Link2, PackageCheck, Plus, CheckCircle2, Circle, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { getAreas } from "@/lib/data.functions";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,8 +46,9 @@ interface RequestDetailModalProps {
 }
 
 export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDetailModalProps) {
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const [request, setRequest] = useState<RequestRow | null>(null);
+  const [areas, setAreas] = useState<{ id: string; name: string }[]>([]);
   const [columns, setColumns] = useState<ColumnRow[]>([]);
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [profiles, setProfiles] = useState<Record<string, ProfileRow>>({});
@@ -105,6 +107,12 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [selectedParentId, setSelectedParentId] = useState("");
   const [updatingParent, setUpdatingParent] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      getAreas().then(({ areas: a }) => setAreas(a));
+    }
+  }, [isSuperAdmin]);
 
   useEffect(() => {
     if (!requestId) return;
@@ -292,6 +300,17 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       await updateRequestFn({ data: { requestId: request.id, assigned_to: value } });
       setRequest((r) => r ? { ...r, assigned_to: value } : r);
       onUpdated?.();
+    } catch (err: any) { toast.error(err?.message); }
+  };
+
+  const updateArea = async (areaId: string) => {
+    if (!request) return;
+    const value = areaId === "none" ? null : areaId;
+    try {
+      await updateRequestFn({ data: { requestId: request.id, area_id: value } });
+      setRequest((r) => r ? { ...r, area_id: value } : r);
+      onUpdated?.();
+      toast.success("Área actualizada");
     } catch (err: any) { toast.error(err?.message); }
   };
 
@@ -1048,6 +1067,27 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                     </div>
                   )}
                 </div>
+
+                {(isSuperAdmin || request.area_id) && (
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Área</p>
+                    {isSuperAdmin ? (
+                      <Select value={request.area_id ?? "none"} onValueChange={updateArea}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin área" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none" className="text-xs">Sin área</SelectItem>
+                          {areas.map((a) => (
+                            <SelectItem key={a.id} value={a.id} className="text-xs">{a.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {areas.find((a) => a.id === request.area_id)?.name ?? "—"}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Estado</p>

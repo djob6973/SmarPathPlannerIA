@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useState, useMemo, type ReactNode, type CSSProperties } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
-import { getAreas } from "@/lib/data.functions";
+import { getAreas, listProfiles } from "@/lib/data.functions";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDistanceToNow } from "date-fns";
@@ -190,6 +190,9 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [areas, setAreas] = useState<any[]>([]);
+  const [filterAssigned, setFilterAssigned] = useState("all");
+  const [filterAssignedTo, setFilterAssignedTo] = useState("all");
+  const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
 
   useEffect(() => {
     const effectiveAreaId = isSuperAdmin ? selectedArea : areaId;
@@ -203,14 +206,27 @@ function DashboardPage() {
     if (isSuperAdmin) {
       getAreas().then(({ areas }) => setAreas(areas));
     }
+    listProfiles().then(({ profiles: p }) => setProfiles(p));
   }, [areaId, isSuperAdmin, selectedArea]);
 
+  const filteredRequests = useMemo(() =>
+    requests.filter((r) => {
+      const matchAssigned =
+        filterAssigned === "all" ||
+        (filterAssigned === "assigned_to_me" && r.assigned_to === user?.id) ||
+        (filterAssigned === "created_by_me"  && r.created_by  === user?.id);
+      const matchAssignedTo = filterAssignedTo === "all" || r.assigned_to === filterAssignedTo;
+      return matchAssigned && matchAssignedTo;
+    }),
+    [requests, filterAssigned, filterAssignedTo, user?.id]
+  );
+
   const completedIds = new Set(columns.filter((c) => c.is_completed).map((c) => c.id));
-  const completed  = requests.filter((r) => r.status_column_id && completedIds.has(r.status_column_id)).length;
-  const inProgress = requests.filter((r) => r.status_column_id && !completedIds.has(r.status_column_id)).length;
-  const pending    = requests.filter((r) => !r.status_column_id).length;
-  const urgent     = requests.filter((r) => r.priority === "urgent").length;
-  const recent     = requests.slice(0, 5);
+  const completed  = filteredRequests.filter((r) => r.status_column_id && completedIds.has(r.status_column_id)).length;
+  const inProgress = filteredRequests.filter((r) => r.status_column_id && !completedIds.has(r.status_column_id)).length;
+  const pending    = filteredRequests.filter((r) => !r.status_column_id).length;
+  const urgent     = filteredRequests.filter((r) => r.priority === "urgent").length;
+  const recent     = filteredRequests.slice(0, 5);
 
   const displayName = formatName(profile?.full_name) || formatName(user?.email?.split("@")[0]) || "Usuario";
   const firstName = displayName.split(" ")[0];
@@ -236,7 +252,45 @@ function DashboardPage() {
           </p>
         </div>
 
-        {isSuperAdmin && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <select
+            value={filterAssigned}
+            onChange={(e) => setFilterAssigned(e.target.value)}
+            style={{
+              height: 38, padding: "0 14px",
+              borderRadius: 999,
+              border: "1px solid var(--border)",
+              background: "var(--card)",
+              color: filterAssigned !== "all" ? "var(--primary)" : "var(--foreground)",
+              fontSize: 13, cursor: "pointer", outline: "none",
+              fontWeight: filterAssigned !== "all" ? 600 : 400,
+            }}
+          >
+            <option value="all">Todas</option>
+            <option value="assigned_to_me">Asignadas a mí</option>
+            <option value="created_by_me">Creadas por mí</option>
+          </select>
+
+          <select
+            value={filterAssignedTo}
+            onChange={(e) => setFilterAssignedTo(e.target.value)}
+            style={{
+              height: 38, padding: "0 14px",
+              borderRadius: 999,
+              border: "1px solid var(--border)",
+              background: "var(--card)",
+              color: filterAssignedTo !== "all" ? "var(--primary)" : "var(--foreground)",
+              fontSize: 13, cursor: "pointer", outline: "none",
+              fontWeight: filterAssignedTo !== "all" ? 600 : 400,
+            }}
+          >
+            <option value="all">Asignado a: Todos</option>
+            {profiles.map((p) => (
+              <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>
+            ))}
+          </select>
+
+          {isSuperAdmin && (
           <Select value={selectedArea || "all"} onValueChange={(v) => setSelectedArea(v === "all" ? null : v)}>
             <SelectTrigger
               style={{
@@ -258,13 +312,14 @@ function DashboardPage() {
             </SelectContent>
           </Select>
         )}
+        </div>
       </div>
 
       {/* ── KPI grid ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 16 }}>
         <KpiCard
           label="Total solicitudes"
-          value={loading ? null : requests.length}
+          value={loading ? null : filteredRequests.length}
           subtitle="en todas las áreas"
           icon={<IconKanban />}
           iconStyle={{ background: "oklch(0.94 0.022 24)", color: "var(--primary)" }}
@@ -385,15 +440,15 @@ function DashboardPage() {
       </div>
 
       {/* ── Distribution ── */}
-      {!loading && columns.length > 0 && (
+      {!loading && columns.length > 0 && filteredRequests.length > 0 && (
         <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: "20px 22px" }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 16, color: "var(--foreground)", marginBottom: 18, marginTop: 0 }}>
             Distribución por estado
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
             {columns.map((col) => {
-              const count = requests.filter((r) => r.status_column_id === col.id).length;
-              const pct = requests.length > 0 ? Math.round((count / requests.length) * 100) : 0;
+              const count = filteredRequests.filter((r) => r.status_column_id === col.id).length;
+              const pct = filteredRequests.length > 0 ? Math.round((count / filteredRequests.length) * 100) : 0;
               return (
                 <div key={col.id}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>

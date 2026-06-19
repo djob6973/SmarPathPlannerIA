@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   type DragStartEvent, type DragEndEvent, closestCorners, useDroppable,
@@ -233,7 +233,7 @@ function KanbanColumn({ col, requests, canEdit, onCardClick, profiles, isBacklog
 // ── BoardPage ─────────────────────────────────────────────────────────────────
 
 function BoardPage() {
-  const { isSuperAdmin, areaId, hasPermission } = useAuth();
+  const { isSuperAdmin, areaId, hasPermission, user } = useAuth();
 
   if (!hasPermission("view_board")) {
     return (
@@ -252,6 +252,7 @@ function BoardPage() {
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [areas, setAreas] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<ProfileMap>(new Map());
+  const [filterAssigned, setFilterAssigned] = useState("all");
 
   const canEdit = hasPermission("change_request_status") || hasPermission("edit_all_requests") || hasPermission("edit_own_requests");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -335,8 +336,17 @@ function BoardPage() {
     }
   };
 
-  const activeRequest  = activeId ? requests.find((r) => r.id === activeId) : null;
-  const backlogRequests = requests
+  const filteredRequests = useMemo(() =>
+    requests.filter((r) => {
+      if (filterAssigned === "assigned_to_me") return r.assigned_to === user?.id;
+      if (filterAssigned === "created_by_me")  return r.created_by  === user?.id;
+      return true;
+    }),
+    [requests, filterAssigned, user?.id]
+  );
+
+  const activeRequest  = activeId ? filteredRequests.find((r) => r.id === activeId) : null;
+  const backlogRequests = filteredRequests
     .filter((r) => !r.status_column_id)
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const selectedAreaName = selectedArea ? areas.find((a) => a.id === selectedArea)?.name : null;
@@ -390,11 +400,31 @@ function BoardPage() {
             Tablero
           </h1>
           <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 3, marginBottom: 0 }}>
-            {`${requests.length} solicitud${requests.length !== 1 ? "es" : ""} · ${columns.length} columna${columns.length !== 1 ? "s" : ""}`}
+            {filteredRequests.length !== requests.length
+              ? `${filteredRequests.length} de ${requests.length} solicitudes · ${columns.length} columna${columns.length !== 1 ? "s" : ""}`
+              : `${requests.length} solicitud${requests.length !== 1 ? "es" : ""} · ${columns.length} columna${columns.length !== 1 ? "s" : ""}`}
           </p>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <select
+            value={filterAssigned}
+            onChange={(e) => setFilterAssigned(e.target.value)}
+            style={{
+              height: 38, padding: "0 14px",
+              borderRadius: 999,
+              border: "1px solid var(--border)",
+              background: "var(--card)",
+              color: filterAssigned !== "all" ? "var(--primary)" : "var(--foreground)",
+              fontSize: 13, cursor: "pointer", outline: "none",
+              fontWeight: filterAssigned !== "all" ? 600 : 400,
+            }}
+          >
+            <option value="all">Todas</option>
+            <option value="assigned_to_me">Asignadas a mí</option>
+            <option value="created_by_me">Creadas por mí</option>
+          </select>
+
           {isSuperAdmin && areas.length > 0 && (
             <Select value={selectedArea || "all"} onValueChange={(v) => setSelectedArea(v === "all" ? null : v)}>
               <SelectTrigger
@@ -446,7 +476,7 @@ function BoardPage() {
               <KanbanColumn
                 key={col.id}
                 col={col}
-                requests={requests
+                requests={filteredRequests
                   .filter((r) => r.status_column_id === col.id)
                   .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))}
                 canEdit={canEdit}

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
-import { getAreas } from "@/lib/data.functions";
+import { getAreas, listProfiles } from "@/lib/data.functions";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
@@ -17,7 +17,8 @@ export const Route = createFileRoute("/app/analytics")({
 
 type Request = Pick<RequestRow,
   "id" | "title" | "priority" | "status_column_id" |
-  "created_at" | "updated_at" | "completed_at" | "parent_request_id"
+  "created_at" | "updated_at" | "completed_at" | "parent_request_id" |
+  "assigned_to" | "created_by"
 >;
 type Column = Pick<ColumnRow, "id" | "name" | "color" | "is_completed">;
 
@@ -117,7 +118,7 @@ function buildCompletedOverTime(
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function AnalyticsPage() {
-  const { areaId, isSuperAdmin, hasPermission } = useAuth();
+  const { areaId, isSuperAdmin, hasPermission, user } = useAuth();
 
   if (!hasPermission("view_analytics")) {
     return (
@@ -138,6 +139,9 @@ function AnalyticsPage() {
   const [year, setYear]                 = useState<number>(new Date().getFullYear());
   const [activeView, setActiveView]     = useState<"solicitudes" | "iniciativas">("solicitudes");
   const [initPage, setInitPage]         = useState(1);
+  const [filterAssigned, setFilterAssigned] = useState("all");
+  const [filterAssignedTo, setFilterAssignedTo] = useState("all");
+  const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -150,27 +154,40 @@ function AnalyticsPage() {
       setLoading(false);
     });
     if (isSuperAdmin) getAreas().then(({ areas: data }) => setAreas(data));
+    listProfiles().then(({ profiles: p }) => setProfiles(p));
   }, [areaId, isSuperAdmin, selectedArea]);
 
   // Reset init pagination when switching views
   useEffect(() => { setInitPage(1); }, [activeView]);
 
+  const filteredRequests = useMemo(() =>
+    requests.filter((r) => {
+      const matchAssigned =
+        filterAssigned === "all" ||
+        (filterAssigned === "assigned_to_me" && r.assigned_to === user?.id) ||
+        (filterAssigned === "created_by_me"  && r.created_by  === user?.id);
+      const matchAssignedTo = filterAssignedTo === "all" || r.assigned_to === filterAssignedTo;
+      return matchAssigned && matchAssignedTo;
+    }),
+    [requests, filterAssigned, filterAssignedTo, user?.id]
+  );
+
   if (!mounted || loading) return <Skeleton />;
 
   // ── Shared base data ────────────────────────────────────────────────────────
   const completedIds = new Set(columns.filter(c => c.is_completed).map(c => c.id));
-  const initiatives  = requests.filter(r => r.parent_request_id === null);
-  const linkedReqs   = requests.filter(r => r.parent_request_id !== null);
+  const initiatives  = filteredRequests.filter(r => r.parent_request_id === null);
+  const linkedReqs   = filteredRequests.filter(r => r.parent_request_id !== null);
 
   // ── Solicitudes data ────────────────────────────────────────────────────────
-  const solCompleted   = requests.filter(r => r.status_column_id && completedIds.has(r.status_column_id)).length;
-  const solInProgress  = requests.filter(r => r.status_column_id && !completedIds.has(r.status_column_id)).length;
-  const solPending     = requests.filter(r => !r.status_column_id).length;
-  const solRate        = requests.length > 0 ? Math.round((solCompleted / requests.length) * 100) : 0;
-  const solByCol       = buildByCol(requests, columns);
+  const solCompleted   = filteredRequests.filter(r => r.status_column_id && completedIds.has(r.status_column_id)).length;
+  const solInProgress  = filteredRequests.filter(r => r.status_column_id && !completedIds.has(r.status_column_id)).length;
+  const solPending     = filteredRequests.filter(r => !r.status_column_id).length;
+  const solRate        = filteredRequests.length > 0 ? Math.round((solCompleted / filteredRequests.length) * 100) : 0;
+  const solByCol       = buildByCol(filteredRequests, columns);
   const solMaxByCol    = Math.max(...solByCol.map(c => c.count), 1);
-  const solPri         = buildPriorityData(requests);
-  const solCompletedReqs = requests.filter(r => r.status_column_id && completedIds.has(r.status_column_id));
+  const solPri         = buildPriorityData(filteredRequests);
+  const solCompletedReqs = filteredRequests.filter(r => r.status_column_id && completedIds.has(r.status_column_id));
 
   const activityData = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
@@ -178,7 +195,7 @@ function AnalyticsPage() {
     const ds = d.toISOString().slice(0, 10);
     return {
       name: d.toLocaleDateString("es", { weekday: "short" }),
-      count: requests.filter(r => new Date(r.created_at).toISOString().slice(0, 10) === ds).length,
+      count: filteredRequests.filter(r => new Date(r.created_at).toISOString().slice(0, 10) === ds).length,
     };
   });
   const maxAct = Math.max(...activityData.map(d => d.count), 1);
@@ -220,7 +237,7 @@ function AnalyticsPage() {
 
   // ── Current view's computed chart data ──────────────────────────────────────
   const isSol          = activeView === "solicitudes";
-  const kpiTotal       = isSol ? requests.length    : initiatives.length;
+  const kpiTotal       = isSol ? filteredRequests.length : initiatives.length;
   const kpiInProgress  = isSol ? solInProgress      : initInProgress;
   const kpiPending     = isSol ? solPending         : initPending;
   const kpiCompleted   = isSol ? solCompleted       : initCompleted;
@@ -277,6 +294,36 @@ function AnalyticsPage() {
               </button>
             ))}
           </div>
+
+          {/* Assigned filter */}
+          <select
+            value={filterAssigned}
+            onChange={e => setFilterAssigned(e.target.value)}
+            style={{
+              ...sel,
+              color: filterAssigned !== "all" ? "var(--primary)" : "var(--foreground)",
+              fontWeight: filterAssigned !== "all" ? 600 : 400,
+            }}
+          >
+            <option value="all">Todas</option>
+            <option value="assigned_to_me">Asignadas a mí</option>
+            <option value="created_by_me">Creadas por mí</option>
+          </select>
+
+          <select
+            value={filterAssignedTo}
+            onChange={e => setFilterAssignedTo(e.target.value)}
+            style={{
+              ...sel,
+              color: filterAssignedTo !== "all" ? "var(--primary)" : "var(--foreground)",
+              fontWeight: filterAssignedTo !== "all" ? 600 : 400,
+            }}
+          >
+            <option value="all">Asignado a: Todos</option>
+            {profiles.map(p => (
+              <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>
+            ))}
+          </select>
 
           {/* Area selector (super admin) */}
           {isSuperAdmin && (

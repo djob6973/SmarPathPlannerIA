@@ -218,6 +218,7 @@ export const updateRequest = createServerFn({ method: "POST" })
       expires_at: z.string().nullable().optional(),
       completed_at: z.string().nullable().optional(),
       parent_request_id: z.string().uuid().nullable().optional(),
+      area_id: z.string().uuid().nullable().optional(),
     }).parse(input)
   )
   .handler(async ({ data }) => {
@@ -256,6 +257,12 @@ export const updateRequest = createServerFn({ method: "POST" })
       }
     }
 
+    if (fields.area_id !== undefined && fields.area_id !== prev.area_id) {
+      if (!roles.has("super_admin")) {
+        throw new Error("Solo el super administrador puede cambiar el área de una solicitud");
+      }
+    }
+
     // Auto-manage completed_at when status column changes
     let targetIsCompleted = false;
     if (fields.status_column_id !== undefined && fields.completed_at === undefined) {
@@ -288,6 +295,7 @@ export const updateRequest = createServerFn({ method: "POST" })
     if (fields.expires_at !== undefined) { updates.push(`expires_at = $${updates.length + 1}`); values.push(fields.expires_at); }
     if (fields.completed_at !== undefined) { updates.push(`completed_at = $${updates.length + 1}`); values.push(fields.completed_at); }
     if (fields.parent_request_id !== undefined) { updates.push(`parent_request_id = $${updates.length + 1}`); values.push(fields.parent_request_id); }
+    if (fields.area_id !== undefined) { updates.push(`area_id = $${updates.length + 1}`); values.push(fields.area_id); }
 
     if (updates.length === 0) return { ok: true };
 
