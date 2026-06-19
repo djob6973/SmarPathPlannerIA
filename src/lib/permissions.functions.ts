@@ -8,7 +8,7 @@ const ALL_PERMISSIONS = [
   "view_dashboard", "view_board", "view_team",
   "create_requests", "edit_own_requests", "edit_all_requests",
   "delete_own_requests", "delete_all_requests", "view_all_requests",
-  "assign_requests", "manage_users", "manage_roles", "manage_permissions",
+  "assign_requests", "change_request_status", "manage_users", "manage_roles", "manage_permissions",
   "manage_areas", "view_analytics", "export_data", "use_ai_features",
   "manage_settings", "manage_request_expiration",
 ] as const;
@@ -18,19 +18,19 @@ const DEFAULT_PERMISSIONS: Record<string, AppPermission[]> = {
   area_admin: [
     "view_dashboard","view_board","view_team",
     "create_requests","edit_own_requests","edit_all_requests","delete_own_requests",
-    "delete_all_requests","view_all_requests","assign_requests","manage_users",
-    "manage_roles","view_analytics","export_data","use_ai_features","manage_request_expiration",
+    "delete_all_requests","view_all_requests","assign_requests","change_request_status",
+    "manage_users","manage_roles","view_analytics","export_data","use_ai_features","manage_request_expiration",
   ],
   manager: [
     "view_dashboard","view_board","view_team",
     "create_requests","edit_own_requests","edit_all_requests","delete_own_requests",
-    "delete_all_requests","view_all_requests","assign_requests","view_analytics",
-    "export_data","use_ai_features","manage_request_expiration",
+    "delete_all_requests","view_all_requests","assign_requests","change_request_status",
+    "view_analytics","export_data","use_ai_features","manage_request_expiration",
   ],
   agent: [
     "view_dashboard","view_board",
     "create_requests","edit_own_requests","edit_all_requests","delete_own_requests",
-    "view_all_requests","assign_requests","use_ai_features",
+    "view_all_requests","assign_requests","change_request_status","use_ai_features",
   ],
   client: ["view_dashboard","view_board","create_requests","edit_own_requests","delete_own_requests","use_ai_features"],
   viewer: ["view_dashboard","view_board","view_all_requests"],

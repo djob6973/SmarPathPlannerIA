@@ -9,6 +9,7 @@ export type AppPermission =
   | "delete_all_requests"
   | "view_all_requests"
   | "assign_requests"
+  | "change_request_status"
   | "manage_users"
   | "manage_roles"
   | "manage_permissions"
@@ -59,6 +60,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       "delete_all_requests",
       "view_all_requests",
       "assign_requests",
+      "change_request_status",
       "manage_request_expiration",
     ],
   },
@@ -100,6 +102,7 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   delete_all_requests: "Eliminar todas las solicitudes",
   view_all_requests: "Ver todas las solicitudes",
   assign_requests: "Asignar solicitudes",
+  change_request_status: "Cambiar estado de solicitud",
   manage_users: "Gestionar usuarios",
   manage_roles: "Gestionar roles",
   manage_permissions: "Gestionar permisos",
@@ -132,6 +135,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "delete_all_requests",
     "view_all_requests",
     "assign_requests",
+    "change_request_status",
     "manage_users",
     "manage_roles",
     "manage_permissions",
@@ -153,6 +157,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "delete_all_requests",
     "view_all_requests",
     "assign_requests",
+    "change_request_status",
     "manage_users",
     "manage_roles",
     "view_analytics",
@@ -171,6 +176,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "delete_all_requests",
     "view_all_requests",
     "assign_requests",
+    "change_request_status",
     "view_analytics",
     "export_data",
     "use_ai_features",
@@ -180,7 +186,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "view_dashboard", "view_board",
     "create_requests", "edit_own_requests", "edit_all_requests",
     "delete_own_requests", "view_all_requests", "assign_requests",
-    "use_ai_features",
+    "change_request_status", "use_ai_features",
   ],
   client: ["view_dashboard", "view_board", "create_requests", "edit_own_requests", "delete_own_requests", "use_ai_features"],
   viewer: ["view_dashboard", "view_board", "view_all_requests"],

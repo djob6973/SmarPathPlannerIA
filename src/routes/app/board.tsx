@@ -253,7 +253,7 @@ function BoardPage() {
   const [areas, setAreas] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<ProfileMap>(new Map());
 
-  const canEdit = hasPermission("edit_all_requests") || hasPermission("edit_own_requests");
+  const canEdit = hasPermission("change_request_status") || hasPermission("edit_all_requests") || hasPermission("edit_own_requests");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const reload = useCallback(async () => {

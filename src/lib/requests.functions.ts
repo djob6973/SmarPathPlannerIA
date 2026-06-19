@@ -20,10 +20,21 @@ export type DeliverableRow = {
   delivered_at: string | null; created_by: string; created_at: string; updated_at: string;
 };
 
-// ── Auth helper ────────────────────────────────────────────────────────────────
+// ── Auth helpers ───────────────────────────────────────────────────────────────
 async function getCallerRoles(db: any, userId: string): Promise<Set<string>> {
   const rows = await db<{ role: string }[]>`SELECT role FROM user_roles_smart_path WHERE user_id = ${userId}`;
   return new Set(rows.map((r: any) => r.role));
+}
+
+async function getCallerPermissions(db: any, userId: string): Promise<Set<string>> {
+  const roleRows = await db<{ role: string }[]>`SELECT role FROM user_roles_smart_path WHERE user_id = ${userId}`;
+  const roles = roleRows.map((r: any) => r.role);
+  if (roles.length === 0) return new Set();
+  const permRows = await db<{ permission: string }[]>`
+    SELECT DISTINCT permission FROM role_permissions
+    WHERE role = ANY(${roles}) AND enabled = true
+  `;
+  return new Set(permRows.map((p: any) => p.permission));
 }
 
 // ── Board / list data ──────────────────────────────────────────────────────────
@@ -37,16 +48,30 @@ export const getRequestsData = createServerFn({ method: "GET" })
     const effectiveAreaId =
       data.areaId !== undefined ? data.areaId : userProfile.area_id;
 
+    const permissions = await getCallerPermissions(db, userId);
+    const canViewAll = permissions.has("view_all_requests");
+
     const [columns, requests] = await Promise.all([
       db<ColumnRow[]>`SELECT * FROM kanban_columns ORDER BY position`,
       effectiveAreaId
-        ? db<RequestRow[]>`
-            SELECT * FROM requests
-            WHERE area_id = ${effectiveAreaId}
-            ORDER BY position ASC, updated_at DESC`
-        : db<RequestRow[]>`
-            SELECT * FROM requests
-            ORDER BY position ASC, updated_at DESC`,
+        ? canViewAll
+          ? db<RequestRow[]>`
+              SELECT * FROM requests
+              WHERE area_id = ${effectiveAreaId}
+              ORDER BY position ASC, updated_at DESC`
+          : db<RequestRow[]>`
+              SELECT * FROM requests
+              WHERE area_id = ${effectiveAreaId}
+                AND (created_by = ${userId} OR assigned_to = ${userId})
+              ORDER BY position ASC, updated_at DESC`
+        : canViewAll
+          ? db<RequestRow[]>`
+              SELECT * FROM requests
+              ORDER BY position ASC, updated_at DESC`
+          : db<RequestRow[]>`
+              SELECT * FROM requests
+              WHERE (created_by = ${userId} OR assigned_to = ${userId})
+              ORDER BY position ASC, updated_at DESC`,
     ]);
 
     return { columns, requests };
@@ -207,13 +232,28 @@ export const updateRequest = createServerFn({ method: "POST" })
     const prev = prevRows[0] ?? null;
     if (!prev) throw new Error("Solicitud no encontrada");
 
-    const roles = await getCallerRoles(db, userId);
+    const [roles, permissions] = await Promise.all([
+      getCallerRoles(db, userId),
+      getCallerPermissions(db, userId),
+    ]);
     const canEditAll = roles.has("super_admin") || roles.has("area_admin") || roles.has("manager");
     if (!canEditAll) {
       if (prev.created_by !== userId) throw new Error("No tienes permiso para editar esta solicitud");
       if (prev.area_id && prev.area_id !== auth.userProfile.area_id) throw new Error("Solicitud fuera de tu área");
     } else if (!roles.has("super_admin") && prev.area_id && prev.area_id !== auth.userProfile.area_id) {
       throw new Error("Solicitud fuera de tu área");
+    }
+
+    if (fields.assigned_to !== undefined && fields.assigned_to !== prev.assigned_to) {
+      if (!permissions.has("assign_requests")) {
+        throw new Error("No tienes permiso para asignar solicitudes");
+      }
+    }
+
+    if (fields.status_column_id !== undefined && fields.status_column_id !== prev.status_column_id) {
+      if (!permissions.has("change_request_status") && !permissions.has("edit_all_requests")) {
+        throw new Error("No tienes permiso para cambiar el estado de esta solicitud");
+      }
     }
 
     // Auto-manage completed_at when status column changes

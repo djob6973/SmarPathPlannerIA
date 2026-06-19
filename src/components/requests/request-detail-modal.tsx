@@ -45,7 +45,7 @@ interface RequestDetailModalProps {
 }
 
 export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDetailModalProps) {
-  const { user, isSuperAdmin, isAreaAdmin, hasRole } = useAuth();
+  const { user } = useAuth();
   const [request, setRequest] = useState<RequestRow | null>(null);
   const [columns, setColumns] = useState<ColumnRow[]>([]);
   const [comments, setComments] = useState<CommentRow[]>([]);
@@ -91,6 +91,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [editingDeliverableNotes, setEditingDeliverableNotes] = useState("");
   const [savingDeliverableEdit, setSavingDeliverableEdit] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [canAssignRequest, setCanAssignRequest] = useState(false);
+  const [canChangeStatus, setCanChangeStatus] = useState(false);
 
   const toggleNotes = (id: string) => setExpandedNotes((prev) => {
     const next = new Set(prev);
@@ -103,8 +105,6 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [selectedParentId, setSelectedParentId] = useState("");
   const [updatingParent, setUpdatingParent] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
-
-  const canEdit = isSuperAdmin || isAreaAdmin || hasRole("manager") || hasRole("client");
 
   useEffect(() => {
     if (!requestId) return;
@@ -203,6 +203,20 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
     checkUserPermission({ data: { permission: "edit_all_requests" } })
       .then(({ hasPermission }) => setCanEditCreatedAt(hasPermission))
       .catch(() => setCanEditCreatedAt(false));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    checkUserPermission({ data: { permission: "assign_requests" } })
+      .then(({ hasPermission }) => setCanAssignRequest(hasPermission))
+      .catch(() => setCanAssignRequest(false));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    checkUserPermission({ data: { permission: "change_request_status" } })
+      .then(({ hasPermission }) => setCanChangeStatus(hasPermission))
+      .catch(() => setCanChangeStatus(false));
   }, [user]);
 
   const loadLinkableRequests = async () => {
@@ -878,7 +892,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                     const profile = profiles[c.user_id];
                     const initials = (profile?.full_name ?? profile?.email ?? "?").slice(0, 2).toUpperCase();
                     const isAuthor = c.user_id === user?.id;
-                    const canEditComment = isAuthor || isSuperAdmin || isAreaAdmin || hasRole("manager");
+                    const canEditComment = isAuthor || canEditRequest;
                     const isEditing = editingCommentId === c.id;
                     return (
                       <div key={c.id} className="flex gap-3">
@@ -1005,7 +1019,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
 
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Asignado a</p>
-                  {canEdit ? (
+                  {canAssignRequest ? (
                     <Select value={request.assigned_to ?? "unassigned"} onValueChange={updateAssignedTo}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
                       <SelectContent>
@@ -1037,7 +1051,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
 
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Estado</p>
-                  {canEdit ? (
+                  {canChangeStatus ? (
                     <Select value={request.status_column_id ?? ""} onValueChange={updateStatus}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin estado" /></SelectTrigger>
                       <SelectContent>
