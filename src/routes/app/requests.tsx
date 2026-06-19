@@ -39,6 +39,7 @@ function RequestsPage() {
   const [showManual, setShowManual]         = useState(false);
   const [selectedArea, setSelectedArea]     = useState<string | null>(null);
   const [areas, setAreas]                   = useState<{ id: string; name: string }[]>([]);
+  const [filterAssigned, setFilterAssigned] = useState("all");
   const [page, setPage]                     = useState(1);
   const [pageSize, setPageSize]             = useState(20);
 
@@ -63,16 +64,20 @@ function RequestsPage() {
 
   const filtered = useMemo(() =>
     requests.filter((r) => {
-      const matchSearch   = !search || r.title.toLowerCase().includes(search.toLowerCase());
-      const matchPriority = filterPriority === "all" || r.priority === filterPriority;
-      const matchStatus   = filterStatus === "all" || r.status_column_id === filterStatus;
-      return matchSearch && matchPriority && matchStatus;
+      const matchSearch    = !search || r.title.toLowerCase().includes(search.toLowerCase());
+      const matchPriority  = filterPriority === "all" || r.priority === filterPriority;
+      const matchStatus    = filterStatus === "all" || r.status_column_id === filterStatus;
+      const matchAssigned  =
+        filterAssigned === "all" ||
+        (filterAssigned === "assigned_to_me" && r.assigned_to === user?.id) ||
+        (filterAssigned === "created_by_me"  && r.created_by  === user?.id);
+      return matchSearch && matchPriority && matchStatus && matchAssigned;
     }),
-    [requests, search, filterPriority, filterStatus]
+    [requests, search, filterPriority, filterStatus, filterAssigned, user?.id]
   );
 
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [search, filterPriority, filterStatus]);
+  useEffect(() => { setPage(1); }, [search, filterPriority, filterStatus, filterAssigned]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage   = Math.min(page, totalPages);
@@ -163,15 +168,21 @@ function RequestsPage() {
         </div>
 
         <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={filterInputStyle}>
-          <option value="all">All priorities</option>
+          <option value="all">Todas las prioridades</option>
           {PRIORITIES.map((p) => (
             <option key={p} value={p} style={{ textTransform: "capitalize" }}>{p}</option>
           ))}
         </select>
 
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={filterInputStyle}>
-          <option value="all">All statuses</option>
+          <option value="all">Todos los estados</option>
           {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+
+        <select value={filterAssigned} onChange={(e) => setFilterAssigned(e.target.value)} style={filterInputStyle}>
+          <option value="all">Todas</option>
+          <option value="assigned_to_me">Asignadas a mí</option>
+          <option value="created_by_me">Creadas por mí</option>
         </select>
       </div>
 
