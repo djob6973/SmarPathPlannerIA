@@ -31,10 +31,6 @@ CREATE TRIGGER trg_areas_updated_at
   BEFORE UPDATE ON public.areas
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
-INSERT INTO public.areas (name, description)
-VALUES ('Área General', 'Área por defecto')
-ON CONFLICT (name) DO NOTHING;
-
 -- ============ PROFILES ============
 -- id is self-generated; email comes from X-Forwarded-Email and is the unique identifier.
 CREATE TABLE IF NOT EXISTS public.profiles (

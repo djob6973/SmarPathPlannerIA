@@ -224,13 +224,6 @@ async function _run() {
 
   // ── Seeds (idempotent via ON CONFLICT) ─────────────────────────────────────
 
-  // Areas — idempotent (UNIQUE on name)
-  await db`
-    INSERT INTO public.areas (name, description)
-    VALUES ('Área General', 'Área por defecto')
-    ON CONFLICT (name) DO NOTHING
-  `;
-
   // Role permissions — idempotent (UNIQUE on role, permission)
   await db`
     INSERT INTO public.role_permissions (role, permission, enabled) VALUES
