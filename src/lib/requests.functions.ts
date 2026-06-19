@@ -454,6 +454,26 @@ export const addDeliverable = createServerFn({ method: "POST" })
     return { deliverable: rows[0] };
   });
 
+export const updateDeliverable = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z.object({
+      deliverableId: z.string().uuid(),
+      title: z.string().min(1),
+      notes: z.string().nullable().optional(),
+    }).parse(input)
+  )
+  .handler(async ({ data }) => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    const { db } = auth;
+    await db`
+      UPDATE request_deliverables
+      SET title = ${data.title}, notes = ${data.notes ?? null}
+      WHERE id = ${data.deliverableId}
+    `;
+    return { ok: true };
+  });
+
 export const toggleDeliverable = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({

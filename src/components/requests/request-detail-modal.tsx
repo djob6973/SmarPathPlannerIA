@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2, GitBranch, Link2, PackageCheck, Plus, CheckCircle2, Circle } from "lucide-react";
+import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2, GitBranch, Link2, PackageCheck, Plus, CheckCircle2, Circle, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   updateComment as updateCommentFn,
   deleteComment as deleteCommentFn,
   addDeliverable as addDeliverableFn,
+  updateDeliverable as updateDeliverableFn,
   toggleDeliverable as toggleDeliverableFn,
   deleteDeliverable as deleteDeliverableFn,
   type RequestRow,
@@ -85,6 +86,17 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [showAddDeliverable, setShowAddDeliverable] = useState(false);
   const [addingDeliverable, setAddingDeliverable] = useState(false);
   const [togglingDeliverableId, setTogglingDeliverableId] = useState<string | null>(null);
+  const [editingDeliverableId, setEditingDeliverableId] = useState<string | null>(null);
+  const [editingDeliverableTitle, setEditingDeliverableTitle] = useState("");
+  const [editingDeliverableNotes, setEditingDeliverableNotes] = useState("");
+  const [savingDeliverableEdit, setSavingDeliverableEdit] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  const toggleNotes = (id: string) => setExpandedNotes((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const [isLinkingParent, setIsLinkingParent] = useState(false);
   const [linkableRequests, setLinkableRequests] = useState<RequestRow[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
@@ -373,6 +385,30 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       onClose();
     } catch (err: any) { toast.error(err?.message); }
     setCopyingRequest(false);
+  };
+
+  const startEditingDeliverable = (item: DeliverableRow) => {
+    setEditingDeliverableId(item.id);
+    setEditingDeliverableTitle(item.title);
+    setEditingDeliverableNotes(item.notes ?? "");
+  };
+
+  const cancelEditingDeliverable = () => {
+    setEditingDeliverableId(null);
+    setEditingDeliverableTitle("");
+    setEditingDeliverableNotes("");
+  };
+
+  const saveDeliverableEdit = async () => {
+    if (!editingDeliverableId || !editingDeliverableTitle.trim()) return;
+    setSavingDeliverableEdit(true);
+    try {
+      await updateDeliverableFn({ data: { deliverableId: editingDeliverableId, title: editingDeliverableTitle.trim(), notes: editingDeliverableNotes.trim() || null } });
+      setDeliverables((d) => d.map((item) => item.id === editingDeliverableId ? { ...item, title: editingDeliverableTitle.trim(), notes: editingDeliverableNotes.trim() || null } : item));
+      toast.success("Entregable actualizado");
+      cancelEditingDeliverable();
+    } catch (err: any) { toast.error(err?.message); }
+    setSavingDeliverableEdit(false);
   };
 
   const submitDeliverable = async () => {
@@ -703,12 +739,17 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                           disabled={addingDeliverable}
                           onKeyDown={(e) => { if (e.key === "Enter") submitDeliverable(); }}
                         />
-                        <Input
+                        <Textarea
                           placeholder="Notas o enlace (opcional)..."
                           value={newDeliverableNotes}
-                          onChange={(e) => setNewDeliverableNotes(e.target.value)}
-                          className="text-sm h-8"
+                          onChange={(e) => {
+                            setNewDeliverableNotes(e.target.value);
+                            e.target.style.height = "auto";
+                            e.target.style.height = `${e.target.scrollHeight}px`;
+                          }}
+                          className="text-sm min-h-[60px] resize-none overflow-hidden leading-relaxed"
                           disabled={addingDeliverable}
+                          rows={2}
                         />
                         <div className="flex gap-2">
                           <Button size="sm" className="h-7 text-xs flex-1" onClick={submitDeliverable} disabled={addingDeliverable || !newDeliverableTitle.trim()}>
@@ -730,11 +771,12 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                       {deliverables.map((item) => {
                         const isDelivered = item.delivered_at !== null;
                         const isToggling = togglingDeliverableId === item.id;
+                        const isEditingThis = editingDeliverableId === item.id;
                         return (
                           <div key={item.id} className={cn("flex items-start gap-2 px-2.5 py-2 rounded-lg text-xs transition-colors", isDelivered ? "bg-emerald-500/10" : "bg-muted/50")}>
                             <button
                               onClick={() => handleToggleDeliverable(item)}
-                              disabled={!canEditRequest || isToggling}
+                              disabled={!canEditRequest || isToggling || isEditingThis}
                               className="shrink-0 mt-0.5 text-muted-foreground hover:text-emerald-500 disabled:opacity-50 transition-colors"
                             >
                               {isToggling
@@ -745,18 +787,74 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                               }
                             </button>
                             <div className="flex-1 min-w-0">
-                              <span className={cn("font-medium", isDelivered && "line-through text-muted-foreground")}>{item.title}</span>
-                              {item.notes && <p className="text-muted-foreground truncate mt-0.5">{item.notes}</p>}
-                              {isDelivered && item.delivered_at && (
-                                <p className="text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                  Entregado {formatDistanceToNow(new Date(item.delivered_at), { addSuffix: true, locale: es })}
-                                </p>
+                              {isEditingThis ? (
+                                <div className="space-y-1.5">
+                                  <Input
+                                    value={editingDeliverableTitle}
+                                    onChange={(e) => setEditingDeliverableTitle(e.target.value)}
+                                    className="text-xs h-7"
+                                    disabled={savingDeliverableEdit}
+                                    autoFocus
+                                  />
+                                  <Textarea
+                                    value={editingDeliverableNotes}
+                                    onChange={(e) => {
+                                      setEditingDeliverableNotes(e.target.value);
+                                      e.target.style.height = "auto";
+                                      e.target.style.height = `${e.target.scrollHeight}px`;
+                                    }}
+                                    placeholder="Notas o enlace (opcional)..."
+                                    className="text-xs min-h-[60px] resize-none overflow-hidden leading-relaxed"
+                                    disabled={savingDeliverableEdit}
+                                    rows={2}
+                                  />
+                                  <div className="flex gap-1.5">
+                                    <Button size="sm" className="h-6 text-[11px] flex-1" onClick={saveDeliverableEdit} disabled={savingDeliverableEdit || !editingDeliverableTitle.trim()}>
+                                      {savingDeliverableEdit ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
+                                      Guardar
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-6 text-[11px]" onClick={cancelEditingDeliverable} disabled={savingDeliverableEdit}>
+                                      <X className="h-3 w-3 mr-1" />Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={cn("font-medium leading-snug", isDelivered && "line-through text-muted-foreground")}>{item.title}</span>
+                                    {item.notes && (
+                                      <button
+                                        onClick={() => toggleNotes(item.id)}
+                                        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                                        title={expandedNotes.has(item.id) ? "Ocultar notas" : "Ver notas"}
+                                      >
+                                        {expandedNotes.has(item.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className={cn(
+                                    "transition-all duration-300 ease-in-out",
+                                    expandedNotes.has(item.id) ? "max-h-40 opacity-100 mt-1.5 overflow-y-auto" : "max-h-0 opacity-0 overflow-hidden"
+                                  )}>
+                                    <p className="text-muted-foreground whitespace-pre-wrap text-[11px] leading-relaxed pr-1">{item.notes}</p>
+                                  </div>
+                                  {isDelivered && item.delivered_at && (
+                                    <p className="text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                      Entregado {formatDistanceToNow(new Date(item.delivered_at), { addSuffix: true, locale: es })}
+                                    </p>
+                                  )}
+                                </>
                               )}
                             </div>
-                            {canEditRequest && (
-                              <button onClick={() => handleDeleteDeliverable(item.id)} className="shrink-0 text-muted-foreground hover:text-destructive transition-colors">
-                                <Trash2 className="h-3 w-3" />
-                              </button>
+                            {canEditRequest && !isEditingThis && (
+                              <div className="shrink-0 flex items-center gap-0.5">
+                                <button onClick={() => startEditingDeliverable(item)} className="text-muted-foreground hover:text-foreground transition-colors">
+                                  <Edit2 className="h-3 w-3" />
+                                </button>
+                                <button onClick={() => handleDeleteDeliverable(item.id)} className="text-muted-foreground hover:text-destructive transition-colors">
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
                             )}
                           </div>
                         );
