@@ -18,15 +18,15 @@ export const Route = createFileRoute("/app/team")({
 
 type TeamUser = { id: string; email: string; full_name: string | null; roles: string[]; area_id: string | null };
 
-const ROLES = ["super_admin", "area_admin", "manager", "client", "viewer"] as const;
+const ROLES = ["super_admin", "area_admin", "manager", "agent", "client", "viewer"] as const;
 
 const ROLE_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  super_admin: { bg: "rgba(237,86,80,.13)", color: "#ED5650", label: "Super Admin" },
-  area_admin:  { bg: "rgba(249,115,22,.13)", color: "#F97316", label: "Admin Área" },
-  admin:       { bg: "rgba(168,85,247,.13)", color: "#A855F7", label: "Admin" },
-  manager:     { bg: "rgba(59,130,246,.13)",  color: "#3B82F6", label: "Manager" },
-  client:      { bg: "rgba(157,221,5,.18)",   color: "#7AAE1B", label: "Cliente" },
-  viewer:      { bg: "rgba(100,116,139,.13)", color: "#64748B", label: "Viewer" },
+  super_admin: { bg: "rgba(237,86,80,.13)",   color: "#ED5650", label: "Super Admin" },
+  area_admin:  { bg: "rgba(249,115,22,.13)",  color: "#F97316", label: "Admin Área" },
+  manager:     { bg: "rgba(59,130,246,.13)",   color: "#3B82F6", label: "Manager" },
+  agent:       { bg: "rgba(168,85,247,.13)",   color: "#A855F7", label: "Agent" },
+  client:      { bg: "rgba(157,221,5,.18)",    color: "#7AAE1B", label: "Client" },
+  viewer:      { bg: "rgba(100,116,139,.13)",  color: "#64748B", label: "Viewer" },
 };
 
 const AVATAR_PALETTE = [

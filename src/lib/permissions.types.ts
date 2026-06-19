@@ -19,7 +19,7 @@ export type AppPermission =
   | "manage_request_expiration"
   | "manage_areas";
 
-export type AppRole = "super_admin" | "area_admin" | "manager" | "client" | "viewer";
+export type AppRole = "super_admin" | "area_admin" | "manager" | "agent" | "client" | "viewer";
 
 export interface RolePermission {
   id: string;
@@ -112,11 +112,12 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
 };
 
 export const ROLE_LABELS: Record<AppRole, string> = {
-  super_admin: "Super Administrador",
-  area_admin: "Administrador de Área",
-  manager: "Gerente",
-  client: "Cliente",
-  viewer: "Visualizador",
+  super_admin: "Super Admin",
+  area_admin: "Admin Área",
+  manager: "Manager",
+  agent: "Agent",
+  client: "Client",
+  viewer: "Viewer",
 };
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
@@ -174,6 +175,12 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "export_data",
     "use_ai_features",
     "manage_request_expiration",
+  ],
+  agent: [
+    "view_dashboard", "view_board",
+    "create_requests", "edit_own_requests", "edit_all_requests",
+    "delete_own_requests", "view_all_requests", "assign_requests",
+    "use_ai_features",
   ],
   client: ["view_dashboard", "view_board", "create_requests", "edit_own_requests", "delete_own_requests", "use_ai_features"],
   viewer: ["view_dashboard", "view_board", "view_all_requests"],

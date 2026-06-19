@@ -126,7 +126,7 @@ export function PermissionsManager() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2 mb-6">
-            {(["super_admin", "area_admin", "manager", "client", "viewer"] as AppRole[]).map((role) => (
+            {(["super_admin", "area_admin", "manager", "agent", "client", "viewer"] as AppRole[]).map((role) => (
               <Button
                 key={role}
                 variant={selectedRole === role ? "default" : "outline"}
@@ -195,7 +195,7 @@ export function PermissionsManager() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {(["super_admin", "area_admin", "manager", "client", "viewer"] as AppRole[]).map((role) => {
+            {(["super_admin", "area_admin", "manager", "agent", "client", "viewer"] as AppRole[]).map((role) => {
               const rolePerms = permissionsData?.permissions?.filter((p: any) => p.role === role && p.enabled) || [];
               return (
                 <div key={role} className="flex items-start gap-3">

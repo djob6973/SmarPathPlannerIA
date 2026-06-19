@@ -6,11 +6,12 @@ import { hashPassword } from "./password";
 import { insertNotification } from "./notifications.functions";
 
 const ROLE_LABELS: Record<string, string> = {
-  super_admin: "Super Administrador",
-  area_admin:  "Administrador de Área",
+  super_admin: "Super Admin",
+  area_admin:  "Admin Área",
   manager:     "Manager",
-  client:      "Cliente",
-  viewer:      "Visualizador",
+  agent:       "Agent",
+  client:      "Client",
+  viewer:      "Viewer",
 };
 
 export interface Area {
@@ -66,7 +67,7 @@ export const setUserRole = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
       userId: z.string().uuid(),
-      role: z.enum(["super_admin", "area_admin", "manager", "client", "viewer"]),
+      role: z.enum(["super_admin", "area_admin", "manager", "agent", "client", "viewer"]),
       enabled: z.boolean(),
       areaId: z.string().uuid().optional(),
     }).parse(input)

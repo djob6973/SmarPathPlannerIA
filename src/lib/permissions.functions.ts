@@ -27,6 +27,11 @@ const DEFAULT_PERMISSIONS: Record<string, AppPermission[]> = {
     "delete_all_requests","view_all_requests","assign_requests","view_analytics",
     "export_data","use_ai_features","manage_request_expiration",
   ],
+  agent: [
+    "view_dashboard","view_board",
+    "create_requests","edit_own_requests","edit_all_requests","delete_own_requests",
+    "view_all_requests","assign_requests","use_ai_features",
+  ],
   client: ["view_dashboard","view_board","create_requests","edit_own_requests","delete_own_requests","use_ai_features"],
   viewer: ["view_dashboard","view_board","view_all_requests"],
 };
@@ -53,7 +58,7 @@ export const getRolePermissions = createServerFn({ method: "GET" }).handler(asyn
 export const updateRolePermission = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
-      role: z.enum(["super_admin","area_admin","manager","client","viewer"]),
+      role: z.enum(["super_admin","area_admin","manager","agent","client","viewer"]),
       permission: z.enum(ALL_PERMISSIONS),
       enabled: z.boolean(),
     }).parse(input)
@@ -74,7 +79,7 @@ export const updateRolePermission = createServerFn({ method: "POST" })
 export const resetRolePermissions = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
-      role: z.enum(["super_admin","area_admin","manager","client","viewer"]),
+      role: z.enum(["super_admin","area_admin","manager","agent","client","viewer"]),
     }).parse(input)
   )
   .handler(async ({ data }) => {
