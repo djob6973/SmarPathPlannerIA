@@ -233,7 +233,7 @@ function KanbanColumn({ col, requests, canEdit, onCardClick, profiles, isBacklog
 // ── BoardPage ─────────────────────────────────────────────────────────────────
 
 function BoardPage() {
-  const { isSuperAdmin, isAreaAdmin, hasRole, areaId, hasPermission } = useAuth();
+  const { isSuperAdmin, areaId, hasPermission } = useAuth();
 
   if (!hasPermission("view_board")) {
     return (
@@ -253,7 +253,7 @@ function BoardPage() {
   const [areas, setAreas] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<ProfileMap>(new Map());
 
-  const canEdit = isSuperAdmin || isAreaAdmin || hasRole("manager") || hasRole("client");
+  const canEdit = hasPermission("edit_all_requests") || hasPermission("edit_own_requests");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const reload = useCallback(async () => {

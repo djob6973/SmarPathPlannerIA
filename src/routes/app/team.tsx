@@ -18,7 +18,7 @@ export const Route = createFileRoute("/app/team")({
 
 type TeamUser = { id: string; email: string; full_name: string | null; roles: string[]; area_id: string | null };
 
-const ROLES = ["super_admin", "area_admin", "admin", "manager", "client", "viewer"] as const;
+const ROLES = ["super_admin", "area_admin", "manager", "client", "viewer"] as const;
 
 const ROLE_STYLES: Record<string, { bg: string; color: string; label: string }> = {
   super_admin: { bg: "rgba(237,86,80,.13)", color: "#ED5650", label: "Super Admin" },
@@ -39,7 +39,7 @@ function getRoleKey(r: string): string {
 }
 
 function TeamPage() {
-  const { hasRole, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
 
   if (!hasPermission("view_team")) {
     return (
@@ -68,9 +68,8 @@ function TeamPage() {
   const [editEmail, setEditEmail]     = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
-  const isAdmin        = hasRole("super_admin");
-  const isAreaAdmin    = hasRole("area_admin");
-  const canManageAreas = isAdmin || isAreaAdmin;
+  const canManageRoles = hasPermission("manage_roles");
+  const canManageUsers = hasPermission("manage_users");
 
   const reload = async () => {
     setLoading(true);
@@ -186,7 +185,7 @@ function TeamPage() {
       </div>
 
       {/* ── Read-only notice ── */}
-      {!canManageAreas && (
+      {!canManageUsers && (
         <div style={{
           display: "flex", alignItems: "center", gap: 10,
           background: "var(--muted)", borderRadius: "var(--r-md, 10px)",
@@ -215,8 +214,8 @@ function TeamPage() {
               user={u}
               idx={idx}
               areas={areas}
-              isAdmin={isAdmin}
-              canManageAreas={canManageAreas}
+              canManageRoles={canManageRoles}
+              canManageUsers={canManageUsers}
               onToggleRole={toggle}
               onAreaChange={handleAreaChange}
               onResetPassword={openResetDialog}
@@ -350,15 +349,15 @@ interface MemberCardProps {
   user: TeamUser;
   idx: number;
   areas: any[];
-  isAdmin: boolean;
-  canManageAreas: boolean;
+  canManageRoles: boolean;
+  canManageUsers: boolean;
   onToggleRole: (userId: string, role: string, enabled: boolean) => void;
   onAreaChange: (userId: string, areaId: string) => void;
   onResetPassword: (user: TeamUser) => void;
   onEdit: (user: TeamUser) => void;
 }
 
-function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole, onAreaChange, onResetPassword, onEdit }: MemberCardProps) {
+function MemberCard({ user: u, idx, areas, canManageRoles, canManageUsers, onToggleRole, onAreaChange, onResetPassword, onEdit }: MemberCardProps) {
   const initials    = (u.full_name ?? u.email).slice(0, 2).toUpperCase();
   const avatarColor = AVATAR_PALETTE[idx % AVATAR_PALETTE.length];
   const areaName    = areas.find((a) => a.id === u.area_id)?.name;
@@ -399,7 +398,7 @@ function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole
           </div>
 
           {/* Edit button */}
-          {canManageAreas && (
+          {canManageUsers && (
             <button
               onClick={() => onEdit(u)}
               title="Editar miembro"
@@ -454,7 +453,7 @@ function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole
         </div>
 
         {/* Area display (viewers / non-admins) */}
-        {!canManageAreas && (
+        {!canManageUsers && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
             <Building size={12} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
             <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Área:</span>
@@ -474,7 +473,7 @@ function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole
       </div>
 
       {/* Admin controls */}
-      {(isAdmin || canManageAreas) && (
+      {(canManageRoles || canManageUsers) && (
         <div style={{
           borderTop: "1px solid var(--border)",
           background: "var(--muted)",
@@ -483,7 +482,7 @@ function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole
         }}>
 
           {/* Role toggles */}
-          {isAdmin && (
+          {canManageRoles && (
             <div>
               <p style={{
                 fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const,
@@ -513,7 +512,7 @@ function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole
           )}
 
           {/* Area selector */}
-          {canManageAreas && (
+          {canManageUsers && (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 70 }}>
                 <Building size={13} style={{ color: "var(--muted-foreground)" }} />
@@ -537,7 +536,7 @@ function MemberCard({ user: u, idx, areas, isAdmin, canManageAreas, onToggleRole
           )}
 
           {/* Reset password */}
-          {canManageAreas && (
+          {canManageUsers && (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 70 }}>
                 <KeyRound size={13} style={{ color: "var(--muted-foreground)" }} />

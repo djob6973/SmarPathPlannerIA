@@ -28,6 +28,19 @@ const STARTERS = [
 ];
 
 function ChatPage() {
+  const { hasPermission } = useAuth();
+  if (!hasPermission("use_ai_features")) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Sin acceso</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No tienes permiso para usar el agente IA.</p>
+      </div>
+    );
+  }
+  return <ChatPageContent />;
+}
+
+function ChatPageContent() {
   const send = useServerFn(sendChatMessage);
   const { isSuperAdmin, areaId, areaName } = useAuth();
   const [convId, setConvId] = useState<string | undefined>();

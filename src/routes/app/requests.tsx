@@ -137,13 +137,17 @@ function RequestsPage() {
             </select>
           )}
 
-          <button onClick={() => setShowManual(true)} style={btnOutlineStyle}>
-            <Plus size={14} /> Nueva manual
-          </button>
+          {hasPermission("create_requests") && (
+            <button onClick={() => setShowManual(true)} style={btnOutlineStyle}>
+              <Plus size={14} /> Nueva manual
+            </button>
+          )}
 
-          <Link to="/app/chat" style={btnCoralStyle}>
-            <MessageSquare size={14} /> Nueva con IA
-          </Link>
+          {hasPermission("use_ai_features") && (
+            <Link to="/app/chat" style={btnCoralStyle}>
+              <MessageSquare size={14} /> Nueva con IA
+            </Link>
+          )}
         </div>
       </div>
 
