@@ -152,6 +152,28 @@ export const createRequest = createServerFn({ method: "POST" })
       );
     }
 
+    // Notify managers, area_admins and super_admins about the new request
+    if (areaId) {
+      const managers = await db<{ id: string }[]>`
+        SELECT DISTINCT user_id AS id FROM user_roles_smart_path
+        WHERE (
+          role = 'super_admin'
+          OR (role IN ('area_admin', 'manager') AND area_id = ${areaId})
+        )
+        AND user_id != ${userId}
+      `;
+      for (const m of managers) {
+        await insertNotification(
+          db,
+          m.id,
+          "request_created",
+          "Nueva solicitud creada",
+          `"${req.title}" fue creada y está pendiente de atención`,
+          { requestId: req.id }
+        );
+      }
+    }
+
     return { request: req };
   });
 
@@ -195,12 +217,13 @@ export const updateRequest = createServerFn({ method: "POST" })
     }
 
     // Auto-manage completed_at when status column changes
+    let targetIsCompleted = false;
     if (fields.status_column_id !== undefined && fields.completed_at === undefined) {
       if (fields.status_column_id) {
         const cols = await db<{ is_completed: boolean }[]>`
           SELECT is_completed FROM kanban_columns WHERE id = ${fields.status_column_id}
         `;
-        const targetIsCompleted = cols[0]?.is_completed ?? false;
+        targetIsCompleted = cols[0]?.is_completed ?? false;
         if (targetIsCompleted && !prev?.completed_at) {
           fields.completed_at = new Date().toISOString();
         } else if (!targetIsCompleted) {
@@ -264,13 +287,33 @@ export const updateRequest = createServerFn({ method: "POST" })
         const currentAssignee = fields.assigned_to ?? prev.assigned_to;
         if (currentAssignee && currentAssignee !== userId) notify.add(currentAssignee);
 
+        const notifType  = targetIsCompleted ? "request_completed" : "status_changed";
+        const notifTitle = targetIsCompleted ? "Solicitud completada"  : "Estado actualizado";
+        const notifBody  = targetIsCompleted
+          ? `La solicitud "${requestTitle}" fue marcada como completada`
+          : `La solicitud "${requestTitle}" cambió de estado`;
+
+        for (const recipientId of notify) {
+          await insertNotification(db, recipientId, notifType, notifTitle, notifBody, { requestId });
+        }
+      }
+
+      // Notify creator and assignee when priority changes
+      if (fields.priority !== undefined && fields.priority !== prev.priority) {
+        const PRIORITY_LABELS: Record<string, string> = {
+          urgent: "Urgente", high: "Alta", medium: "Media", low: "Baja",
+        };
+        const notify = new Set<string>();
+        if (prev.created_by && prev.created_by !== userId) notify.add(prev.created_by);
+        const currentAssignee = fields.assigned_to ?? prev.assigned_to;
+        if (currentAssignee && currentAssignee !== userId) notify.add(currentAssignee);
+
         for (const recipientId of notify) {
           await insertNotification(
-            db,
-            recipientId,
-            "status_changed",
-            "Estado actualizado",
-            `La solicitud "${requestTitle}" cambió de estado`,
+            db, recipientId,
+            "priority_changed",
+            "Prioridad actualizada",
+            `La prioridad de "${requestTitle}" cambió a ${PRIORITY_LABELS[fields.priority] ?? fields.priority}`,
             { requestId }
           );
         }

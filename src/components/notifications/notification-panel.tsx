@@ -13,12 +13,14 @@ import {
 } from "@/lib/notifications.functions";
 
 const TYPE_ICON: Record<string, string> = {
-  request_created: "📋",
-  request_assigned: "👤",
-  status_changed: "🔄",
-  comment_added: "💬",
-  role_changed: "🔑",
-  user_registered: "👋",
+  request_created:   "📋",
+  request_assigned:  "👤",
+  status_changed:    "🔄",
+  request_completed: "✅",
+  priority_changed:  "⚡",
+  comment_added:     "💬",
+  role_changed:      "🔑",
+  user_registered:   "👋",
 };
 
 interface NotificationPanelProps {
