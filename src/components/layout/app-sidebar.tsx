@@ -177,7 +177,7 @@ interface AppSidebarProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClick }: AppSidebarProps) {
-  const { user, roles, hasRole, hasPermission, signOut, profile } = useAuth();
+  const { user, roles, hasRole, hasPermission, signOut, profile, isSuperAdmin } = useAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const routerState = useRouterState();
@@ -286,7 +286,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
           );
         })}
 
-        {hasRole("super_admin") && (
+        {isSuperAdmin ? (
           <>
             <p style={{ padding: "0 12px", margin: "16px 0 6px", fontSize: 10, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--sb-text-muted)" }}>
               Administración
@@ -309,6 +309,31 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
                 <IconSettings />
               </span>
               Configuración
+            </Link>
+          </>
+        ) : (
+          <>
+            <p style={{ padding: "0 12px", margin: "16px 0 6px", fontSize: 10, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--sb-text-muted)" }}>
+              Cuenta
+            </p>
+            <Link
+              to="/app/settings"
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "10px 12px",
+                borderRadius: 10, textDecoration: "none",
+                fontSize: 14, fontWeight: pathname.startsWith("/app/settings") ? 500 : 400,
+                color: pathname.startsWith("/app/settings") ? "#fff" : "var(--sb-text)",
+                background: pathname.startsWith("/app/settings") ? "var(--sb-active-bg)" : "transparent",
+                transition: "background 120ms ease, color 120ms ease",
+              }}
+              onMouseEnter={(e) => { if (!pathname.startsWith("/app/settings")) (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; }}
+              onMouseLeave={(e) => { if (!pathname.startsWith("/app/settings")) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+            >
+              <span style={{ display: "inline-flex", width: 20, height: 20, alignItems: "center", justifyContent: "center", flexShrink: 0, color: pathname.startsWith("/app/settings") ? "#fff" : "var(--sb-text-muted)" }}>
+                <IconSettings />
+              </span>
+              Mi Perfil
             </Link>
           </>
         )}

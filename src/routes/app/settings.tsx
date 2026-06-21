@@ -46,44 +46,18 @@ const cardStyle: React.CSSProperties = {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 function SettingsPage() {
-  const { roles } = useAuth();
-  const [tab, setTab] = useState<Tab>("columns");
+  const { isSuperAdmin } = useAuth();
+  const [tab, setTab] = useState<Tab>(isSuperAdmin ? "columns" : "profile");
 
-  const roleStrings = roles.map(r => typeof r === 'object' && r !== null && 'role' in r ? (r as any).role : r);
-  const hasSuperAdmin = roleStrings.includes("super_admin");
-
-  if (!hasSuperAdmin) {
-    return (
-      <div style={{
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        height: "100%", gap: 12,
-        animation: "spIn .35s ease both",
-      }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: "50%",
-          background: "var(--muted)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <Lock size={22} style={{ color: "var(--muted-foreground)" }} />
-        </div>
-        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
-          Acceso restringido
-        </p>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
-          Solo los super administradores pueden acceder a la configuración.
-        </p>
-      </div>
-    );
-  }
-
-  const tabs: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[] = [
+  const allTabs: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[] = [
     { key: "columns",     label: "Columnas Kanban", Icon: Columns3 },
     { key: "ai",          label: "Agente IA",       Icon: Bot      },
     { key: "permissions", label: "Permisos",        Icon: Shield   },
     { key: "areas",       label: "Áreas",           Icon: Building },
     { key: "profile",     label: "Mi Perfil",       Icon: User     },
   ];
+
+  const tabs = isSuperAdmin ? allTabs : allTabs.filter(t => t.key === "profile");
 
   return (
     <div style={{
@@ -107,10 +81,10 @@ function SettingsPage() {
             color: "var(--foreground)",
             margin: 0, lineHeight: 1.2,
           }}>
-            Configuración
+            {isSuperAdmin ? "Configuración" : "Mi Perfil"}
           </h1>
           <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "3px 0 0" }}>
-            Personaliza el tablero, agente IA, permisos y áreas
+            {isSuperAdmin ? "Personaliza el tablero, agente IA, permisos y áreas" : "Gestiona tu información personal y contraseña"}
           </p>
         </div>
       </div>
@@ -726,10 +700,11 @@ function AISettings() {
 // ── Profile settings ──────────────────────────────────────────────────────────
 
 function ProfileSettings() {
-  const { profile } = useAuth();
+  const { profile, isSuperAdmin } = useAuth();
   const { data: areasData, isLoading: areasLoading } = useQuery({
     queryKey: ["areas"],
     queryFn: () => listAreas(),
+    enabled: isSuperAdmin,
   });
 
   const updateAreaMutation = useMutation({
@@ -810,40 +785,42 @@ function ProfileSettings() {
         </div>
       </div>
 
-      {/* Area */}
-      <div style={cardStyle}>
-        <div style={{ padding: "20px 22px" }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 4px" }}>
-            Mi Área
-          </p>
-          <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "0 0 14px" }}>
-            Selecciona el área organizacional a la que perteneces.
-          </p>
-          <Select
-            value={currentAreaId || "none"}
-            onValueChange={(value) => updateAreaMutation.mutate({ data: { areaId: value === "none" ? null : value } })}
-            disabled={areasLoading || updateAreaMutation.isPending}
-          >
-            <SelectTrigger style={{ borderRadius: "var(--r-md, 10px)" }}>
-              <SelectValue placeholder="Selecciona un área" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Sin área</SelectItem>
-              {areas.map((area) => (
-                <SelectItem key={area.id} value={area.id}>{area.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {currentAreaId && (
-            <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "8px 0 0" }}>
-              Área actual:{" "}
-              <strong style={{ color: "var(--foreground)" }}>
-                {areas.find((a) => a.id === currentAreaId)?.name || "Desconocida"}
-              </strong>
+      {/* Area — only super_admin can switch areas */}
+      {isSuperAdmin && (
+        <div style={cardStyle}>
+          <div style={{ padding: "20px 22px" }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 4px" }}>
+              Mi Área
             </p>
-          )}
+            <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "0 0 14px" }}>
+              Selecciona el área organizacional a la que perteneces.
+            </p>
+            <Select
+              value={currentAreaId || "none"}
+              onValueChange={(value) => updateAreaMutation.mutate({ data: { areaId: value === "none" ? null : value } })}
+              disabled={areasLoading || updateAreaMutation.isPending}
+            >
+              <SelectTrigger style={{ borderRadius: "var(--r-md, 10px)" }}>
+                <SelectValue placeholder="Selecciona un área" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin área</SelectItem>
+                {areas.map((area) => (
+                  <SelectItem key={area.id} value={area.id}>{area.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {currentAreaId && (
+              <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "8px 0 0" }}>
+                Área actual:{" "}
+                <strong style={{ color: "var(--foreground)" }}>
+                  {areas.find((a) => a.id === currentAreaId)?.name || "Desconocida"}
+                </strong>
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Change password */}
       <div style={cardStyle}>
