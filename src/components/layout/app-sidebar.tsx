@@ -233,12 +233,12 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
   // ── CSS variable tokens (mirror prototype --sb- vars via inline style on root)
   const sbVars = isDark
     ? {
-        "--sb-bg":        "#333333",
+        "--sb-bg":        "var(--sidebar)",
         "--sb-text":      "rgba(255,255,255,.88)",
         "--sb-text-muted":"rgba(255,255,255,.50)",
-        "--sb-hover-bg":  "rgba(255,255,255,.07)",
+        "--sb-hover-bg":  "rgba(255,255,255,.08)",
         "--sb-active-bg": "#ED5650",
-        "--sb-shadow":    "0 8px 24px rgba(0,0,0,.18)",
+        "--sb-shadow":    "0 8px 24px rgba(0,0,0,.30)",
       }
     : {
         "--sb-bg":        "#ffffff",
