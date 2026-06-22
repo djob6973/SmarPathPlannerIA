@@ -261,6 +261,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
         padding: "20px 12px 16px",
         background: "var(--sb-bg)",
         color: "var(--sb-text)",
+        border: "1px solid var(--border)",
         borderRadius: 20,
         boxShadow: "var(--sb-shadow)",
         height: "calc(100vh - 32px)",
