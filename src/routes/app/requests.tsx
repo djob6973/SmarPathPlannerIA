@@ -274,14 +274,14 @@ function RequestsPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                 <div>
                   <label style={popoverLabelStyle}>Prioridad</label>
-                  <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={{ ...filterInputStyle, width: "100%" }}>
+                  <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={popoverInputStyle}>
                     <option value="all">Todas</option>
                     {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
                   </select>
                 </div>
                 <div>
                   <label style={popoverLabelStyle}>Estado</label>
-                  <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ ...filterInputStyle, width: "100%" }}>
+                  <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={popoverInputStyle}>
                     <option value="all">Todos</option>
                     {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -291,7 +291,7 @@ function RequestsPage() {
               {/* Asignado a */}
               <div style={{ marginBottom: 16 }}>
                 <label style={popoverLabelStyle}>Asignado a</label>
-                <select value={filterAssignedTo} onChange={(e) => setFilterAssignedTo(e.target.value)} style={{ ...filterInputStyle, width: "100%" }}>
+                <select value={filterAssignedTo} onChange={(e) => setFilterAssignedTo(e.target.value)} style={popoverInputStyle}>
                   <option value="all">Todos</option>
                   {profiles.map((p) => <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>)}
                 </select>
@@ -306,11 +306,11 @@ function RequestsPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div>
                     <span style={popoverSubLabelStyle}>Desde</span>
-                    <input type="date" value={filterCreatedFrom} onChange={(e) => setFilterCreatedFrom(e.target.value)} style={{ ...filterInputStyle, width: "100%" }} />
+                    <input type="date" value={filterCreatedFrom} onChange={(e) => setFilterCreatedFrom(e.target.value)} style={popoverInputStyle} />
                   </div>
                   <div>
                     <span style={popoverSubLabelStyle}>Hasta</span>
-                    <input type="date" value={filterCreatedTo} onChange={(e) => setFilterCreatedTo(e.target.value)} style={{ ...filterInputStyle, width: "100%" }} />
+                    <input type="date" value={filterCreatedTo} onChange={(e) => setFilterCreatedTo(e.target.value)} style={popoverInputStyle} />
                   </div>
                 </div>
               </div>
@@ -321,11 +321,11 @@ function RequestsPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div>
                     <span style={popoverSubLabelStyle}>Desde</span>
-                    <input type="date" value={filterCompletedFrom} onChange={(e) => setFilterCompletedFrom(e.target.value)} style={{ ...filterInputStyle, width: "100%" }} />
+                    <input type="date" value={filterCompletedFrom} onChange={(e) => setFilterCompletedFrom(e.target.value)} style={popoverInputStyle} />
                   </div>
                   <div>
                     <span style={popoverSubLabelStyle}>Hasta</span>
-                    <input type="date" value={filterCompletedTo} onChange={(e) => setFilterCompletedTo(e.target.value)} style={{ ...filterInputStyle, width: "100%" }} />
+                    <input type="date" value={filterCompletedTo} onChange={(e) => setFilterCompletedTo(e.target.value)} style={popoverInputStyle} />
                   </div>
                 </div>
               </div>
@@ -636,6 +636,18 @@ const popoverLabelStyle: React.CSSProperties = {
 const popoverSubLabelStyle: React.CSSProperties = {
   display: "block", fontSize: 10,
   color: "var(--muted-foreground)", marginBottom: 4,
+};
+
+// filterInputStyle override for inside the popover — removes minWidth so grid columns constrain correctly
+const popoverInputStyle: React.CSSProperties = {
+  height: 38, padding: "0 10px",
+  borderRadius: "var(--r-md, 10px)",
+  border: "1px solid var(--border)",
+  background: "var(--background)",
+  color: "var(--foreground)",
+  fontSize: 13,
+  cursor: "pointer", outline: "none",
+  minWidth: 0, width: "100%", boxSizing: "border-box",
 };
 
 const filterInputStyle: React.CSSProperties = {
