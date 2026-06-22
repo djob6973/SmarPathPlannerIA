@@ -11,14 +11,18 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "dark";
-    return (localStorage.getItem("sp-theme") as Theme) ?? "dark";
-  });
+  // Start with "dark" on both server and client to avoid SSR hydration mismatch.
+  // After hydration, useEffect reads the actual saved preference.
+  const [theme, setThemeState] = useState<Theme>("dark");
+
+  useEffect(() => {
+    const saved = (localStorage.getItem("sp-theme") as Theme) ?? "dark";
+    setThemeState(saved);
+  }, []);
 
   const resolvedTheme: "dark" | "light" =
     theme === "system"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+      ? (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : theme;
 
   useEffect(() => {
