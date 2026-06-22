@@ -257,28 +257,21 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
       aria-label="Navegación principal"
     >
       {/* ── Logo ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 11, paddingLeft: 8, marginBottom: 24, minHeight: 36 }}>
-        {customLogo ? (
-          <img
-            src={customLogo}
-            alt="Logo"
-            style={{ height: 36, maxWidth: 160, objectFit: "contain", flexShrink: 0 }}
-          />
-        ) : (
-          <>
-            <span style={{ color: "#ED5650", display: "flex", flexShrink: 0 }}>
-              <DataicoMark size={30} />
-            </span>
-            <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
-              <span style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 17, color: "var(--sb-text)", letterSpacing: "-0.01em" }}>
-                SmartPath
-              </span>
-              <span style={{ fontSize: 9.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--sb-text-muted)", marginTop: 4, fontWeight: 500 }}>
-                Planner IA
-              </span>
-            </div>
-          </>
-        )}
+      <div style={{ display: "flex", alignItems: "center", gap: 11, paddingLeft: 8, marginBottom: 24 }}>
+        <span style={{ color: "#ED5650", display: "flex", flexShrink: 0 }}>
+          {customLogo
+            ? <img src={customLogo} alt="Logo" style={{ height: 30, width: "auto", maxWidth: 36, objectFit: "contain" }} />
+            : <DataicoMark size={30} />
+          }
+        </span>
+        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 17, color: "var(--sb-text)", letterSpacing: "-0.01em" }}>
+            SmartPath
+          </span>
+          <span style={{ fontSize: 9.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--sb-text-muted)", marginTop: 4, fontWeight: 500 }}>
+            Planner IA
+          </span>
+        </div>
       </div>
 
       {/* ── Navigation ── */}
