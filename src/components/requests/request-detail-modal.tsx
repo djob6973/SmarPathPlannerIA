@@ -576,7 +576,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 size="sm"
                 onClick={handleSlackNotify}
                 disabled={sendingSlack}
-                className="gap-2 text-purple-700 dark:text-purple-400 hover:bg-purple-500/10"
+                className="gap-2 hover:bg-[#ED5650]/10"
+                style={{ color: "#ED5650" }}
                 title="Notificar a Slack"
               >
                 {sendingSlack ? (
