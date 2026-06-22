@@ -130,8 +130,8 @@
 
 /* ─── Dark mode ─── */
 .dark {
-  /* Base — ~#1E1E1E background, #F1F1F1 text */
-  --background: oklch(0.18 0 0);
+  /* Base — ~#1A1A1A background, #F1F1F1 text */
+  --background: oklch(0.165 0 0);
   --foreground: oklch(0.951 0 0);
 
   /* Card — #333333 */
