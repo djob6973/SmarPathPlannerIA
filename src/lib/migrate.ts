@@ -220,6 +220,12 @@ async function _run() {
     CREATE TRIGGER trg_deliverables_updated_at
       BEFORE UPDATE ON public.request_deliverables
       FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+    CREATE TABLE IF NOT EXISTS public.platform_settings (
+      key        TEXT PRIMARY KEY,
+      value      TEXT,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 
   // ── Seeds (idempotent via ON CONFLICT) ─────────────────────────────────────

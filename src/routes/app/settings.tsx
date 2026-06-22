@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   DndContext, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -9,9 +9,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/lib/auth-context";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listAreas, updateUserOwnArea } from "@/lib/admin.functions";
 import { changeOwnPassword } from "@/lib/auth.functions";
+import { getPlatformSetting, setPlatformSetting } from "@/lib/settings.functions";
 import { getColumns, createColumn, updateColumn, deleteColumn, getAiSettings, updateAiSettings } from "@/lib/data.functions";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -19,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import {
   Settings, Columns3, Bot, GripVertical, Plus, Trash2, Save,
-  Pencil, Check, X, Lock, Shield, Building, User,
+  Pencil, Check, X, Lock, Shield, Building, User, Palette, Upload, ImageOff,
 } from "lucide-react";
 import { PermissionsManager } from "@/components/admin/permissions-manager";
 import { AreasManager } from "@/components/admin/areas-manager";
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/app/settings")({
 
 type Column    = { id: string; name: string; position: number; color: string; is_completed: boolean };
 type EditState = { id: string; name: string; color: string } | null;
-type Tab       = "columns" | "ai" | "permissions" | "areas" | "profile";
+type Tab       = "columns" | "ai" | "permissions" | "areas" | "profile" | "branding";
 
 // ── Shared card style ─────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ function SettingsPage() {
     { key: "ai",          label: "Agente IA",       Icon: Bot      },
     { key: "permissions", label: "Permisos",        Icon: Shield   },
     { key: "areas",       label: "Áreas",           Icon: Building },
+    { key: "branding",    label: "Marca",           Icon: Palette  },
     { key: "profile",     label: "Mi Perfil",       Icon: User     },
   ];
 
@@ -121,6 +123,7 @@ function SettingsPage() {
       {tab === "ai"          && <AISettings />}
       {tab === "permissions" && <PermissionsManager />}
       {tab === "areas"       && <AreasManager />}
+      {tab === "branding"    && <BrandingSettings />}
       {tab === "profile"     && <ProfileSettings />}
     </div>
   );
@@ -692,6 +695,145 @@ function AISettings() {
           }
           Guardar cambios
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Branding settings ─────────────────────────────────────────────────────────
+
+const LOGO_KEY = "logo_url";
+const MAX_BYTES = 500 * 1024; // 500 KB
+
+function BrandingSettings() {
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: logoData, isLoading } = useQuery({
+    queryKey: ["platform-setting", LOGO_KEY],
+    queryFn:  () => getPlatformSetting({ data: { key: LOGO_KEY } }),
+  });
+
+  const currentLogo = logoData?.value ?? null;
+
+  const saveMutation = useMutation({
+    mutationFn: (value: string | null) =>
+      setPlatformSetting({ data: { key: LOGO_KEY, value } }),
+    onSuccess: (_r, value) => {
+      toast.success(value ? "Logo actualizado correctamente" : "Logo eliminado");
+      queryClient.invalidateQueries({ queryKey: ["platform-setting", LOGO_KEY] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Error al guardar el logo"),
+  });
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_BYTES) {
+      toast.error("El archivo no puede superar 500 KB");
+      e.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => saveMutation.mutate(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const subLabelStyle: React.CSSProperties = {
+    fontSize: 11, fontWeight: 600,
+    textTransform: "uppercase" as const, letterSpacing: "0.06em",
+    color: "var(--muted-foreground)", display: "block", marginBottom: 6,
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={cardStyle}>
+        <div style={{ padding: "20px 22px" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 4px" }}>
+            Logo de la plataforma
+          </p>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "0 0 20px" }}>
+            Se mostrará en la barra lateral para todos los usuarios. Recomendado: PNG o SVG con fondo transparente, máx. 500 KB.
+          </p>
+
+          {/* Preview */}
+          <span style={subLabelStyle}>Vista previa</span>
+          <div style={{
+            width: "100%", maxWidth: 320, height: 96,
+            border: "1px dashed var(--border)",
+            borderRadius: "var(--r-md, 10px)",
+            background: "var(--muted)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            marginBottom: 20, overflow: "hidden",
+          }}>
+            {isLoading ? (
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cargando…</span>
+            ) : currentLogo ? (
+              <img
+                src={currentLogo}
+                alt="Logo actual"
+                style={{ maxHeight: 72, maxWidth: 280, objectFit: "contain" }}
+              />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                <ImageOff size={24} style={{ color: "var(--muted-foreground)" }} />
+                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Sin logo configurado</span>
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
+            onChange={handleFile}
+            style={{ display: "none" }}
+          />
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={saveMutation.isPending}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 7,
+                height: 38, padding: "0 18px",
+                borderRadius: "var(--r-md, 10px)",
+                background: saveMutation.isPending ? "var(--muted)" : "#ED5650",
+                border: "none",
+                color: saveMutation.isPending ? "var(--muted-foreground)" : "white",
+                fontSize: 13, fontWeight: 500,
+                cursor: saveMutation.isPending ? "not-allowed" : "pointer",
+              }}
+            >
+              {saveMutation.isPending
+                ? <span style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
+                : <Upload size={14} />
+              }
+              {currentLogo ? "Cambiar logo" : "Subir logo"}
+            </button>
+
+            {currentLogo && (
+              <button
+                onClick={() => saveMutation.mutate(null)}
+                disabled={saveMutation.isPending}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7,
+                  height: 38, padding: "0 18px",
+                  borderRadius: "var(--r-md, 10px)",
+                  background: "var(--muted)",
+                  border: "1px solid var(--border)",
+                  color: "var(--muted-foreground)",
+                  fontSize: 13, fontWeight: 500,
+                  cursor: saveMutation.isPending ? "not-allowed" : "pointer",
+                }}
+              >
+                <Trash2 size={14} />
+                Eliminar logo
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
