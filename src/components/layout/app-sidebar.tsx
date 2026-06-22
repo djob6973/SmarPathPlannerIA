@@ -138,17 +138,21 @@ function IconChevronRight() {
   );
 }
 
-// ─── Dataico anagram mark ─────────────────────────────────────────────────────
+// ─── Logo mark ───────────────────────────────────────────────────────────────
 
 function DataicoMark({ size = 24 }: { size?: number }) {
-  // viewBox is 46×55 — preserve aspect ratio: width = size * (46/55)
-  const w = Math.round(size * (46 / 55));
+  // viewBox 94×72 — two rounded chevrons ">>"
+  const w = Math.round(size * (94 / 72));
   return (
-    <svg viewBox="0 0 46 55" width={w} height={size} fill="currentColor">
-      <path d="M46 28.003 35.958 18 29.61 24.34l7.153 7.152c2.07 2.14 2.05 5.549-.063 7.663Z" />
-      <path d="M45.985 35.27 39.455 41.8l-3.885-3.887 6.531-6.531c2.147 2.148 2.147 5.626-.116 7.888Z" />
-      <path d="M33.82 28.003 23.777 18l-6.348 6.34 7.153 7.152c2.07 2.14 2.05 5.549-.063 7.663Z" />
-      <path d="M33.804 35.27 27.273 41.8l-3.884-3.887 6.53-6.531c2.148 2.148 2.148 5.626-.115 7.888Z" />
+    <svg viewBox="0 0 94 72" width={w} height={size} fill="currentColor">
+      {/* Left chevron – top piece */}
+      <path d="M3 36C3 17 16 3 33 3c5 0 9 2 12 6C37 11 28 22 25 36H3z"/>
+      {/* Left chevron – bottom piece */}
+      <path d="M3 36C3 55 16 69 33 69c5 0 9-2 12-6C37 61 28 50 25 36H3z"/>
+      {/* Right chevron – top piece */}
+      <path d="M50 36C50 17 63 3 80 3c5 0 9 2 12 6C84 11 75 22 72 36H50z"/>
+      {/* Right chevron – bottom piece */}
+      <path d="M50 36C50 55 63 69 80 69c5 0 9-2 12-6C84 61 75 50 72 36H50z"/>
     </svg>
   );
 }
