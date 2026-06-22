@@ -723,7 +723,7 @@ function SlackSettings() {
   const [testing,     setTesting]     = useState(false);
 
   useEffect(() => {
-    getSlackConfig({ data: undefined as any }).then(({ config, hasToken: ht }) => {
+    getSlackConfig().then(({ config, hasToken: ht }) => {
       setEnabled(config.enabled);
       setAutoNotify(config.auto_notify);
       setChannel(config.channel);
@@ -832,7 +832,6 @@ function SlackSettings() {
             <Switch
               checked={enabled}
               onCheckedChange={setEnabled}
-              disabled={!hasToken}
             />
           </label>
 
@@ -853,7 +852,7 @@ function SlackSettings() {
             <Switch
               checked={autoNotify}
               onCheckedChange={setAutoNotify}
-              disabled={!hasToken || !enabled}
+              disabled={!enabled}
             />
           </label>
         </div>
@@ -871,7 +870,6 @@ function SlackSettings() {
             value={channel}
             onChange={(e) => setChannel(e.target.value)}
             placeholder="C1234567890  ó  #nombre-del-canal"
-            disabled={!hasToken}
             style={{
               width: "100%", height: 38, boxSizing: "border-box" as const,
               border: "1px solid var(--border)",
@@ -880,7 +878,6 @@ function SlackSettings() {
               color: "var(--foreground)",
               padding: "0 12px",
               fontSize: 13, outline: "none",
-              opacity: hasToken ? 1 : 0.5,
             }}
           />
           <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "6px 0 0" }}>
@@ -914,16 +911,16 @@ function SlackSettings() {
 
         <button
           onClick={save}
-          disabled={saving || !hasToken}
+          disabled={saving}
           style={{
             display: "inline-flex", alignItems: "center", gap: 7,
             height: 38, padding: "0 18px",
             borderRadius: "var(--r-md, 10px)",
-            background: (saving || !hasToken) ? "var(--muted)" : "#ED5650",
+            background: saving ? "var(--muted)" : "#ED5650",
             border: "none",
-            color: (saving || !hasToken) ? "var(--muted-foreground)" : "white",
+            color: saving ? "var(--muted-foreground)" : "white",
             fontSize: 13, fontWeight: 500,
-            cursor: (saving || !hasToken) ? "not-allowed" : "pointer",
+            cursor: saving ? "not-allowed" : "pointer",
             transition: "background 120ms",
           }}
         >
