@@ -708,6 +708,7 @@ const MAX_BYTES = 500 * 1024; // 500 KB
 function BrandingSettings() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dropHover, setDropHover] = useState(false);
 
   const { data: logoData, isLoading } = useQuery({
     queryKey: ["platform-setting", LOGO_KEY],
@@ -726,113 +727,149 @@ function BrandingSettings() {
     onError: (e: any) => toast.error(e.message ?? "Error al guardar el logo"),
   });
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_BYTES) {
-      toast.error("El archivo no puede superar 500 KB");
-      e.target.value = "";
-      return;
-    }
+  const processFile = (file: File) => {
+    if (file.size > MAX_BYTES) { toast.error("El archivo no puede superar 500 KB"); return; }
     const reader = new FileReader();
     reader.onload = () => saveMutation.mutate(reader.result as string);
     reader.readAsDataURL(file);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
     e.target.value = "";
   };
 
-  const subLabelStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 600,
-    textTransform: "uppercase" as const, letterSpacing: "0.06em",
-    color: "var(--muted-foreground)", display: "block", marginBottom: 6,
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDropHover(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
   };
+
+  const busy = saveMutation.isPending || isLoading;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={cardStyle}>
         <div style={{ padding: "20px 22px" }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 4px" }}>
-            Logo de la plataforma
-          </p>
-          <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "0 0 20px" }}>
-            Se mostrará en la barra lateral para todos los usuarios. Recomendado: PNG o SVG con fondo transparente, máx. 500 KB.
-          </p>
 
-          {/* Preview */}
-          <span style={subLabelStyle}>Vista previa</span>
-          <div style={{
-            width: "100%", maxWidth: 320, height: 96,
-            border: "1px dashed var(--border)",
-            borderRadius: "var(--r-md, 10px)",
-            background: "var(--muted)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            marginBottom: 20, overflow: "hidden",
-          }}>
-            {isLoading ? (
-              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Cargando…</span>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 20 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+              background: "var(--muted)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Palette size={18} style={{ color: "var(--muted-foreground)" }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
+                Identidad visual
+              </p>
+              <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "3px 0 0" }}>
+                El logo aparecerá en el menú lateral del sistema
+              </p>
+            </div>
+          </div>
+
+          {/* Drop zone */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/webp"
+            onChange={handleInputChange}
+            style={{ display: "none" }}
+          />
+          <div
+            onClick={() => !busy && fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setDropHover(true); }}
+            onDragLeave={() => setDropHover(false)}
+            onDrop={handleDrop}
+            style={{
+              width: "100%", minHeight: 160,
+              border: `1.5px dashed ${dropHover ? "#ED5650" : "var(--border)"}`,
+              borderRadius: "var(--r-md, 12px)",
+              background: dropHover ? "rgba(237,86,80,.06)" : "var(--muted)",
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              gap: 10, marginBottom: 16,
+              cursor: busy ? "default" : "pointer",
+              transition: "border-color 150ms, background 150ms",
+              overflow: "hidden",
+            }}
+          >
+            {busy && !currentLogo ? (
+              <span style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid var(--muted-foreground)", borderTopColor: "transparent", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
             ) : currentLogo ? (
               <img
                 src={currentLogo}
                 alt="Logo actual"
-                style={{ maxHeight: 72, maxWidth: 280, objectFit: "contain" }}
+                style={{ maxHeight: 120, maxWidth: "90%", objectFit: "contain" }}
               />
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-                <ImageOff size={24} style={{ color: "var(--muted-foreground)" }} />
-                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Sin logo configurado</span>
-              </div>
+              <>
+                {/* Image placeholder icon */}
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--muted-foreground)" }}>
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                <p style={{ fontSize: 14, fontWeight: 500, color: "var(--foreground)", margin: 0, textAlign: "center" }}>
+                  Haz clic para seleccionar imagen
+                </p>
+                <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>
+                  PNG, JPG, SVG · máx 500 KB
+                </p>
+              </>
             )}
           </div>
 
           {/* Actions */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif"
-            onChange={handleFile}
-            style={{ display: "none" }}
-          />
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={saveMutation.isPending}
+              disabled={busy}
               style={{
-                display: "inline-flex", alignItems: "center", gap: 7,
+                display: "inline-flex", alignItems: "center", gap: 8,
                 height: 38, padding: "0 18px",
                 borderRadius: "var(--r-md, 10px)",
-                background: saveMutation.isPending ? "var(--muted)" : "#ED5650",
-                border: "none",
-                color: saveMutation.isPending ? "var(--muted-foreground)" : "white",
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                color: busy ? "var(--muted-foreground)" : "var(--foreground)",
                 fontSize: 13, fontWeight: 500,
-                cursor: saveMutation.isPending ? "not-allowed" : "pointer",
+                cursor: busy ? "not-allowed" : "pointer",
+                transition: "border-color 120ms",
               }}
             >
               {saveMutation.isPending
-                ? <span style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
+                ? <span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
                 : <Upload size={14} />
               }
-              {currentLogo ? "Cambiar logo" : "Subir logo"}
+              Seleccionar logo
             </button>
 
             {currentLogo && (
               <button
                 onClick={() => saveMutation.mutate(null)}
-                disabled={saveMutation.isPending}
+                disabled={busy}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 7,
                   height: 38, padding: "0 18px",
                   borderRadius: "var(--r-md, 10px)",
-                  background: "var(--muted)",
+                  background: "transparent",
                   border: "1px solid var(--border)",
                   color: "var(--muted-foreground)",
                   fontSize: 13, fontWeight: 500,
-                  cursor: saveMutation.isPending ? "not-allowed" : "pointer",
+                  cursor: busy ? "not-allowed" : "pointer",
                 }}
               >
                 <Trash2 size={14} />
-                Eliminar logo
+                Eliminar
               </button>
             )}
           </div>
+
         </div>
       </div>
     </div>
