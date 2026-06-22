@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
+import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useNavigate } from "@tanstack/react-router";
@@ -191,6 +192,19 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
     staleTime: 10 * 60 * 1000,
   });
   const customLogo = logoData?.value ?? null;
+
+  useEffect(() => {
+    if (!customLogo) return;
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = customLogo;
+    link.type = customLogo.endsWith(".svg") ? "image/svg+xml" : "image/png";
+  }, [customLogo]);
+
   const { theme, setTheme, resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const routerState = useRouterState();
