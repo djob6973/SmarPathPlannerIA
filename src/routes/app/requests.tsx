@@ -6,7 +6,7 @@ import { getAreas, listProfiles } from "@/lib/data.functions";
 import { RequestDetailModal } from "@/components/requests/request-detail-modal";
 import { ManualRequestModal } from "@/components/requests/manual-request-modal";
 import { toast } from "sonner";
-import { Search, MessageSquare, Trash2, ExternalLink, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Search, MessageSquare, Trash2, ExternalLink, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -48,6 +48,10 @@ function RequestsPage() {
   const [areas, setAreas]                   = useState<{ id: string; name: string }[]>([]);
   const [filterAssignedTo, setFilterAssignedTo] = useState("all");
   const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
+  const [filterCreatedFrom, setFilterCreatedFrom]       = useState("");
+  const [filterCreatedTo,   setFilterCreatedTo]         = useState("");
+  const [filterCompletedFrom, setFilterCompletedFrom]   = useState("");
+  const [filterCompletedTo,   setFilterCompletedTo]     = useState("");
   const [page, setPage]                     = useState(1);
   const [pageSize, setPageSize]             = useState(20);
 
@@ -82,17 +86,38 @@ function RequestsPage() {
 
   const filtered = useMemo(() =>
     requests.filter((r) => {
-      const matchSearch    = !search || r.title.toLowerCase().includes(search.toLowerCase());
-      const matchPriority  = filterPriority === "all" || r.priority === filterPriority;
-      const matchStatus    = filterStatus === "all" || r.status_column_id === filterStatus;
+      const matchSearch     = !search || r.title.toLowerCase().includes(search.toLowerCase());
+      const matchPriority   = filterPriority === "all" || r.priority === filterPriority;
+      const matchStatus     = filterStatus === "all" || r.status_column_id === filterStatus;
       const matchAssignedTo = filterAssignedTo === "all" || r.assigned_to === filterAssignedTo;
-      return matchSearch && matchPriority && matchStatus && matchAssignedTo;
+
+      // Date filters — compare YYYY-MM-DD strings (lexicographically safe for ISO dates)
+      const createdDate    = r.created_at.slice(0, 10);
+      const completedDate  = r.completed_at ? r.completed_at.slice(0, 10) : null;
+
+      const matchCreatedFrom   = !filterCreatedFrom   || createdDate >= filterCreatedFrom;
+      const matchCreatedTo     = !filterCreatedTo     || createdDate <= filterCreatedTo;
+      const matchCompletedFrom = !filterCompletedFrom || (completedDate !== null && completedDate >= filterCompletedFrom);
+      const matchCompletedTo   = !filterCompletedTo   || (completedDate !== null && completedDate <= filterCompletedTo);
+
+      return matchSearch && matchPriority && matchStatus && matchAssignedTo
+        && matchCreatedFrom && matchCreatedTo && matchCompletedFrom && matchCompletedTo;
     }),
-    [requests, search, filterPriority, filterStatus, filterAssignedTo]
+    [requests, search, filterPriority, filterStatus, filterAssignedTo,
+     filterCreatedFrom, filterCreatedTo, filterCompletedFrom, filterCompletedTo]
   );
 
+  const hasDateFilters = filterCreatedFrom || filterCreatedTo || filterCompletedFrom || filterCompletedTo;
+  const clearDateFilters = () => {
+    setFilterCreatedFrom(""); setFilterCreatedTo("");
+    setFilterCompletedFrom(""); setFilterCompletedTo("");
+  };
+
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1); }, [search, filterPriority, filterStatus, filterAssignedTo]);
+  useEffect(() => { setPage(1); }, [
+    search, filterPriority, filterStatus, filterAssignedTo,
+    filterCreatedFrom, filterCreatedTo, filterCompletedFrom, filterCompletedTo,
+  ]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage   = Math.min(page, totalPages);
@@ -206,6 +231,64 @@ function RequestsPage() {
         </select>
       </div>
 
+      {/* ── Date filters ── */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 18, alignItems: "center", flexWrap: "wrap" }}>
+        <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, whiteSpace: "nowrap" }}>
+          Creado:
+        </span>
+        <input
+          type="date"
+          value={filterCreatedFrom}
+          onChange={(e) => setFilterCreatedFrom(e.target.value)}
+          title="Creado desde"
+          style={filterInputStyle}
+        />
+        <input
+          type="date"
+          value={filterCreatedTo}
+          onChange={(e) => setFilterCreatedTo(e.target.value)}
+          title="Creado hasta"
+          style={filterInputStyle}
+        />
+
+        <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, whiteSpace: "nowrap", marginLeft: 6 }}>
+          Completada:
+        </span>
+        <input
+          type="date"
+          value={filterCompletedFrom}
+          onChange={(e) => setFilterCompletedFrom(e.target.value)}
+          title="Completada desde"
+          style={filterInputStyle}
+        />
+        <input
+          type="date"
+          value={filterCompletedTo}
+          onChange={(e) => setFilterCompletedTo(e.target.value)}
+          title="Completada hasta"
+          style={filterInputStyle}
+        />
+
+        {hasDateFilters && (
+          <button
+            onClick={clearDateFilters}
+            title="Limpiar fechas"
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "6px 12px",
+              borderRadius: "var(--r-sm, 10px)",
+              border: "1px solid var(--border)",
+              background: "transparent",
+              color: "var(--muted-foreground)",
+              fontSize: 12, cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <X size={12} /> Limpiar fechas
+          </button>
+        )}
+      </div>
+
       {/* ── Table ── */}
       <div style={{
         background: "var(--card)",
@@ -236,7 +319,7 @@ function RequestsPage() {
           <SkeletonRows />
         ) : filtered.length === 0 ? (
           <div style={{ padding: "60px 20px", textAlign: "center", color: "var(--muted-foreground)", fontSize: 14 }}>
-            {search || filterPriority !== "all" || filterStatus !== "all"
+            {search || filterPriority !== "all" || filterStatus !== "all" || hasDateFilters
               ? "No hay solicitudes que coincidan con los filtros."
               : "Sin solicitudes aún. Usa el Chat IA para crear una."}
           </div>
