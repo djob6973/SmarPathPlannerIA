@@ -91,9 +91,9 @@ function RequestsPage() {
       const matchStatus     = filterStatus === "all" || r.status_column_id === filterStatus;
       const matchAssignedTo = filterAssignedTo === "all" || r.assigned_to === filterAssignedTo;
 
-      // Date filters — compare YYYY-MM-DD strings (lexicographically safe for ISO dates)
-      const createdDate    = r.created_at.slice(0, 10);
-      const completedDate  = r.completed_at ? r.completed_at.slice(0, 10) : null;
+      // Date filters — postgres.js returns Date objects, convert to ISO string first
+      const createdDate    = new Date(r.created_at).toISOString().slice(0, 10);
+      const completedDate  = r.completed_at ? new Date(r.completed_at).toISOString().slice(0, 10) : null;
 
       const matchCreatedFrom   = !filterCreatedFrom   || createdDate >= filterCreatedFrom;
       const matchCreatedTo     = !filterCreatedTo     || createdDate <= filterCreatedTo;
