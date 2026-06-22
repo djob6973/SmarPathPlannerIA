@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X, MessageCircle, Clock, Send, Loader2, Calendar, Edit2, Check, Copy, Trash2, GitBranch, Link2, PackageCheck, Plus, CheckCircle2, Circle, Eye, EyeOff } from "lucide-react";
+import { sendSlackNotification } from "@/lib/slack.functions";
 import { useAuth } from "@/lib/auth-context";
 import { getAreas } from "@/lib/data.functions";
 import { cn } from "@/lib/utils";
@@ -95,6 +96,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [canAssignRequest, setCanAssignRequest] = useState(false);
   const [canChangeStatus, setCanChangeStatus] = useState(false);
+  const [sendingSlack, setSendingSlack] = useState(false);
 
   const toggleNotes = (id: string) => setExpandedNotes((prev) => {
     const next = new Set(prev);
@@ -512,6 +514,18 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
     setUpdatingComment(false);
   };
 
+  const handleSlackNotify = async () => {
+    if (!request) return;
+    setSendingSlack(true);
+    try {
+      await sendSlackNotification({ data: { requestId: request.id } });
+      toast.success("Notificación enviada a Slack");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Error al notificar a Slack");
+    }
+    setSendingSlack(false);
+  };
+
   if (!requestId) return null;
 
   const creatorProfile = request?.created_by ? profiles[request.created_by] : null;
@@ -556,6 +570,26 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {currentCol?.is_completed && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSlackNotify}
+                disabled={sendingSlack}
+                className="gap-2"
+                style={{ color: "#4A154B" }}
+                title="Notificar a Slack"
+              >
+                {sendingSlack ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zm2.521-10.123a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.123 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.123a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
+                  </svg>
+                )}
+                Slack
+              </Button>
+            )}
             {canCopyRequest && (
               <Button variant="ghost" size="sm" onClick={doCopyRequest} disabled={copyingRequest} className="gap-2">
                 {copyingRequest ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}

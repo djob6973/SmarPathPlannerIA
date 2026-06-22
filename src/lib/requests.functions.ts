@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAuthContext } from "./server-auth";
 import { insertNotification } from "./notifications.functions";
+import { postSlackMessage, getSlackConfigFromDb } from "./slack";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type RequestRow = {
@@ -304,6 +305,17 @@ export const updateRequest = createServerFn({ method: "POST" })
       `UPDATE requests SET ${updates.join(", ")} WHERE id = $${values.length}`,
       values as any[]
     );
+
+    // Slack auto-notify on first transition to a completed column (fire-and-forget)
+    if (targetIsCompleted && !prev.completed_at) {
+      getSlackConfigFromDb()
+        .then((cfg) => {
+          if (cfg.enabled && cfg.auto_notify && cfg.channel) {
+            return postSlackMessage(requestId, cfg.channel);
+          }
+        })
+        .catch((e) => console.error("[slack] auto-notify failed:", e?.message ?? e));
+    }
 
     if (prev) {
       const requestTitle = fields.title ?? prev.title;

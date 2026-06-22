@@ -20,8 +20,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import {
   Settings, Columns3, Bot, GripVertical, Plus, Trash2, Save,
-  Pencil, Check, X, Lock, Shield, Building, User, Palette, Upload, ImageOff,
+  Pencil, Check, X, Lock, Shield, Building, User, Palette, Upload, Bell,
 } from "lucide-react";
+import { getSlackConfig, saveSlackConfig, testSlackConfig } from "@/lib/slack.functions";
 import { PermissionsManager } from "@/components/admin/permissions-manager";
 import { AreasManager } from "@/components/admin/areas-manager";
 
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/app/settings")({
 
 type Column    = { id: string; name: string; position: number; color: string; is_completed: boolean };
 type EditState = { id: string; name: string; color: string } | null;
-type Tab       = "columns" | "ai" | "permissions" | "areas" | "profile" | "branding";
+type Tab       = "columns" | "ai" | "permissions" | "areas" | "profile" | "branding" | "slack";
 
 // ── Shared card style ─────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ function SettingsPage() {
   const allTabs: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[] = [
     { key: "columns",     label: "Columnas Kanban", Icon: Columns3 },
     { key: "ai",          label: "Agente IA",       Icon: Bot      },
+    { key: "slack",       label: "Slack",           Icon: Bell     },
     { key: "permissions", label: "Permisos",        Icon: Shield   },
     { key: "areas",       label: "Áreas",           Icon: Building },
     { key: "branding",    label: "Marca",           Icon: Palette  },
@@ -121,6 +123,7 @@ function SettingsPage() {
       {/* ── Tab content ── */}
       {tab === "columns"     && <ColumnsSettings />}
       {tab === "ai"          && <AISettings />}
+      {tab === "slack"       && <SlackSettings />}
       {tab === "permissions" && <PermissionsManager />}
       {tab === "areas"       && <AreasManager />}
       {tab === "branding"    && <BrandingSettings />}
@@ -686,6 +689,241 @@ function AISettings() {
             color: saving ? "var(--muted-foreground)" : "white",
             fontSize: 13, fontWeight: 500,
             cursor: saving ? "not-allowed" : "pointer",
+            transition: "background 120ms",
+          }}
+        >
+          {saving
+            ? <span className="animate-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", display: "inline-block" }} />
+            : <Save size={14} />
+          }
+          Guardar cambios
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Slack settings ────────────────────────────────────────────────────────────
+
+function SlackIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zm2.521-10.123a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.123 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.123a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
+    </svg>
+  );
+}
+
+function SlackSettings() {
+  const [enabled,     setEnabled]     = useState(false);
+  const [autoNotify,  setAutoNotify]  = useState(false);
+  const [channel,     setChannel]     = useState("");
+  const [hasToken,    setHasToken]    = useState(false);
+  const [loading,     setLoading]     = useState(true);
+  const [saving,      setSaving]      = useState(false);
+  const [testing,     setTesting]     = useState(false);
+
+  useEffect(() => {
+    getSlackConfig({ data: undefined as any }).then(({ config, hasToken: ht }) => {
+      setEnabled(config.enabled);
+      setAutoNotify(config.auto_notify);
+      setChannel(config.channel);
+      setHasToken(ht);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await saveSlackConfig({ data: { enabled, auto_notify: autoNotify, channel: channel.trim() } });
+      toast.success("Configuración de Slack guardada");
+    } catch (err: any) { toast.error(err?.message); }
+    setSaving(false);
+  };
+
+  const test = async () => {
+    if (!channel.trim()) { toast.error("Introduce un ID de canal antes de probar"); return; }
+    setTesting(true);
+    try {
+      await testSlackConfig({ data: { channel: channel.trim() } });
+      toast.success("¡Mensaje de prueba enviado correctamente!");
+    } catch (err: any) { toast.error(err?.message); }
+    setTesting(false);
+  };
+
+  const subLabel: React.CSSProperties = {
+    fontSize: 11, fontWeight: 600,
+    textTransform: "uppercase" as const, letterSpacing: "0.06em",
+    color: "var(--muted-foreground)", margin: "0 0 8px", display: "block",
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {[1, 2].map((i) => (
+          <div key={i} className="animate-pulse" style={{ height: 120, borderRadius: "var(--r-card, 20px)", background: "var(--muted)" }} />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* Status card */}
+      <div style={cardStyle}>
+        <div style={{ padding: "18px 22px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+              background: "rgba(74,21,75,.12)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <SlackIcon size={18} />
+            </div>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
+                Notificaciones a Slack
+              </p>
+              <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "3px 0 0" }}>
+                Envía un mensaje al completar una solicitud
+              </p>
+            </div>
+          </div>
+
+          {/* Token status */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 14px",
+            borderRadius: "var(--r-md, 10px)",
+            background: hasToken ? "rgba(34,197,94,.08)" : "rgba(237,86,80,.08)",
+            border: `1px solid ${hasToken ? "rgba(34,197,94,.2)" : "rgba(237,86,80,.2)"}`,
+            marginBottom: 18,
+          }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+              background: hasToken ? "#22c55e" : "#ED5650",
+            }} />
+            <div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>
+                SLACK_BOT_TOKEN
+              </span>
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)", marginLeft: 8 }}>
+                {hasToken ? "Configurado ✓" : "No configurado — agrega la variable de entorno"}
+              </span>
+            </div>
+          </div>
+
+          {/* Enable toggle */}
+          <label style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "12px 0",
+            borderBottom: "1px solid var(--border)",
+            cursor: "pointer",
+          }}>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>
+                Activar integración
+              </p>
+              <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
+                Habilita el botón "Notificar a Slack" en las solicitudes completadas
+              </p>
+            </div>
+            <Switch
+              checked={enabled}
+              onCheckedChange={setEnabled}
+              disabled={!hasToken}
+            />
+          </label>
+
+          {/* Auto-notify toggle */}
+          <label style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "12px 0",
+            cursor: "pointer",
+          }}>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)", margin: 0 }}>
+                Notificación automática
+              </p>
+              <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
+                Notifica automáticamente al mover una tarjeta a columna completada
+              </p>
+            </div>
+            <Switch
+              checked={autoNotify}
+              onCheckedChange={setAutoNotify}
+              disabled={!hasToken || !enabled}
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Channel config */}
+      <div style={cardStyle}>
+        <div style={{ padding: "18px 22px" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 16px" }}>
+            Canal de destino
+          </p>
+
+          <span style={subLabel}>ID del canal</span>
+          <input
+            value={channel}
+            onChange={(e) => setChannel(e.target.value)}
+            placeholder="C1234567890  ó  #nombre-del-canal"
+            disabled={!hasToken}
+            style={{
+              width: "100%", height: 38, boxSizing: "border-box" as const,
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-md, 10px)",
+              background: "var(--muted)",
+              color: "var(--foreground)",
+              padding: "0 12px",
+              fontSize: 13, outline: "none",
+              opacity: hasToken ? 1 : 0.5,
+            }}
+          />
+          <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "6px 0 0" }}>
+            Copia el ID desde Slack: clic derecho en el canal → <em>Ver detalles del canal</em> → ID al final.
+          </p>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "flex-end" }}>
+        <button
+          onClick={test}
+          disabled={testing || !hasToken || !channel.trim()}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 7,
+            height: 38, padding: "0 18px",
+            borderRadius: "var(--r-md, 10px)",
+            background: "var(--card)",
+            border: "1px solid var(--border)",
+            color: (!hasToken || !channel.trim()) ? "var(--muted-foreground)" : "var(--foreground)",
+            fontSize: 13, fontWeight: 500,
+            cursor: (!hasToken || !channel.trim() || testing) ? "not-allowed" : "pointer",
+          }}
+        >
+          {testing
+            ? <span className="animate-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", display: "inline-block" }} />
+            : <SlackIcon size={14} />
+          }
+          Probar conexión
+        </button>
+
+        <button
+          onClick={save}
+          disabled={saving || !hasToken}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 7,
+            height: 38, padding: "0 18px",
+            borderRadius: "var(--r-md, 10px)",
+            background: (saving || !hasToken) ? "var(--muted)" : "#ED5650",
+            border: "none",
+            color: (saving || !hasToken) ? "var(--muted-foreground)" : "white",
+            fontSize: 13, fontWeight: 500,
+            cursor: (saving || !hasToken) ? "not-allowed" : "pointer",
             transition: "background 120ms",
           }}
         >
