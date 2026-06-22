@@ -185,7 +185,7 @@ interface AppSidebarProps {
 export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClick }: AppSidebarProps) {
   const { user, roles, hasRole, hasPermission, signOut, profile, isSuperAdmin } = useAuth();
 
-  const { data: logoData } = useQuery({
+  const { data: logoData, isLoading: logoLoading } = useQuery({
     queryKey: ["platform-setting", "logo_url"],
     queryFn:  () => getPlatformSetting({ data: { key: "logo_url" } }),
     staleTime: 10 * 60 * 1000,
@@ -259,9 +259,11 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
       {/* ── Logo ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 11, paddingLeft: 8, marginBottom: 24 }}>
         <span style={{ color: "#ED5650", display: "flex", flexShrink: 0 }}>
-          {customLogo
-            ? <img src={customLogo} alt="Logo" style={{ height: 30, width: "auto", maxWidth: 36, objectFit: "contain" }} />
-            : <DataicoMark size={30} />
+          {logoLoading
+            ? <div style={{ width: 30, height: 30 }} />
+            : customLogo
+              ? <img src={customLogo} alt="Logo" style={{ height: 30, width: "auto", maxWidth: 36, objectFit: "contain" }} />
+              : <DataicoMark size={30} />
           }
         </span>
         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
