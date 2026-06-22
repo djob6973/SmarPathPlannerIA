@@ -49,12 +49,26 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Font families */
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+
+  /* Custom type scale */
+  --text-label:      9px;
+  --text-card-sub:   10px;
+  --text-chip:       11px;
+  --text-secondary:  13px;
+  --text-card-title: 17px;
+  --text-metric:     34px;
 }
 
-/* ─── Font families (Dataico design system fallbacks) ─── */
+/* ─── Font families ─── */
 :root {
+  --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
-  --font-body:    'Manrope', system-ui, -apple-system, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
 }
 
 /* ─── SmartPath animations ─── */
@@ -199,6 +213,8 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
@@ -245,6 +261,17 @@
   .priority-high     { @apply bg-orange-500/15 text-orange-400 border border-orange-500/30; }
   .priority-medium   { @apply bg-yellow-500/15 text-yellow-400 border border-yellow-500/30; }
   .priority-low      { @apply bg-slate-500/15 text-slate-400 border border-slate-500/30; }
+
+  /* ── Typography patterns ── */
+  .font-metric {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+  }
+  .font-label {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
 
   /* SmartPath interactive card states */
   .sp-row:hover { background: var(--muted) !important; }
