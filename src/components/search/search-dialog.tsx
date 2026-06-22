@@ -82,7 +82,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
       if (e.key === "Enter" && results[selected]) {
         const r = results[selected];
         if (r.kind === "nav") navigate({ to: r.path });
-        else navigate({ to: "/app/requests" });
+        else navigate({ to: "/app/requests", search: { openRequest: r.id } } as any);
         onClose();
       }
     };
@@ -124,7 +124,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
               key={r.kind === "nav" ? r.path : r.id}
               onClick={() => {
                 if (r.kind === "nav") navigate({ to: r.path });
-                else navigate({ to: "/app/requests" });
+                else navigate({ to: "/app/requests", search: { openRequest: r.id } } as any);
                 onClose();
               }}
               onMouseEnter={() => setSelected(i)}

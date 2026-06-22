@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, deleteRequest, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
@@ -12,6 +12,11 @@ import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
 export const Route = createFileRoute("/app/requests")({
+  validateSearch: (search: Record<string, unknown>): { openRequest?: string } => {
+    const result: { openRequest?: string } = {};
+    if (typeof search.openRequest === "string") result.openRequest = search.openRequest;
+    return result;
+  },
   component: RequestsPage,
 });
 
@@ -29,6 +34,8 @@ const GRID = "1fr 150px 110px 130px 56px";
 
 function RequestsPage() {
   const { user, hasPermission, areaId, isSuperAdmin } = useAuth();
+  const { openRequest } = Route.useSearch();
+  const navigate = useNavigate();
   const [requests, setRequests]   = useState<RequestRow[]>([]);
   const [columns, setColumns]     = useState<ColumnRow[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -63,6 +70,15 @@ function RequestsPage() {
     }
     listProfiles().then(({ profiles: p }) => setProfiles(p));
   }, [selectedArea, isSuperAdmin]);
+
+  // Abrir modal directamente cuando viene desde el buscador
+  useEffect(() => {
+    if (!loading && openRequest) {
+      setSelectedId(openRequest);
+      // Limpiar el param de la URL para que no se reabra al refrescar
+      navigate({ to: "/app/requests", search: {}, replace: true } as any);
+    }
+  }, [loading, openRequest]);
 
   const filtered = useMemo(() =>
     requests.filter((r) => {
