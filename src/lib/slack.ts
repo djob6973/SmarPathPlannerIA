@@ -27,7 +27,11 @@ const PRIORITY_LABELS: Record<string, string> = {
   low:    "Baja 🟢",
 };
 
-export async function postSlackMessage(requestId: string, channelOverride?: string): Promise<void> {
+export async function postSlackMessage(
+  requestId: string,
+  channelOverride?: string,
+  deliverableIds?: string[],
+): Promise<void> {
   const token = process.env.SLACK_BOT_TOKEN;
   if (!token) throw new Error("SLACK_BOT_TOKEN no está configurado en el servidor");
 
@@ -72,7 +76,7 @@ export async function postSlackMessage(requestId: string, channelOverride?: stri
     fields.push({ type: "mrkdwn", text: `*🏢 Área*\n${req.area_name}` });
   }
 
-  const blocks = [
+  const blocks: object[] = [
     {
       type: "header",
       text: { type: "plain_text", text: "✅  Solicitud completada", emoji: true },
@@ -84,6 +88,25 @@ export async function postSlackMessage(requestId: string, channelOverride?: stri
     { type: "section", fields },
     { type: "divider" },
   ];
+
+  // Deliverables section
+  if (deliverableIds && deliverableIds.length > 0) {
+    const deliverables = await db<{ title: string; notes: string | null }[]>`
+      SELECT title, notes FROM request_deliverables
+      WHERE id = ANY(${deliverableIds})
+      ORDER BY created_at
+    `;
+    if (deliverables.length > 0) {
+      const lines = deliverables
+        .map((d) => `• *${d.title}*${d.notes ? `\n  ${d.notes}` : ""}`)
+        .join("\n");
+      blocks.push({
+        type: "section",
+        text: { type: "mrkdwn", text: `*📦 Entregables incluidos*\n${lines}` },
+      });
+      blocks.push({ type: "divider" });
+    }
+  }
 
   const response = await fetch("https://slack.com/api/chat.postMessage", {
     method: "POST",

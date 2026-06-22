@@ -49,14 +49,15 @@ export const saveSlackConfig = createServerFn({ method: "POST" })
 export const sendSlackNotification = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
-      requestId: z.string().uuid(),
-      channel:   z.string().optional(),
+      requestId:      z.string().uuid(),
+      channel:        z.string().optional(),
+      deliverableIds: z.string().uuid().array().optional(),
     }).parse(input)
   )
   .handler(async ({ data }) => {
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
-    await postSlackMessage(data.requestId, data.channel);
+    await postSlackMessage(data.requestId, data.channel, data.deliverableIds);
     return { ok: true };
   });
 

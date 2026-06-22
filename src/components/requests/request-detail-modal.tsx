@@ -97,6 +97,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [canAssignRequest, setCanAssignRequest] = useState(false);
   const [canChangeStatus, setCanChangeStatus] = useState(false);
   const [sendingSlack, setSendingSlack] = useState(false);
+  const [showSlackDialog, setShowSlackDialog] = useState(false);
+  const [selectedDeliverableIds, setSelectedDeliverableIds] = useState<string[]>([]);
 
   const toggleNotes = (id: string) => setExpandedNotes((prev) => {
     const next = new Set(prev);
@@ -514,12 +516,25 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
     setUpdatingComment(false);
   };
 
-  const handleSlackNotify = async () => {
+  const handleSlackNotify = () => {
+    if (!request) return;
+    setSelectedDeliverableIds(deliverables.map((d) => d.id));
+    setShowSlackDialog(true);
+  };
+
+  const toggleSlackDeliverable = (id: string) => {
+    setSelectedDeliverableIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSendSlack = async () => {
     if (!request) return;
     setSendingSlack(true);
     try {
-      await sendSlackNotification({ data: { requestId: request.id } });
+      await sendSlackNotification({ data: { requestId: request.id, deliverableIds: selectedDeliverableIds } });
       toast.success("Notificación enviada a Slack");
+      setShowSlackDialog(false);
     } catch (err: any) {
       toast.error(err?.message ?? "Error al notificar a Slack");
     }
@@ -541,7 +556,108 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
           className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl flex flex-col rounded-xl border border-border bg-card shadow-2xl focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           style={{ maxHeight: "90vh" }}
         >
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden rounded-xl">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden rounded-xl relative">
+
+        {/* Slack deliverable picker overlay */}
+        {showSlackDialog && (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 20,
+            display: "flex", flexDirection: "column",
+            borderRadius: "inherit",
+          }} className="bg-card">
+            {/* Picker header */}
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div className="flex items-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: "#ED5650" }} aria-hidden="true">
+                  <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zm2.521-10.123a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.123 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.123a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
+                </svg>
+                <span className="text-sm font-semibold">Seleccionar entregables para Slack</span>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowSlackDialog(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Picker body */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {deliverables.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                  <PackageCheck className="h-8 w-8 text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground">Esta solicitud no tiene entregables registrados.</p>
+                  <p className="text-xs text-muted-foreground">La notificación se enviará sin entregables.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      {selectedDeliverableIds.length} de {deliverables.length} seleccionados
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDeliverableIds(
+                        selectedDeliverableIds.length === deliverables.length
+                          ? []
+                          : deliverables.map((d) => d.id)
+                      )}
+                      className="text-xs font-medium hover:underline"
+                      style={{ color: "#ED5650" }}
+                    >
+                      {selectedDeliverableIds.length === deliverables.length ? "Deseleccionar todos" : "Seleccionar todos"}
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {deliverables.map((d) => {
+                      const isSelected = selectedDeliverableIds.includes(d.id);
+                      return (
+                        <div
+                          key={d.id}
+                          onClick={() => toggleSlackDeliverable(d.id)}
+                          className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
+                          style={{
+                            borderColor: isSelected ? "#ED5650" : undefined,
+                            background: isSelected ? "rgba(237,86,80,.06)" : undefined,
+                          }}
+                        >
+                          <div className="mt-0.5 shrink-0">
+                            {isSelected
+                              ? <CheckCircle2 className="h-4 w-4" style={{ color: "#ED5650" }} />
+                              : <Circle className="h-4 w-4 text-muted-foreground" />
+                            }
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium leading-snug">{d.title}</p>
+                            {d.notes && (
+                              <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{d.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Picker actions */}
+            <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
+              <Button variant="outline" size="sm" onClick={() => setShowSlackDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSendSlack}
+                disabled={sendingSlack}
+                style={{ background: "#ED5650", color: "white" }}
+                className="hover:opacity-90"
+              >
+                {sendingSlack && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                Enviar{selectedDeliverableIds.length > 0
+                  ? ` (${selectedDeliverableIds.length} entregable${selectedDeliverableIds.length !== 1 ? "s" : ""})`
+                  : ""} a Slack
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex items-start gap-4 border-b border-border px-6 py-4">
