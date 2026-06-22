@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listUsers, setUserRole, assignUserToArea, listAreas, adminResetPassword, updateUserProfile } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth-context";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -471,34 +470,29 @@ function TeamPage() {
 
             {/* Roles */}
             {canManageRoles && editTarget && (
-              <div className="space-y-2">
-                <Label>Roles</Label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px" }}>
-                  {ROLES.map((role) => {
-                    const isActive = editTarget.roles.some((r) => getRoleKey(r) === role);
-                    return (
-                      <label key={role} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                        <Switch
-                          checked={isActive}
-                          onCheckedChange={(v) => {
-                            handleToggleRole(editTarget.id, role, v);
-                            setEditTarget((prev) => {
-                              if (!prev) return prev;
-                              const newRoles = v
-                                ? [...prev.roles, role]
-                                : prev.roles.filter((r) => getRoleKey(r) !== role);
-                              return { ...prev, roles: newRoles };
-                            });
-                          }}
-                          className="scale-[0.85]"
-                        />
-                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                          {ROLE_STYLES[role]?.label ?? role}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
+              <div className="space-y-1.5">
+                <Label>Rol</Label>
+                <Select
+                  value={editTarget.roles.length > 0 ? getRoleKey(editTarget.roles[0]) : "none"}
+                  onValueChange={(value) => {
+                    const current = editTarget.roles.length > 0 ? getRoleKey(editTarget.roles[0]) : null;
+                    if (current && current !== value) handleToggleRole(editTarget.id, current, false);
+                    if (value !== "none") handleToggleRole(editTarget.id, value, true);
+                    setEditTarget((prev) => prev ? { ...prev, roles: value === "none" ? [] : [value] } : prev);
+                  }}
+                >
+                  <SelectTrigger style={{ fontSize: 13 }}>
+                    <SelectValue placeholder="Seleccionar rol" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin rol</SelectItem>
+                    {ROLES.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {ROLE_STYLES[role]?.label ?? role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
