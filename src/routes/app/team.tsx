@@ -10,23 +10,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Users, Building, KeyRound, ShieldCheck, Pencil } from "lucide-react";
+import { Users, KeyRound, ShieldCheck, Pencil, Search, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/app/team")({
   component: TeamPage,
 });
 
-type TeamUser = { id: string; email: string; full_name: string | null; roles: string[]; area_id: string | null };
+type TeamUser = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  roles: string[];
+  area_id: string | null;
+  created_at?: string;
+};
 
 const ROLES = ["super_admin", "area_admin", "manager", "agent", "client", "viewer"] as const;
 
 const ROLE_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  super_admin: { bg: "rgba(237,86,80,.13)",   color: "#ED5650", label: "Super Admin" },
-  area_admin:  { bg: "rgba(249,115,22,.13)",  color: "#F97316", label: "Admin Área" },
-  manager:     { bg: "rgba(59,130,246,.13)",   color: "#3B82F6", label: "Manager" },
-  agent:       { bg: "rgba(168,85,247,.13)",   color: "#A855F7", label: "Agent" },
-  client:      { bg: "rgba(157,221,5,.18)",    color: "#7AAE1B", label: "Client" },
-  viewer:      { bg: "rgba(100,116,139,.13)",  color: "#64748B", label: "Viewer" },
+  super_admin: { bg: "rgba(237,86,80,.15)",   color: "#ED5650", label: "Super Admin" },
+  area_admin:  { bg: "rgba(249,115,22,.15)",  color: "#F97316", label: "Admin Área" },
+  manager:     { bg: "rgba(59,130,246,.15)",   color: "#3B82F6", label: "Manager" },
+  agent:       { bg: "rgba(168,85,247,.15)",   color: "#A855F7", label: "Agente" },
+  client:      { bg: "rgba(6,182,212,.15)",    color: "#06B6D4", label: "Participante" },
+  viewer:      { bg: "rgba(100,116,139,.15)",  color: "#94A3B8", label: "Viewer" },
 };
 
 const AVATAR_PALETTE = [
@@ -38,6 +45,31 @@ function getRoleKey(r: string): string {
   return (r as any)?.role ?? r;
 }
 
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("es", { month: "short", day: "numeric" });
+}
+
+// ── Icon button shared style ──────────────────────────────────────
+const iconBtn: React.CSSProperties = {
+  width: 30, height: 30,
+  borderRadius: 8,
+  border: "1px solid var(--border)",
+  background: "transparent",
+  display: "flex", alignItems: "center", justifyContent: "center",
+  cursor: "pointer",
+  color: "var(--muted-foreground)",
+  transition: "background .15s, color .15s",
+};
+
+// ── Skeleton pulse ────────────────────────────────────────────────
+const skPulse: React.CSSProperties = {
+  background: "var(--muted)",
+  animation: "pulse 1.5s ease-in-out infinite",
+};
+
+// ── TeamPage ──────────────────────────────────────────────────────
 function TeamPage() {
   const { hasPermission } = useAuth();
 
@@ -49,24 +81,30 @@ function TeamPage() {
       </div>
     );
   }
-  const list          = useServerFn(listUsers);
-  const setRole       = useServerFn(setUserRole);
-  const assignArea    = useServerFn(assignUserToArea);
-  const getAreas      = useServerFn(listAreas);
-  const resetPwd      = useServerFn(adminResetPassword);
-  const editProfile   = useServerFn(updateUserProfile);
 
-  const [users, setUsers]             = useState<TeamUser[]>([]);
-  const [areas, setAreas]             = useState<any[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [resetTarget, setResetTarget] = useState<TeamUser | null>(null);
-  const [newPwd, setNewPwd]           = useState("");
-  const [confirmPwd, setConfirmPwd]   = useState("");
+  const list        = useServerFn(listUsers);
+  const setRole     = useServerFn(setUserRole);
+  const assignArea  = useServerFn(assignUserToArea);
+  const getAreas    = useServerFn(listAreas);
+  const resetPwd    = useServerFn(adminResetPassword);
+  const editProfile = useServerFn(updateUserProfile);
+
+  const [users, setUsers]               = useState<TeamUser[]>([]);
+  const [areas, setAreas]               = useState<any[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [search, setSearch]             = useState("");
+
+  // edit dialog
+  const [editTarget, setEditTarget]     = useState<TeamUser | null>(null);
+  const [editName, setEditName]         = useState("");
+  const [editEmail, setEditEmail]       = useState("");
+  const [editLoading, setEditLoading]   = useState(false);
+
+  // reset password dialog
+  const [resetTarget, setResetTarget]   = useState<TeamUser | null>(null);
+  const [newPwd, setNewPwd]             = useState("");
+  const [confirmPwd, setConfirmPwd]     = useState("");
   const [resetLoading, setResetLoading] = useState(false);
-  const [editTarget, setEditTarget]   = useState<TeamUser | null>(null);
-  const [editName, setEditName]       = useState("");
-  const [editEmail, setEditEmail]     = useState("");
-  const [editLoading, setEditLoading] = useState(false);
 
   const canManageRoles = hasPermission("manage_roles");
   const canManageUsers = hasPermission("manage_users");
@@ -90,7 +128,7 @@ function TeamPage() {
     loadAreas();
   }, []);
 
-  const toggle = async (userId: string, role: string, enabled: boolean) => {
+  const handleToggleRole = async (userId: string, role: string, enabled: boolean) => {
     try {
       await setRole({ data: { userId, role: role as any, enabled } });
       reload();
@@ -107,29 +145,6 @@ function TeamPage() {
       reload();
     } catch (e: any) {
       toast.error(e?.message ?? "Error al asignar área");
-    }
-  };
-
-  const openResetDialog = (user: TeamUser) => {
-    setResetTarget(user);
-    setNewPwd("");
-    setConfirmPwd("");
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetTarget) return;
-    if (newPwd !== confirmPwd) { toast.error("Las contraseñas no coinciden"); return; }
-    if (newPwd.length < 6) { toast.error("Mínimo 6 caracteres"); return; }
-    setResetLoading(true);
-    try {
-      await resetPwd({ data: { userId: resetTarget.id, newPassword: newPwd } });
-      toast.success(`Contraseña de ${resetTarget.full_name ?? resetTarget.email} restablecida`);
-      setResetTarget(null);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Error al restablecer contraseña");
-    } finally {
-      setResetLoading(false);
     }
   };
 
@@ -157,11 +172,42 @@ function TeamPage() {
     }
   };
 
+  const openResetDialog = (user: TeamUser) => {
+    setResetTarget(user);
+    setNewPwd("");
+    setConfirmPwd("");
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTarget) return;
+    if (newPwd !== confirmPwd) { toast.error("Las contraseñas no coinciden"); return; }
+    if (newPwd.length < 6) { toast.error("Mínimo 6 caracteres"); return; }
+    setResetLoading(true);
+    try {
+      await resetPwd({ data: { userId: resetTarget.id, newPassword: newPwd } });
+      toast.success(`Contraseña de ${resetTarget.full_name ?? resetTarget.email} restablecida`);
+      setResetTarget(null);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al restablecer contraseña");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? users.filter((u) =>
+        (u.full_name ?? "").toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+      )
+    : users;
+
   return (
     <div style={{ padding: "36px 40px 64px", maxWidth: 1180, margin: "0 auto", animation: "spIn .35s ease both" }}>
 
       {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 32 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
         <div style={{
           width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
           background: "rgba(237,86,80,.12)",
@@ -188,70 +234,218 @@ function TeamPage() {
       {!canManageUsers && (
         <div style={{
           display: "flex", alignItems: "center", gap: 10,
-          background: "var(--muted)", borderRadius: "var(--r-md, 10px)",
-          padding: "12px 16px", marginBottom: 24,
+          background: "var(--muted)", borderRadius: 10,
+          padding: "12px 16px", marginBottom: 20,
           border: "1px solid var(--border)",
         }}>
           <ShieldCheck size={15} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
           <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
-            Solo los super administradores y administradores de área pueden modificar asignaciones de área.
+            Solo los super administradores y administradores de área pueden modificar asignaciones.
           </p>
         </div>
       )}
 
-      {/* ── Member cards ── */}
+      {/* ── Search ── */}
+      <div style={{ position: "relative", marginBottom: 20, maxWidth: 340 }}>
+        <Search size={14} style={{
+          position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+          color: "var(--muted-foreground)", pointerEvents: "none",
+        }} />
+        <input
+          type="text"
+          placeholder="Buscar usuarios..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: "100%", height: 38, paddingLeft: 34, paddingRight: 12,
+            background: "var(--card)", border: "1px solid var(--border)",
+            borderRadius: 10, color: "var(--foreground)",
+            fontSize: 13, outline: "none", fontFamily: "inherit",
+          }}
+        />
+      </div>
+
+      {/* ── Table ── */}
       {loading ? (
-        <SkeletonGrid />
+        <SkeletonTable />
+      ) : filtered.length === 0 ? (
+        <div style={{
+          background: "var(--card)", border: "1px solid var(--border)",
+          borderRadius: 16, padding: "56px 20px",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+        }}>
+          <Users size={28} style={{ color: "var(--muted-foreground)", opacity: .4 }} />
+          <p style={{ fontSize: 14, color: "var(--muted-foreground)", margin: 0 }}>
+            {search ? "Sin resultados para esa búsqueda" : "No hay miembros registrados"}
+          </p>
+        </div>
       ) : (
         <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-          gap: 16,
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: 16,
+          overflow: "hidden",
         }}>
-          {users.map((u, idx) => (
-            <MemberCard
-              key={u.id}
-              user={u}
-              idx={idx}
-              areas={areas}
-              canManageRoles={canManageRoles}
-              canManageUsers={canManageUsers}
-              onToggleRole={toggle}
-              onAreaChange={handleAreaChange}
-              onResetPassword={openResetDialog}
-              onEdit={openEditDialog}
-            />
-          ))}
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                {(["USUARIO", "ROL", "ÁREA", "EVALUACIONES", "INGRESO", "ACCIONES"] as const).map((col) => (
+                  <th key={col} style={{
+                    padding: "13px 20px",
+                    textAlign: "left",
+                    fontSize: 11, fontWeight: 700, letterSpacing: ".08em",
+                    color: "var(--muted-foreground)",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                    borderBottom: "1px solid var(--border)",
+                    background: "transparent",
+                  }}>
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((u, idx) => {
+                const areaName    = areas.find((a) => a.id === u.area_id)?.name;
+                const initials    = (u.full_name ?? u.email).slice(0, 2).toUpperCase();
+                const avatarColor = AVATAR_PALETTE[idx % AVATAR_PALETTE.length];
+                const primaryRole = u.roles.length > 0 ? getRoleKey(u.roles[0]) : null;
+                const rs          = primaryRole ? ROLE_STYLES[primaryRole] : null;
+                const isLast      = idx === filtered.length - 1;
+
+                return (
+                  <tr key={u.id} style={{ borderBottom: isLast ? "none" : "1px solid var(--border)" }}>
+
+                    {/* USUARIO */}
+                    <td style={{ padding: "14px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
+                          background: avatarColor + "22",
+                          border: `1.5px solid ${avatarColor}44`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          color: avatarColor, fontSize: 12, fontWeight: 700,
+                        }}>
+                          {initials}
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--foreground)", margin: 0, lineHeight: 1.3 }}>
+                            {u.full_name ?? "Sin nombre"}
+                          </p>
+                          <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
+                            {u.email}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* ROL */}
+                    <td style={{ padding: "14px 20px" }}>
+                      {rs ? (
+                        <span style={{
+                          display: "inline-flex", alignItems: "center",
+                          padding: "4px 12px", borderRadius: 999,
+                          fontSize: 11, fontWeight: 700, letterSpacing: ".05em",
+                          textTransform: "uppercase",
+                          background: rs.bg, color: rs.color,
+                        }}>
+                          {rs.label}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Sin rol</span>
+                      )}
+                    </td>
+
+                    {/* ÁREA */}
+                    <td style={{ padding: "14px 20px" }}>
+                      <span style={{ fontSize: 13, color: areaName ? "var(--foreground)" : "var(--muted-foreground)" }}>
+                        {areaName ?? "—"}
+                      </span>
+                    </td>
+
+                    {/* EVALUACIONES */}
+                    <td style={{ padding: "14px 20px" }}>
+                      <span style={{ fontSize: 13, color: "var(--foreground)" }}>
+                        {u.roles.length}
+                      </span>
+                    </td>
+
+                    {/* INGRESO */}
+                    <td style={{ padding: "14px 20px" }}>
+                      <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+                        {formatDate(u.created_at)}
+                      </span>
+                    </td>
+
+                    {/* ACCIONES */}
+                    <td style={{ padding: "14px 20px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        {canManageUsers && (
+                          <button
+                            onClick={() => openEditDialog(u)}
+                            title="Editar miembro"
+                            style={iconBtn}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        {canManageUsers && (
+                          <button
+                            onClick={() => openResetDialog(u)}
+                            title="Restablecer contraseña"
+                            style={iconBtn}
+                          >
+                            <KeyRound size={14} />
+                          </button>
+                        )}
+                        {canManageUsers && (
+                          <button
+                            title="Eliminar usuario"
+                            style={{ ...iconBtn, color: "rgba(237,86,80,.6)" }}
+                            onClick={() => toast.info("Función próximamente disponible")}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* ── Edit profile dialog ── */}
+      {/* ── Edit dialog (profile + roles + área) ── */}
       <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Editar miembro</DialogTitle>
           </DialogHeader>
-          {/* Avatar preview */}
+
           {editTarget && (() => {
-            const idx   = users.findIndex((u) => u.id === editTarget.id);
-            const color = AVATAR_PALETTE[(idx >= 0 ? idx : 0) % AVATAR_PALETTE.length];
+            const eidx    = users.findIndex((u) => u.id === editTarget.id);
+            const color   = AVATAR_PALETTE[(eidx >= 0 ? eidx : 0) % AVATAR_PALETTE.length];
             const initials = (editTarget.full_name ?? editTarget.email).slice(0, 2).toUpperCase();
             return (
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
                 <div style={{
-                  width: 42, height: 42, borderRadius: "999px", flexShrink: 0,
-                  background: color + "22", border: `2px solid ${color}55`,
+                  width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
+                  background: color + "22", border: `2px solid ${color}44`,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  color, fontSize: 14, fontWeight: 700,
+                  color, fontSize: 13, fontWeight: 700,
                 }}>
                   {initials}
                 </div>
                 <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
-                  Actualiza el nombre y email del miembro.
+                  Actualiza el perfil, roles y área del miembro.
                 </p>
               </div>
             );
           })()}
+
           <form onSubmit={handleEditProfile} className="space-y-4 pt-1">
             <div className="space-y-1.5">
               <Label htmlFor="edit-name">Nombre completo</Label>
@@ -274,6 +468,65 @@ function TeamPage() {
                 required
               />
             </div>
+
+            {/* Roles */}
+            {canManageRoles && editTarget && (
+              <div className="space-y-2">
+                <Label>Roles</Label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px" }}>
+                  {ROLES.map((role) => {
+                    const isActive = editTarget.roles.some((r) => getRoleKey(r) === role);
+                    return (
+                      <label key={role} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                        <Switch
+                          checked={isActive}
+                          onCheckedChange={(v) => {
+                            handleToggleRole(editTarget.id, role, v);
+                            setEditTarget((prev) => {
+                              if (!prev) return prev;
+                              const newRoles = v
+                                ? [...prev.roles, role]
+                                : prev.roles.filter((r) => getRoleKey(r) !== role);
+                              return { ...prev, roles: newRoles };
+                            });
+                          }}
+                          className="scale-[0.85]"
+                        />
+                        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                          {ROLE_STYLES[role]?.label ?? role}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Área */}
+            {canManageUsers && (
+              <div className="space-y-1.5">
+                <Label>Área</Label>
+                <Select
+                  value={editTarget?.area_id || "none"}
+                  onValueChange={(value) => {
+                    if (!editTarget) return;
+                    handleAreaChange(editTarget.id, value);
+                    setEditTarget((prev) => prev ? { ...prev, area_id: value === "none" ? null : value } : prev);
+                  }}
+                >
+                  <SelectTrigger style={{ fontSize: 13 }}>
+                    <SelectValue placeholder="Sin área" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin área</SelectItem>
+                    {areas.map((area) => (
+                      <SelectItem key={area.id} value={area.id}>{area.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>
                 Cancelar
@@ -343,261 +596,68 @@ function TeamPage() {
   );
 }
 
-// ── MemberCard ───────────────────────────────────────────────────
+// ── Skeleton Table ────────────────────────────────────────────────
 
-interface MemberCardProps {
-  user: TeamUser;
-  idx: number;
-  areas: any[];
-  canManageRoles: boolean;
-  canManageUsers: boolean;
-  onToggleRole: (userId: string, role: string, enabled: boolean) => void;
-  onAreaChange: (userId: string, areaId: string) => void;
-  onResetPassword: (user: TeamUser) => void;
-  onEdit: (user: TeamUser) => void;
-}
-
-function MemberCard({ user: u, idx, areas, canManageRoles, canManageUsers, onToggleRole, onAreaChange, onResetPassword, onEdit }: MemberCardProps) {
-  const initials    = (u.full_name ?? u.email).slice(0, 2).toUpperCase();
-  const avatarColor = AVATAR_PALETTE[idx % AVATAR_PALETTE.length];
-  const areaName    = areas.find((a) => a.id === u.area_id)?.name;
-
+function SkeletonTable() {
   return (
     <div style={{
       background: "var(--card)",
-      borderRadius: "var(--r-card, 20px)",
       border: "1px solid var(--border)",
+      borderRadius: 16,
       overflow: "hidden",
     }}>
-      {/* Info section */}
-      <div style={{ padding: "20px 20px 18px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-          {/* Avatar */}
-          <div style={{
-            width: 44, height: 44, borderRadius: "999px", flexShrink: 0,
-            background: avatarColor + "22",
-            border: `2px solid ${avatarColor}55`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: avatarColor,
-            fontSize: 14, fontWeight: 700,
-          }}>
-            {initials}
-          </div>
-
-          {/* Name + email */}
-          <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
-            <p style={{ fontSize: 14.5, fontWeight: 600, color: "var(--foreground)", margin: 0, lineHeight: 1.3 }}>
-              {u.full_name ?? "Sin nombre"}
-            </p>
-            <p style={{
-              fontSize: 12.5, color: "var(--muted-foreground)", margin: "3px 0 0",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {u.email}
-            </p>
-          </div>
-
-          {/* Edit button */}
-          {canManageUsers && (
-            <button
-              onClick={() => onEdit(u)}
-              title="Editar miembro"
-              style={{
-                width: 30, height: 30, borderRadius: "var(--r-md, 10px)",
-                border: "1px solid var(--border)",
-                background: "var(--muted)",
-                cursor: "pointer", flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            {["USUARIO", "ROL", "ÁREA", "EVALUACIONES", "INGRESO", "ACCIONES"].map((col) => (
+              <th key={col} style={{
+                padding: "13px 20px",
+                textAlign: "left",
+                fontSize: 11, fontWeight: 700, letterSpacing: ".08em",
                 color: "var(--muted-foreground)",
-              }}
-            >
-              <Pencil size={13} />
-            </button>
-          )}
-        </div>
-
-        {/* Role pills */}
-        <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 6, marginTop: 14 }}>
-          {u.roles.length === 0 ? (
-            <span style={{
-              padding: "3px 10px", borderRadius: "var(--r-pill, 999px)",
-              fontSize: 11, fontWeight: 500,
-              background: "var(--muted)", color: "var(--muted-foreground)",
-            }}>
-              Sin rol
-            </span>
-          ) : (
-            u.roles.map((r) => {
-              const rk = getRoleKey(r);
-              const rs = ROLE_STYLES[rk];
-              return rs ? (
-                <span key={rk} style={{
-                  display: "inline-flex", alignItems: "center",
-                  padding: "3px 10px", borderRadius: "var(--r-pill, 999px)",
-                  fontSize: 11, fontWeight: 600,
-                  background: rs.bg, color: rs.color,
-                }}>
-                  {rs.label}
-                </span>
-              ) : (
-                <span key={rk} style={{
-                  padding: "3px 10px", borderRadius: "var(--r-pill, 999px)",
-                  fontSize: 11, fontWeight: 500,
-                  background: "var(--muted)", color: "var(--muted-foreground)",
-                }}>
-                  {rk}
-                </span>
-              );
-            })
-          )}
-        </div>
-
-        {/* Area display (viewers / non-admins) */}
-        {!canManageUsers && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
-            <Building size={12} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Área:</span>
-            {areaName ? (
-              <span style={{
-                fontSize: 12, fontWeight: 500,
-                background: "var(--muted)", color: "var(--foreground)",
-                borderRadius: "var(--r-pill, 999px)", padding: "2px 9px",
+                textTransform: "uppercase",
+                borderBottom: "1px solid var(--border)",
               }}>
-                {areaName}
-              </span>
-            ) : (
-              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Sin área</span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Admin controls */}
-      {(canManageRoles || canManageUsers) && (
-        <div style={{
-          borderTop: "1px solid var(--border)",
-          background: "var(--muted)",
-          padding: "14px 20px",
-          display: "flex", flexDirection: "column", gap: 12,
-        }}>
-
-          {/* Role toggles */}
-          {canManageRoles && (
-            <div>
-              <p style={{
-                fontSize: 10, fontWeight: 700, textTransform: "uppercase" as const,
-                letterSpacing: ".07em", color: "var(--muted-foreground)",
-                margin: "0 0 8px",
-              }}>
-                Roles
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: "8px 14px" }}>
-                {ROLES.map((role) => {
-                  const isActive = u.roles.some((r) => getRoleKey(r) === role);
-                  return (
-                    <label key={role} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                      <Switch
-                        checked={isActive}
-                        onCheckedChange={(v) => onToggleRole(u.id, role, v)}
-                        className="scale-[0.85]"
-                      />
-                      <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                        {ROLE_STYLES[role]?.label ?? role}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Area selector */}
-          {canManageUsers && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 70 }}>
-                <Building size={13} style={{ color: "var(--muted-foreground)" }} />
-                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>Área</span>
-              </div>
-              <Select
-                value={u.area_id || "none"}
-                onValueChange={(value) => onAreaChange(u.id, value)}
-              >
-                <SelectTrigger style={{ height: 32, fontSize: 12, flex: 1, borderRadius: "var(--r-md, 10px)" }}>
-                  <SelectValue placeholder="Sin área" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin área</SelectItem>
-                  {areas.map((area) => (
-                    <SelectItem key={area.id} value={area.id}>{area.name}</SelectItem>
+                {col}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <tr key={i} style={{ borderBottom: i < 4 ? "1px solid var(--border)" : "none" }}>
+              <td style={{ padding: "14px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ ...skPulse, width: 36, height: 36, borderRadius: "50%", flexShrink: 0 }} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ ...skPulse, height: 13, width: 120, borderRadius: 6 }} />
+                    <div style={{ ...skPulse, height: 11, width: 160, borderRadius: 6 }} />
+                  </div>
+                </div>
+              </td>
+              <td style={{ padding: "14px 20px" }}>
+                <div style={{ ...skPulse, height: 22, width: 80, borderRadius: 999 }} />
+              </td>
+              <td style={{ padding: "14px 20px" }}>
+                <div style={{ ...skPulse, height: 13, width: 70, borderRadius: 6 }} />
+              </td>
+              <td style={{ padding: "14px 20px" }}>
+                <div style={{ ...skPulse, height: 13, width: 24, borderRadius: 6 }} />
+              </td>
+              <td style={{ padding: "14px 20px" }}>
+                <div style={{ ...skPulse, height: 13, width: 48, borderRadius: 6 }} />
+              </td>
+              <td style={{ padding: "14px 20px" }}>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {[0, 1, 2].map((j) => (
+                    <div key={j} style={{ ...skPulse, width: 30, height: 30, borderRadius: 8 }} />
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Reset password */}
-          {canManageUsers && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 70 }}>
-                <KeyRound size={13} style={{ color: "var(--muted-foreground)" }} />
-                <span style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>Contraseña</span>
-              </div>
-              <button
-                onClick={() => onResetPassword(u)}
-                style={{
-                  height: 32, padding: "0 14px",
-                  borderRadius: "var(--r-md, 10px)",
-                  border: "1px solid var(--border)",
-                  background: "var(--card)",
-                  color: "var(--foreground)",
-                  fontSize: 12, cursor: "pointer",
-                  whiteSpace: "nowrap" as const,
-                }}
-              >
-                Restablecer
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
-
-// ── Skeleton ─────────────────────────────────────────────────────
-
-function SkeletonGrid() {
-  return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-      gap: 16,
-    }}>
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} style={{
-          background: "var(--card)",
-          borderRadius: "var(--r-card, 20px)",
-          border: "1px solid var(--border)",
-          padding: "20px",
-        }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={{ ...skPulse, width: 44, height: 44, borderRadius: "999px" }} />
-            <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, gap: 8, paddingTop: 4 }}>
-              <div style={{ ...skPulse, height: 14, width: "55%", borderRadius: 6 }} />
-              <div style={{ ...skPulse, height: 12, width: "75%", borderRadius: 6 }} />
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 6, marginTop: 14 }}>
-            <div style={{ ...skPulse, height: 22, width: 72, borderRadius: 999 }} />
-            <div style={{ ...skPulse, height: 22, width: 56, borderRadius: 999 }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-const skPulse: React.CSSProperties = {
-  background: "var(--muted)",
-  animation: "pulse 1.5s ease-in-out infinite",
-};
