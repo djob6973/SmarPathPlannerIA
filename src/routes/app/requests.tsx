@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, deleteRequest, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
 import { getAreas, listProfiles } from "@/lib/data.functions";
 import { RequestDetailModal } from "@/components/requests/request-detail-modal";
 import { ManualRequestModal } from "@/components/requests/manual-request-modal";
 import { toast } from "sonner";
-import { Search, MessageSquare, Trash2, ExternalLink, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X } from "lucide-react";
+import { Search, MessageSquare, Trash2, ExternalLink, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, SlidersHorizontal } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -107,11 +107,35 @@ function RequestsPage() {
      filterCreatedFrom, filterCreatedTo, filterCompletedFrom, filterCompletedTo]
   );
 
-  const hasDateFilters = filterCreatedFrom || filterCreatedTo || filterCompletedFrom || filterCompletedTo;
-  const clearDateFilters = () => {
+  const activeFilterCount = [
+    filterPriority !== "all",
+    filterStatus !== "all",
+    filterAssignedTo !== "all",
+    !!filterCreatedFrom, !!filterCreatedTo,
+    !!filterCompletedFrom, !!filterCompletedTo,
+  ].filter(Boolean).length;
+
+  const clearAllFilters = () => {
+    setFilterPriority("all");
+    setFilterStatus("all");
+    setFilterAssignedTo("all");
     setFilterCreatedFrom(""); setFilterCreatedTo("");
     setFilterCompletedFrom(""); setFilterCompletedTo("");
   };
+
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!filterOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [filterOpen]);
 
   // Reset to page 1 when filters change
   useEffect(() => { setPage(1); }, [
@@ -191,17 +215,11 @@ function RequestsPage() {
         </div>
       </div>
 
-      {/* ── Filters ── */}
+      {/* ── Search + Filter ── */}
       <div style={{ display: "flex", gap: 10, marginBottom: 18, alignItems: "center" }}>
+        {/* Search bar */}
         <div style={{ position: "relative", flex: 1 }}>
-          <Search
-            size={14}
-            style={{
-              position: "absolute", left: 14, top: "50%",
-              transform: "translateY(-50%)",
-              color: "var(--muted-foreground)", pointerEvents: "none",
-            }}
-          />
+          <Search size={14} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--muted-foreground)", pointerEvents: "none" }} />
           <input
             type="text"
             value={search}
@@ -211,82 +229,135 @@ function RequestsPage() {
           />
         </div>
 
-        <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={filterInputStyle}>
-          <option value="all">Todas las prioridades</option>
-          {PRIORITIES.map((p) => (
-            <option key={p} value={p} style={{ textTransform: "capitalize" }}>{p}</option>
-          ))}
-        </select>
-
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={filterInputStyle}>
-          <option value="all">Todos los estados</option>
-          {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-
-        <select value={filterAssignedTo} onChange={(e) => setFilterAssignedTo(e.target.value)} style={filterInputStyle}>
-          <option value="all">Asignado a: Todos</option>
-          {profiles.map((p) => (
-            <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* ── Date filters ── */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 18, alignItems: "center", flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, whiteSpace: "nowrap" }}>
-          Creado:
-        </span>
-        <input
-          type="date"
-          value={filterCreatedFrom}
-          onChange={(e) => setFilterCreatedFrom(e.target.value)}
-          title="Creado desde"
-          style={filterInputStyle}
-        />
-        <input
-          type="date"
-          value={filterCreatedTo}
-          onChange={(e) => setFilterCreatedTo(e.target.value)}
-          title="Creado hasta"
-          style={filterInputStyle}
-        />
-
-        <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, whiteSpace: "nowrap", marginLeft: 6 }}>
-          Completada:
-        </span>
-        <input
-          type="date"
-          value={filterCompletedFrom}
-          onChange={(e) => setFilterCompletedFrom(e.target.value)}
-          title="Completada desde"
-          style={filterInputStyle}
-        />
-        <input
-          type="date"
-          value={filterCompletedTo}
-          onChange={(e) => setFilterCompletedTo(e.target.value)}
-          title="Completada hasta"
-          style={filterInputStyle}
-        />
-
-        {hasDateFilters && (
+        {/* Filter button + popover */}
+        <div ref={filterRef} style={{ position: "relative" }}>
           <button
-            onClick={clearDateFilters}
-            title="Limpiar fechas"
+            onClick={() => setFilterOpen((v) => !v)}
             style={{
-              display: "flex", alignItems: "center", gap: 4,
-              padding: "6px 12px",
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "8px 14px",
               borderRadius: "var(--r-sm, 10px)",
-              border: "1px solid var(--border)",
-              background: "transparent",
-              color: "var(--muted-foreground)",
-              fontSize: 12, cursor: "pointer",
-              whiteSpace: "nowrap",
+              border: `1px solid ${filterOpen || activeFilterCount > 0 ? "var(--primary)" : "var(--border)"}`,
+              background: filterOpen || activeFilterCount > 0 ? "color-mix(in srgb, var(--primary) 10%, transparent)" : "var(--card)",
+              color: activeFilterCount > 0 ? "var(--primary)" : "var(--muted-foreground)",
+              fontSize: 13, cursor: "pointer", fontWeight: 500,
+              transition: "all 120ms", whiteSpace: "nowrap",
             }}
           >
-            <X size={12} /> Limpiar fechas
+            <SlidersHorizontal size={14} />
+            Filtros
+            {activeFilterCount > 0 && (
+              <span style={{
+                background: "var(--primary)", color: "var(--primary-foreground)",
+                borderRadius: 99, fontSize: 10, fontWeight: 700,
+                minWidth: 18, height: 18, lineHeight: 1,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                padding: "0 5px",
+              }}>
+                {activeFilterCount}
+              </span>
+            )}
           </button>
-        )}
+
+          {filterOpen && (
+            <div style={{
+              position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 50,
+              width: 340,
+              background: "var(--card)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-card, 20px)",
+              boxShadow: "0 12px 40px rgba(0,0,0,.3)",
+              padding: 20,
+              animation: "spIn .15s ease both",
+            }}>
+              {/* Prioridad + Estado */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                <div>
+                  <label style={popoverLabelStyle}>Prioridad</label>
+                  <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={{ ...filterInputStyle, width: "100%" }}>
+                    <option value="all">Todas</option>
+                    {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={popoverLabelStyle}>Estado</label>
+                  <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ ...filterInputStyle, width: "100%" }}>
+                    <option value="all">Todos</option>
+                    {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Asignado a */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={popoverLabelStyle}>Asignado a</label>
+                <select value={filterAssignedTo} onChange={(e) => setFilterAssignedTo(e.target.value)} style={{ ...filterInputStyle, width: "100%" }}>
+                  <option value="all">Todos</option>
+                  {profiles.map((p) => <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>)}
+                </select>
+              </div>
+
+              {/* Divider */}
+              <div style={{ height: 1, background: "var(--border)", margin: "0 0 16px" }} />
+
+              {/* Fecha creación */}
+              <div style={{ marginBottom: 12 }}>
+                <label style={popoverLabelStyle}>Fecha de creación</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div>
+                    <span style={popoverSubLabelStyle}>Desde</span>
+                    <input type="date" value={filterCreatedFrom} onChange={(e) => setFilterCreatedFrom(e.target.value)} style={{ ...filterInputStyle, width: "100%" }} />
+                  </div>
+                  <div>
+                    <span style={popoverSubLabelStyle}>Hasta</span>
+                    <input type="date" value={filterCreatedTo} onChange={(e) => setFilterCreatedTo(e.target.value)} style={{ ...filterInputStyle, width: "100%" }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Fecha completada */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={popoverLabelStyle}>Fecha de completada</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div>
+                    <span style={popoverSubLabelStyle}>Desde</span>
+                    <input type="date" value={filterCompletedFrom} onChange={(e) => setFilterCompletedFrom(e.target.value)} style={{ ...filterInputStyle, width: "100%" }} />
+                  </div>
+                  <div>
+                    <span style={popoverSubLabelStyle}>Hasta</span>
+                    <input type="date" value={filterCompletedTo} onChange={(e) => setFilterCompletedTo(e.target.value)} style={{ ...filterInputStyle, width: "100%" }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <button
+                  onClick={clearAllFilters}
+                  disabled={activeFilterCount === 0}
+                  style={{
+                    background: "transparent", border: "none", padding: "4px 0",
+                    color: activeFilterCount === 0 ? "var(--muted-foreground)" : "#ef4444",
+                    fontSize: 13, cursor: activeFilterCount === 0 ? "default" : "pointer",
+                    opacity: activeFilterCount === 0 ? 0.45 : 1,
+                  }}
+                >
+                  Limpiar todo
+                </button>
+                <button
+                  onClick={() => setFilterOpen(false)}
+                  style={{
+                    background: "var(--primary)", color: "var(--primary-foreground)",
+                    border: "none", borderRadius: "var(--r-sm, 10px)",
+                    padding: "7px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  }}
+                >
+                  Aplicar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Table ── */}
@@ -319,7 +390,7 @@ function RequestsPage() {
           <SkeletonRows />
         ) : filtered.length === 0 ? (
           <div style={{ padding: "60px 20px", textAlign: "center", color: "var(--muted-foreground)", fontSize: 14 }}>
-            {search || filterPriority !== "all" || filterStatus !== "all" || hasDateFilters
+            {search || activeFilterCount > 0
               ? "No hay solicitudes que coincidan con los filtros."
               : "Sin solicitudes aún. Usa el Chat IA para crear una."}
           </div>
@@ -555,6 +626,17 @@ function SkeletonRows() {
 }
 
 // ── Shared styles ──────────────────────────────────────────────
+
+const popoverLabelStyle: React.CSSProperties = {
+  display: "block", fontSize: 11, fontWeight: 600,
+  textTransform: "uppercase", letterSpacing: ".06em",
+  color: "var(--muted-foreground)", marginBottom: 6,
+};
+
+const popoverSubLabelStyle: React.CSSProperties = {
+  display: "block", fontSize: 10,
+  color: "var(--muted-foreground)", marginBottom: 4,
+};
 
 const filterInputStyle: React.CSSProperties = {
   height: 42, padding: "0 14px",
