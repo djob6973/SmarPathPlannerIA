@@ -570,7 +570,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {currentCol?.is_completed && (
+            {request && (
               <Button
                 variant="ghost"
                 size="sm"
