@@ -27,18 +27,15 @@ type TeamUser = {
 const ROLES = ["super_admin", "area_admin", "manager", "agent", "client", "viewer"] as const;
 
 const ROLE_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  super_admin: { bg: "rgba(237,86,80,.15)",   color: "#ED5650", label: "Super Admin" },
-  area_admin:  { bg: "rgba(249,115,22,.15)",  color: "#F97316", label: "Admin Área" },
-  manager:     { bg: "rgba(59,130,246,.15)",   color: "#3B82F6", label: "Manager" },
-  agent:       { bg: "rgba(168,85,247,.15)",   color: "#A855F7", label: "Agente" },
-  client:      { bg: "rgba(6,182,212,.15)",    color: "#06B6D4", label: "Participante" },
-  viewer:      { bg: "rgba(100,116,139,.15)",  color: "#94A3B8", label: "Viewer" },
+  super_admin: { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Super Admin" },
+  area_admin:  { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Admin Área" },
+  manager:     { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Manager" },
+  agent:       { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Agente" },
+  client:      { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Participante" },
+  viewer:      { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Viewer" },
 };
 
-const AVATAR_PALETTE = [
-  "#ED5650", "#3B82F6", "#7AAE1B", "#F97316",
-  "#A855F7", "#06B6D4", "#F59E0B", "#10B981",
-];
+const AVATAR_COLOR = "#ED5650";
 
 function getRoleKey(r: string): string {
   return (r as any)?.role ?? r;
@@ -320,7 +317,7 @@ function TeamPage() {
               {filtered.map((u, idx) => {
                 const areaName    = areas.find((a) => a.id === u.area_id)?.name;
                 const initials    = (u.full_name ?? u.email).slice(0, 2).toUpperCase();
-                const avatarColor = AVATAR_PALETTE[idx % AVATAR_PALETTE.length];
+                const avatarColor = AVATAR_COLOR;
                 const primaryRole = u.roles.length > 0 ? getRoleKey(u.roles[0]) : null;
                 const rs          = primaryRole ? ROLE_STYLES[primaryRole] : null;
                 const isLast      = idx === filtered.length - 1;
@@ -440,7 +437,7 @@ function TeamPage() {
             </DialogTitle>
             {editTarget && (() => {
               const eidx    = users.findIndex((u) => u.id === editTarget.id);
-              const color   = AVATAR_PALETTE[(eidx >= 0 ? eidx : 0) % AVATAR_PALETTE.length];
+              const color   = AVATAR_COLOR;
               const initials = (editTarget.full_name ?? editTarget.email).slice(0, 2).toUpperCase();
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
