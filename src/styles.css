@@ -123,9 +123,9 @@
   --warning: oklch(0.748 0.155 64);
   --warning-foreground: oklch(0.2 0.02 64);
 
-  /* Border / Input / Ring — #D5D6D7 */
-  --border: oklch(0.856 0.002 264);
-  --input: oklch(0.856 0.002 264);
+  /* Border / Input / Ring — #E6E6E6 */
+  --border: #E6E6E6;
+  --input: #E6E6E6;
   --ring: oklch(0.63 0.19 24);
 
   /* Charts */
@@ -188,9 +188,9 @@
   --warning: oklch(0.748 0.155 64);
   --warning-foreground: oklch(0.2 0.02 64);
 
-  /* Border / Input / Ring */
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 12%);
+  /* Border / Input / Ring — rgba(255,255,255,.10) */
+  --border: rgba(255,255,255,.10);
+  --input: rgba(255,255,255,.10);
   --ring: oklch(0.66 0.19 24);
 
   /* Charts */
