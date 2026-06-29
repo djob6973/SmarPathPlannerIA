@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
 import { getAreas, listProfiles } from "@/lib/data.functions";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  ComposedChart, Area, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import {
   TrendingUp, CheckCircle2, Clock, Kanban, GitBranch, Link2,
@@ -86,33 +86,39 @@ function buildCompletedOverTime(
 ) {
   const now = new Date();
   const isCurrentYear = year === now.getFullYear();
+  let points: { name: string; completadas: number }[];
   if (period === "week") {
     const totalWeeks = isCurrentYear ? isoWeek(now) : 52;
-    return Array.from({ length: Math.min(totalWeeks, 26) }, (_, i) => ({
+    points = Array.from({ length: Math.min(totalWeeks, 26) }, (_, i) => ({
       name: `S${i + 1}`,
       completadas: completedSubset.filter(r => {
         const rd = new Date(r.completed_at ?? r.updated_at);
         return rd.getFullYear() === year && isoWeek(rd) === i + 1;
       }).length,
     }));
-  }
-  if (period === "month") {
+  } else if (period === "month") {
     const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    return months.map((name, i) => ({
+    points = months.map((name, i) => ({
       name,
       completadas: completedSubset.filter(r => {
         const rd = new Date(r.completed_at ?? r.updated_at);
         return rd.getFullYear() === year && rd.getMonth() === i;
       }).length,
     }));
+  } else {
+    points = ["Q1","Q2","Q3","Q4"].map((name, i) => ({
+      name,
+      completadas: completedSubset.filter(r => {
+        const rd = new Date(r.completed_at ?? r.updated_at);
+        return rd.getFullYear() === year && Math.floor(rd.getMonth() / 3) === i;
+      }).length,
+    }));
   }
-  return ["Q1","Q2","Q3","Q4"].map((name, i) => ({
-    name,
-    completadas: completedSubset.filter(r => {
-      const rd = new Date(r.completed_at ?? r.updated_at);
-      return rd.getFullYear() === year && Math.floor(rd.getMonth() / 3) === i;
-    }).length,
-  }));
+  let cumulative = 0;
+  return points.map(p => {
+    cumulative += p.completadas;
+    return { ...p, acumulado: cumulative };
+  });
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -442,9 +448,9 @@ function AnalyticsPage() {
             </div>
           </div>
         </div>
-        <div style={{ height: 200 }}>
+        <div style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={completedOverTime} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+            <ComposedChart data={completedOverTime} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
               <defs>
                 <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor={accentColor} stopOpacity={0.22} />
@@ -456,7 +462,16 @@ function AnalyticsPage() {
               <YAxis allowDecimals={false} fontSize={11} tick={{ fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12, color: "var(--foreground)" }}
-                formatter={(v: any) => [v, "Completadas"]}
+                formatter={(v: any, name: string) => [v, name === "completadas" ? "Completadas" : "Acumulado"]}
+              />
+              <Legend
+                iconType="circle"
+                iconSize={8}
+                formatter={(name: string) => (
+                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                    {name === "completadas" ? "Completadas" : "Acumulado"}
+                  </span>
+                )}
               />
               <Area
                 type="monotone" dataKey="completadas"
@@ -464,9 +479,17 @@ function AnalyticsPage() {
                 fill="url(#areaGrad)"
                 dot={{ fill: accentColor, r: 4, strokeWidth: 0 }}
                 activeDot={{ r: 5, fill: accentColor }}
-                name="Completadas"
+                name="completadas"
               />
-            </AreaChart>
+              <Line
+                type="monotone" dataKey="acumulado"
+                stroke="#9CA3AF" strokeWidth={2}
+                strokeDasharray="6 3"
+                dot={{ fill: "#9CA3AF", r: 4, strokeWidth: 0 }}
+                activeDot={{ r: 5, fill: "#9CA3AF" }}
+                name="acumulado"
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>
