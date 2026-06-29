@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { es, enUS, ptBR } from "date-fns/locale";
+import { useLang } from "@/lib/lang-context";
 import { checkUserPermission } from "@/lib/permissions.functions";
 import {
   getRequestDetails,
@@ -47,6 +48,8 @@ interface RequestDetailModalProps {
 }
 
 export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDetailModalProps) {
+  const { t, lang } = useLang();
+  const dateLocale = lang === "en" ? enUS : lang === "pt" ? ptBR : es;
   const { user, isSuperAdmin } = useAuth();
   const [request, setRequest] = useState<RequestRow | null>(null);
   const [areas, setAreas] = useState<{ id: string; name: string }[]>([]);
@@ -137,7 +140,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       setNewDeliverableNotes("");
       setLoading(false);
     }).catch((err) => {
-      toast.error("Error al cargar la solicitud: " + err?.message);
+      toast.error(t("requests.loadError") + ": " + err?.message);
       setLoading(false);
     });
   }, [requestId]);
@@ -253,7 +256,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       setIsLinkingParent(false);
       setSelectedParentId("");
       onUpdated?.();
-      toast.success("Solicitud vinculada a la iniciativa");
+      toast.success(t("requests.linkedToInitiative"));
     } catch (err: any) { toast.error(err?.message); }
     setUpdatingParent(false);
   };
@@ -266,7 +269,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       setParent(null);
       setRequest((r) => r ? { ...r, parent_request_id: null } : r);
       onUpdated?.();
-      toast.success("Iniciativa desvinculada");
+      toast.success(t("requests.unlinkedInitiative"));
     } catch (err: any) { toast.error(err?.message); }
     setUpdatingParent(false);
   };
@@ -278,7 +281,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       await updateRequestFn({ data: { requestId: request.id, created_at: value } });
       setRequest((r) => r ? { ...r, created_at: new Date(value).toISOString() } : r);
       onUpdated?.();
-      toast.success("Fecha de creación actualizada");
+      toast.success(t("requests.createdAtUpdated"));
     } catch (err: any) {
       toast.error(err?.message);
       const date = new Date(request.created_at);
@@ -314,7 +317,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       await updateRequestFn({ data: { requestId: request.id, area_id: value } });
       setRequest((r) => r ? { ...r, area_id: value } : r);
       onUpdated?.();
-      toast.success("Área actualizada");
+      toast.success(t("requests.areaUpdated"));
     } catch (err: any) { toast.error(err?.message); }
   };
 
@@ -327,7 +330,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       setRequest((r) => r ? { ...r, expires_at: expiresValue } : r);
       setExpiresAt(value);
       onUpdated?.();
-      toast.success("Fecha de vencimiento actualizada");
+      toast.success(t("requests.expiresAtUpdated"));
     } catch (err: any) {
       toast.error(err?.message);
       setExpiresAt(request.expires_at ?? "");
@@ -344,7 +347,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
       setRequest((r) => r ? { ...r, completed_at: completedValue } : r);
       setCompletedAt(value);
       onUpdated?.();
-      toast.success("Fecha de completado actualizada");
+      toast.success(t("requests.completedAtUpdated"));
     } catch (err: any) {
       toast.error(err?.message);
       setCompletedAt(request.completed_at ?? "");
@@ -371,7 +374,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   };
 
   const saveRequestEdits = async () => {
-    if (!request || !editTitle.trim()) { toast.error("El título es obligatorio"); return; }
+    if (!request || !editTitle.trim()) { toast.error(t("requests.titleRequired")); return; }
     setUpdatingRequest(true);
     try {
       await updateRequestFn({ data: {
@@ -394,7 +397,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
         status_column_id: editStatusColumnId,
         assigned_to: editAssignedTo,
       } : r);
-      toast.success("Solicitud actualizada");
+      toast.success(t("requests.requestUpdated"));
       cancelEditingRequest();
       onUpdated?.();
     } catch (err: any) { toast.error(err?.message); }
@@ -403,10 +406,10 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
 
   const removeRequest = async () => {
     if (!request) return;
-    if (!confirm("¿Eliminar esta solicitud? Esta acción no se puede deshacer.")) return;
+    if (!confirm(t("requests.deleteConfirmMsg"))) return;
     try {
       await deleteRequestFn({ data: { requestId: request.id } });
-      toast.success("Solicitud eliminada");
+      toast.success(t("requests.deleteSuccess"));
       onUpdated?.();
       onClose();
     } catch (err: any) { toast.error(err?.message); }
@@ -417,7 +420,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
     setCopyingRequest(true);
     try {
       await copyRequestFn({ data: { requestId: request.id } });
-      toast.success("Solicitud copiada exitosamente");
+      toast.success(t("requests.requestCopied"));
       onUpdated?.();
       onClose();
     } catch (err: any) { toast.error(err?.message); }
@@ -442,7 +445,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
     try {
       await updateDeliverableFn({ data: { deliverableId: editingDeliverableId, title: editingDeliverableTitle.trim(), notes: editingDeliverableNotes.trim() || null } });
       setDeliverables((d) => d.map((item) => item.id === editingDeliverableId ? { ...item, title: editingDeliverableTitle.trim(), notes: editingDeliverableNotes.trim() || null } : item));
-      toast.success("Entregable actualizado");
+      toast.success(t("requests.deliverableUpdated"));
       cancelEditingDeliverable();
     } catch (err: any) { toast.error(err?.message); }
     setSavingDeliverableEdit(false);
@@ -471,7 +474,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   };
 
   const handleDeleteDeliverable = async (deliverableId: string) => {
-    if (!confirm("¿Eliminar este entregable?")) return;
+    if (!confirm(t("requests.deleteDeliverableConfirm"))) return;
     try {
       await deleteDeliverableFn({ data: { deliverableId } });
       setDeliverables((d) => d.filter((item) => item.id !== deliverableId));
@@ -497,7 +500,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const cancelEditingComment = () => { setEditingCommentId(null); setEditingCommentContent(""); };
 
   const removeComment = async (commentId: string) => {
-    if (!confirm("¿Eliminar este comentario?")) return;
+    if (!confirm(t("requests.deleteCommentConfirm"))) return;
     try {
       await deleteCommentFn({ data: { commentId } });
       setComments((c) => c.filter((com) => com.id !== commentId));
@@ -510,7 +513,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
     try {
       await updateCommentFn({ data: { commentId: editingCommentId, content: editingCommentContent.trim() } });
       setComments((c) => c.map((com) => com.id === editingCommentId ? { ...com, content: editingCommentContent.trim() } : com));
-      toast.success("Comentario actualizado");
+      toast.success(t("requests.commentUpdated"));
       cancelEditingComment();
     } catch (err: any) { toast.error(err?.message); }
     setUpdatingComment(false);
@@ -533,10 +536,10 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
     setSendingSlack(true);
     try {
       await sendSlackNotification({ data: { requestId: request.id, deliverableIds: selectedDeliverableIds } });
-      toast.success("Notificación enviada a Slack");
+      toast.success(t("requests.slackSent"));
       setShowSlackDialog(false);
     } catch (err: any) {
-      toast.error(err?.message ?? "Error al notificar a Slack");
+      toast.error(err?.message ?? t("requests.slackError"));
     }
     setSendingSlack(false);
   };
@@ -544,7 +547,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   if (!requestId) return null;
 
   const creatorProfile = request?.created_by ? profiles[request.created_by] : null;
-  const creatorName = creatorProfile?.full_name ?? creatorProfile?.email ?? "Desconocido";
+  const creatorName = creatorProfile?.full_name ?? creatorProfile?.email ?? t("common.unknown");
   const currentCol = columns.find((c) => c.id === request?.status_column_id);
 
   return (
@@ -571,7 +574,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ color: "#ED5650" }} aria-hidden="true">
                   <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zm2.521-10.123a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zm10.123 2.521a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.268 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zm-2.523 10.123a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.268a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
                 </svg>
-                <span className="text-sm font-semibold">Seleccionar entregables para Slack</span>
+                <span className="text-sm font-semibold">{t("requests.slackPickTitle")}</span>
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowSlackDialog(false)}>
                 <X className="h-4 w-4" />
@@ -583,14 +586,14 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
               {deliverables.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
                   <PackageCheck className="h-8 w-8 text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground">Esta solicitud no tiene entregables registrados.</p>
-                  <p className="text-xs text-muted-foreground">La notificación se enviará sin entregables.</p>
+                  <p className="text-sm text-muted-foreground">{t("requests.slackNoDeliverables")}</p>
+                  <p className="text-xs text-muted-foreground">{t("requests.slackNoDeliverablesSub")}</p>
                 </div>
               ) : (
                 <>
                   <div className="mb-3 flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">
-                      {selectedDeliverableIds.length} de {deliverables.length} seleccionados
+                      {t("requests.slackSelected", { n: String(selectedDeliverableIds.length), total: String(deliverables.length) })}
                     </span>
                     <button
                       type="button"
@@ -602,7 +605,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                       className="text-xs font-medium hover:underline"
                       style={{ color: "#ED5650" }}
                     >
-                      {selectedDeliverableIds.length === deliverables.length ? "Deseleccionar todos" : "Seleccionar todos"}
+                      {selectedDeliverableIds.length === deliverables.length ? t("requests.slackDeselectAll") : t("requests.slackSelectAll")}
                     </button>
                   </div>
                   <div className="flex flex-col gap-2">
@@ -641,7 +644,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
             {/* Picker actions */}
             <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-4">
               <Button variant="outline" size="sm" onClick={() => setShowSlackDialog(false)}>
-                Cancelar
+                {t("common.cancel")}
               </Button>
               <Button
                 size="sm"
@@ -651,9 +654,9 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 className="hover:opacity-90"
               >
                 {sendingSlack && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                Enviar{selectedDeliverableIds.length > 0
-                  ? ` (${selectedDeliverableIds.length} entregable${selectedDeliverableIds.length !== 1 ? "s" : ""})`
-                  : ""} a Slack
+                {selectedDeliverableIds.length > 0
+                  ? t("requests.slackSendCount", { n: String(selectedDeliverableIds.length) })
+                  : t("requests.slackSend")}
               </Button>
             </div>
           </div>
@@ -670,7 +673,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
             {request && (
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <Badge className={cn("text-xs px-2 py-0.5", PRIORITY_CLASS[request.priority])}>
-                  {request.priority}
+                  {t(`priority.${request.priority}` as any)}
                 </Badge>
                 {currentCol && (
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -680,7 +683,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 )}
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  {formatDistanceToNow(new Date(request.created_at), { addSuffix: true, locale: es })}
+                  {formatDistanceToNow(new Date(request.created_at), { addSuffix: true, locale: dateLocale })}
                 </span>
               </div>
             )}
@@ -694,7 +697,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 disabled={sendingSlack}
                 className="gap-2 hover:bg-[#ED5650]/10"
                 style={{ color: "#ED5650" }}
-                title="Notificar a Slack"
+                title={t("requests.slackNotify")}
               >
                 {sendingSlack ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -709,19 +712,19 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
             {canCopyRequest && (
               <Button variant="ghost" size="sm" onClick={doCopyRequest} disabled={copyingRequest} className="gap-2">
                 {copyingRequest ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
-                Copiar
+                {t("common.copy")}
               </Button>
             )}
             {canEditRequest && !isEditingRequest && (
               <Button variant="ghost" size="sm" onClick={startEditingRequest} className="gap-2">
                 <Edit2 className="h-4 w-4" />
-                Editar
+                {t("common.edit")}
               </Button>
             )}
             {canDeleteRequest && (
               <Button variant="ghost" size="sm" onClick={removeRequest} className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10">
                 <Trash2 className="h-4 w-4" />
-                Eliminar
+                {t("common.delete")}
               </Button>
             )}
             <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
@@ -738,37 +741,37 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
               {isEditingRequest ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Título</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.fieldTitle")}</label>
                     <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Descripción</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.fieldDescription")}</label>
                     <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="text-sm min-h-[80px]" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Objetivo</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.fieldObjective")}</label>
                     <Textarea value={editObjective} onChange={(e) => setEditObjective(e.target.value)} className="text-sm min-h-[60px]" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Procesos/Pasos</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.fieldProcess")}</label>
                     <Textarea value={editProcess} onChange={(e) => setEditProcess(e.target.value)} className="text-sm min-h-[60px]" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Prioridad</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.colPriority")}</label>
                     <Select value={editPriority} onValueChange={setEditPriority}>
                       <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="low">Baja</SelectItem>
-                        <SelectItem value="medium">Media</SelectItem>
-                        <SelectItem value="high">Alta</SelectItem>
-                        <SelectItem value="urgent">Urgente</SelectItem>
+                        <SelectItem value="low">{t("priority.low")}</SelectItem>
+                        <SelectItem value="medium">{t("priority.medium")}</SelectItem>
+                        <SelectItem value="high">{t("priority.high")}</SelectItem>
+                        <SelectItem value="urgent">{t("priority.urgent")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Estado</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.colStatus")}</label>
                     <Select value={editStatusColumnId || ""} onValueChange={setEditStatusColumnId}>
-                      <SelectTrigger className="text-sm"><SelectValue placeholder="Seleccionar estado" /></SelectTrigger>
+                      <SelectTrigger className="text-sm"><SelectValue placeholder={t("common.noStatus")} /></SelectTrigger>
                       <SelectContent>
                         {columns.map((col) => (
                           <SelectItem key={col.id} value={col.id}>
@@ -782,13 +785,13 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                     </Select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Asignar a</label>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.fieldAssignedTo")}</label>
                     <Select value={editAssignedTo || "unassigned"} onValueChange={(v) => setEditAssignedTo(v === "unassigned" ? null : v)}>
-                      <SelectTrigger className="text-sm"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                      <SelectTrigger className="text-sm"><SelectValue placeholder={t("requests.unassigned")} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="unassigned">Sin asignar</SelectItem>
+                        <SelectItem value="unassigned">{t("requests.unassigned")}</SelectItem>
                         {availableUsers.map((u) => (
-                          <SelectItem key={u.id} value={u.id}>{u.full_name ?? "Usuario"}</SelectItem>
+                          <SelectItem key={u.id} value={u.id}>{u.full_name ?? t("common.noName")}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -796,10 +799,10 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   <div className="flex gap-2 pt-2">
                     <Button onClick={saveRequestEdits} disabled={updatingRequest} className="flex-1">
                       {updatingRequest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                      Guardar
+                      {t("common.save")}
                     </Button>
                     <Button variant="outline" onClick={cancelEditingRequest} disabled={updatingRequest} className="flex-1">
-                      Cancelar
+                      {t("common.cancel")}
                     </Button>
                   </div>
                 </div>
@@ -807,24 +810,24 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 <>
                   {request?.description && (
                     <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Descripción</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t("requests.fieldDescription")}</h3>
                       <p className="text-sm text-foreground whitespace-pre-wrap">{request.description}</p>
                     </div>
                   )}
                   {request?.objective && (
                     <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Objetivo</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t("requests.fieldObjective")}</h3>
                       <p className="text-sm text-foreground whitespace-pre-wrap">{request.objective}</p>
                     </div>
                   )}
                   {request?.process && (
                     <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Procesos/Pasos</h3>
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t("requests.fieldProcess")}</h3>
                       <p className="text-sm text-foreground whitespace-pre-wrap">{request.process}</p>
                     </div>
                   )}
                   {!request?.description && !request?.objective && !request?.process && (
-                    <p className="text-sm text-muted-foreground italic">Sin información detallada.</p>
+                    <p className="text-sm text-muted-foreground italic">{t("requests.noDetail")}</p>
                   )}
                 </>
               )}
@@ -840,11 +843,11 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   <div className="border border-border rounded-lg p-4 space-y-3">
                     <div className="flex items-center gap-2">
                       <GitBranch className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Solicitudes relacionadas ({children.length})</span>
+                      <span className="text-sm font-medium">{t("requests.relatedRequests", { n: String(children.length) })}</span>
                     </div>
                     <div>
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                        <span>{completedCount} de {children.length} completadas</span>
+                        <span>{t("requests.childCompletedCount", { completed: String(completedCount), total: String(children.length) })}</span>
                         <span>{percent}%</span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-1.5">
@@ -890,12 +893,12 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <PackageCheck className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Entregables ({total})</span>
+                        <span className="text-sm font-medium">{t("requests.fieldDeliverables", { n: String(total) })}</span>
                       </div>
                       {canEditRequest && (
                         <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setShowAddDeliverable((v) => !v)}>
                           <Plus className="h-3 w-3" />
-                          Agregar
+                          {t("common.add")}
                         </Button>
                       )}
                     </div>
@@ -903,7 +906,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                     {total > 0 && (
                       <div>
                         <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                          <span>{deliveredCount} de {total} entregados</span>
+                          <span>{t("requests.deliveredCount", { delivered: String(deliveredCount), total: String(total) })}</span>
                           <span>{percent}%</span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-1.5">
@@ -915,7 +918,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                     {showAddDeliverable && (
                       <div className="border border-border rounded-lg p-3 space-y-2 bg-muted/30">
                         <Input
-                          placeholder="Nombre del entregable..."
+                          placeholder={t("requests.deliverablePlaceholder")}
                           value={newDeliverableTitle}
                           onChange={(e) => setNewDeliverableTitle(e.target.value)}
                           className="text-sm h-8"
@@ -923,7 +926,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                           onKeyDown={(e) => { if (e.key === "Enter") submitDeliverable(); }}
                         />
                         <Textarea
-                          placeholder="Notas o enlace (opcional)..."
+                          placeholder={t("requests.deliverableNotesPlaceholder")}
                           value={newDeliverableNotes}
                           onChange={(e) => {
                             setNewDeliverableNotes(e.target.value);
@@ -937,17 +940,17 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                         <div className="flex gap-2">
                           <Button size="sm" className="h-7 text-xs flex-1" onClick={submitDeliverable} disabled={addingDeliverable || !newDeliverableTitle.trim()}>
                             {addingDeliverable ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
-                            Guardar
+                            {t("common.save")}
                           </Button>
                           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setShowAddDeliverable(false); setNewDeliverableTitle(""); setNewDeliverableNotes(""); }}>
-                            Cancelar
+                            {t("common.cancel")}
                           </Button>
                         </div>
                       </div>
                     )}
 
                     {total === 0 && !showAddDeliverable && (
-                      <p className="text-xs text-muted-foreground italic">Sin entregables registrados.</p>
+                      <p className="text-xs text-muted-foreground italic">{t("requests.noDeliverables")}</p>
                     )}
 
                     <div className="space-y-1.5">
@@ -986,7 +989,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                                       e.target.style.height = "auto";
                                       e.target.style.height = `${e.target.scrollHeight}px`;
                                     }}
-                                    placeholder="Notas o enlace (opcional)..."
+                                    placeholder={t("requests.deliverableNotesPlaceholder")}
                                     className="text-xs min-h-[60px] resize-none overflow-hidden leading-relaxed"
                                     disabled={savingDeliverableEdit}
                                     rows={2}
@@ -994,10 +997,10 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                                   <div className="flex gap-1.5">
                                     <Button size="sm" className="h-6 text-[11px] flex-1" onClick={saveDeliverableEdit} disabled={savingDeliverableEdit || !editingDeliverableTitle.trim()}>
                                       {savingDeliverableEdit ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Check className="h-3 w-3 mr-1" />}
-                                      Guardar
+                                      {t("common.save")}
                                     </Button>
                                     <Button variant="ghost" size="sm" className="h-6 text-[11px]" onClick={cancelEditingDeliverable} disabled={savingDeliverableEdit}>
-                                      <X className="h-3 w-3 mr-1" />Cancelar
+                                      <X className="h-3 w-3 mr-1" />{t("common.cancel")}
                                     </Button>
                                   </div>
                                 </div>
@@ -1009,7 +1012,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                                       <button
                                         onClick={() => toggleNotes(item.id)}
                                         className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                                        title={expandedNotes.has(item.id) ? "Ocultar notas" : "Ver notas"}
+                                        title={expandedNotes.has(item.id) ? t("requests.hideNotes") : t("requests.showNotes")}
                                       >
                                         {expandedNotes.has(item.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                                       </button>
@@ -1023,7 +1026,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                                   </div>
                                   {isDelivered && item.delivered_at && (
                                     <p className="text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                      Entregado {formatDistanceToNow(new Date(item.delivered_at), { addSuffix: true, locale: es })}
+                                      {t("requests.deliveredAt", { time: formatDistanceToNow(new Date(item.delivered_at), { addSuffix: true, locale: dateLocale }) })}
                                     </p>
                                   )}
                                 </>
@@ -1051,10 +1054,10 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
               <div className="mt-6">
                 <div className="flex items-center gap-2 mb-3">
                   <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Comentarios ({comments.length})</span>
+                  <span className="text-sm font-medium">{t("requests.fieldComments", { n: String(comments.length) })}</span>
                 </div>
                 {comments.length === 0 && (
-                  <p className="text-xs text-muted-foreground">Aún no hay comentarios.</p>
+                  <p className="text-xs text-muted-foreground">{t("requests.noComments")}</p>
                 )}
                 <div className="space-y-3">
                   {comments.map((c) => {
@@ -1073,10 +1076,10 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                         <div className="flex-1 rounded-lg bg-muted/50 px-3 py-2">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-medium">
-                              {profile?.full_name ?? profile?.email ?? "Usuario"}
+                              {profile?.full_name ?? profile?.email ?? t("common.noName")}
                             </span>
                             <span className="text-[10px] text-muted-foreground">
-                              {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: es })}
+                              {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: dateLocale })}
                             </span>
                             {canEditComment && !isEditing && (
                               <div className="ml-auto flex items-center gap-0.5">
@@ -1100,11 +1103,11 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                               <div className="flex gap-2">
                                 <Button size="sm" onClick={saveCommentEdit} disabled={updatingComment || !editingCommentContent.trim()} className="h-7 text-xs">
                                   {updatingComment ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                                  Guardar
+                                  {t("common.save")}
                                 </Button>
                                 <Button variant="ghost" size="sm" onClick={cancelEditingComment} disabled={updatingComment} className="h-7 text-xs">
                                   <X className="h-3 w-3" />
-                                  Cancelar
+                                  {t("common.cancel")}
                                 </Button>
                               </div>
                             </div>
@@ -1126,7 +1129,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendComment(); }}}
-                placeholder="Escribe un comentario... (Enter para enviar)"
+                placeholder={t("requests.commentPlaceholder")}
                 className="min-h-[60px] resize-none text-sm"
                 disabled={sending}
               />
@@ -1141,7 +1144,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
             {request && (
               <>
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Iniciativa</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.fieldInitiative")}</p>
                   {parent ? (
                     <div className="flex items-start gap-1.5">
                       <GitBranch className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
@@ -1155,12 +1158,12 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   ) : isLinkingParent ? (
                     <div className="space-y-1.5">
                       <Select value={selectedParentId} onValueChange={setSelectedParentId}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Seleccionar iniciativa..." /></SelectTrigger>
+                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={t("requests.selectInitiative")} /></SelectTrigger>
                         <SelectContent>
                           {loadingLinkable ? (
                             <div className="p-2 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
                           ) : linkableRequests.length === 0 ? (
-                            <div className="p-2 text-xs text-muted-foreground">Sin iniciativas disponibles</div>
+                            <div className="p-2 text-xs text-muted-foreground">{t("requests.noInitiatives")}</div>
                           ) : (
                             linkableRequests.map((r) => (
                               <SelectItem key={r.id} value={r.id} className="text-xs">{r.title}</SelectItem>
@@ -1171,30 +1174,30 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                       <div className="flex gap-1">
                         <Button size="sm" className="h-6 text-xs flex-1" onClick={linkParent} disabled={!selectedParentId || updatingParent}>
                           {updatingParent ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
-                          Vincular
+                          {t("requests.link")}
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setIsLinkingParent(false)}>Cancelar</Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setIsLinkingParent(false)}>{t("common.cancel")}</Button>
                       </div>
                     </div>
                   ) : canEditRequest ? (
                     <button onClick={loadLinkableRequests} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
                       <Link2 className="h-3 w-3" />
-                      Vincular a iniciativa
+                      {t("requests.linkInitiative")}
                     </button>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">Sin iniciativa</p>
+                    <p className="text-xs text-muted-foreground italic">{t("requests.noInitiative")}</p>
                   )}
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Asignado a</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.fieldAssignedTo")}</p>
                   {canAssignRequest ? (
                     <Select value={request.assigned_to ?? "unassigned"} onValueChange={updateAssignedTo}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("requests.unassigned")} /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="unassigned" className="text-xs">Sin asignar</SelectItem>
+                        <SelectItem value="unassigned" className="text-xs">{t("requests.unassigned")}</SelectItem>
                         {availableUsers.map((u) => (
-                          <SelectItem key={u.id} value={u.id} className="text-xs">{u.full_name ?? "Usuario"}</SelectItem>
+                          <SelectItem key={u.id} value={u.id} className="text-xs">{u.full_name ?? t("common.noName")}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1212,7 +1215,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                           </span>
                         </>
                       ) : (
-                        <span className="text-xs text-muted-foreground">Sin asignar</span>
+                        <span className="text-xs text-muted-foreground">{t("requests.unassigned")}</span>
                       )}
                     </div>
                   )}
@@ -1220,12 +1223,12 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
 
                 {(isSuperAdmin || request.area_id) && (
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Área</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.fieldArea")}</p>
                     {isSuperAdmin ? (
                       <Select value={request.area_id ?? "none"} onValueChange={updateArea}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin área" /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("requests.noArea")} /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none" className="text-xs">Sin área</SelectItem>
+                          <SelectItem value="none" className="text-xs">{t("requests.noArea")}</SelectItem>
                           {areas.map((a) => (
                             <SelectItem key={a.id} value={a.id} className="text-xs">{a.name}</SelectItem>
                           ))}
@@ -1240,10 +1243,10 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 )}
 
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Estado</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.colStatus")}</p>
                   {canChangeStatus ? (
                     <Select value={request.status_column_id ?? ""} onValueChange={updateStatus}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sin estado" /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={t("common.noStatus")} /></SelectTrigger>
                       <SelectContent>
                         {columns.map((c) => (
                           <SelectItem key={c.id} value={c.id} className="text-xs">
@@ -1256,19 +1259,19 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                       </SelectContent>
                     </Select>
                   ) : (
-                    <span className="text-sm">{currentCol?.name ?? "Sin estado"}</span>
+                    <span className="text-sm">{currentCol?.name ?? t("common.noStatus")}</span>
                   )}
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Prioridad</p>
-                  <Badge className={cn("text-xs px-2 py-0.5 capitalize", PRIORITY_CLASS[request.priority])}>
-                    {request.priority}
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.colPriority")}</p>
+                  <Badge className={cn("text-xs px-2 py-0.5", PRIORITY_CLASS[request.priority])}>
+                    {t(`priority.${request.priority}` as any)}
                   </Badge>
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Creado por</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.fieldCreatedBy")}</p>
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
                       <AvatarFallback className="text-[10px]">{creatorName.slice(0, 2).toUpperCase()}</AvatarFallback>
@@ -1278,7 +1281,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Creado</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.fieldCreated")}</p>
                   {canEditCreatedAt ? (
                     <div className="flex items-center gap-2">
                       <input
@@ -1293,13 +1296,13 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      {new Date(request.created_at).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" })}
+                      {new Date(request.created_at).toLocaleDateString(lang, { day: "numeric", month: "long", year: "numeric" })}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Completado</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.fieldCompleted")}</p>
                   {canEditCreatedAt ? (
                     <div className="flex items-center gap-2">
                       <input
@@ -1315,21 +1318,21 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   ) : (
                     <p className="text-xs text-muted-foreground">
                       {request.completed_at
-                        ? new Date(request.completed_at).toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" })
+                        ? new Date(request.completed_at).toLocaleDateString(lang, { day: "numeric", month: "long", year: "numeric" })
                         : "—"}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Actualizado</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.fieldUpdated")}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(request.updated_at), { addSuffix: true, locale: es })}
+                    {formatDistanceToNow(new Date(request.updated_at), { addSuffix: true, locale: dateLocale })}
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Fecha de vencimiento</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.fieldDueDate")}</p>
                   {canManageExpiration ? (
                     <div className="flex items-center gap-2">
                       <input
@@ -1347,10 +1350,10 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                       <Calendar className="h-3 w-3 text-muted-foreground" />
                       {request.expires_at ? (
                         <span className="text-muted-foreground">
-                          {new Date(request.expires_at).toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {new Date(request.expires_at).toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
                       ) : (
-                        <span className="text-muted-foreground italic">Sin vencimiento</span>
+                        <span className="text-muted-foreground italic">{t("requests.noDueDate")}</span>
                       )}
                     </div>
                   )}
