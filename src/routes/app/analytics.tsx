@@ -551,7 +551,7 @@ function AnalyticsPage() {
                         {init.childCount > 0 ? `${init.completedChildCount}/${init.childCount}` : "0 vinculadas"}
                       </span>
                       {init.progressPct !== null && (
-                        <span style={{ fontSize: 12, fontWeight: 700, color: INDIGO, flexShrink: 0, minWidth: 32, textAlign: "right" as const }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: CORAL, flexShrink: 0, minWidth: 32, textAlign: "right" as const }}>
                           {init.progressPct}%
                         </span>
                       )}
@@ -560,7 +560,7 @@ function AnalyticsPage() {
                       <div style={{ height: 5, borderRadius: 99, background: "var(--muted)", overflow: "hidden", marginLeft: 18 }}>
                         <div style={{
                           width: `${init.progressPct ?? 0}%`, height: "100%", borderRadius: 99,
-                          background: (init.progressPct ?? 0) === 100 ? GREEN : INDIGO,
+                          background: (init.progressPct ?? 0) === 100 ? COMPLETADO_GREEN : CORAL,
                           transition: "width 600ms",
                         }} />
                       </div>
@@ -586,7 +586,7 @@ function AnalyticsPage() {
                       p === "..." ? (
                         <span key={`e${i}`} style={{ padding: "0 6px", color: "var(--muted-foreground)", fontSize: 13 }}>…</span>
                       ) : (
-                        <button key={p} onClick={() => setInitPage(p as number)} style={pageNumBtn(p === initSafePage, INDIGO)}>
+                        <button key={p} onClick={() => setInitPage(p as number)} style={pageNumBtn(p === initSafePage, CORAL)}>
                           {p}
                         </button>
                       )
