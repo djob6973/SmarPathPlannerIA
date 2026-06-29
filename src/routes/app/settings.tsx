@@ -9,6 +9,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/lib/auth-context";
+import { useLang } from "@/lib/lang-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listAreas, updateUserOwnArea } from "@/lib/admin.functions";
 import { changeOwnPassword } from "@/lib/auth.functions";
@@ -49,16 +50,17 @@ const cardStyle: React.CSSProperties = {
 
 function SettingsPage() {
   const { isSuperAdmin } = useAuth();
+  const { t } = useLang();
   const [tab, setTab] = useState<Tab>(isSuperAdmin ? "columns" : "profile");
 
   const allTabs: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[] = [
-    { key: "columns",     label: "Columnas Kanban", Icon: Columns3 },
-    { key: "ai",          label: "Agente IA",       Icon: Bot      },
-    { key: "slack",       label: "Slack",           Icon: Bell     },
-    { key: "permissions", label: "Permisos",        Icon: Shield   },
-    { key: "areas",       label: "Áreas",           Icon: Building },
-    { key: "branding",    label: "Marca",           Icon: Palette  },
-    { key: "profile",     label: "Mi Perfil",       Icon: User     },
+    { key: "columns",     label: t("settings.tabColumns"),     Icon: Columns3 },
+    { key: "ai",          label: t("settings.tabAI"),          Icon: Bot      },
+    { key: "slack",       label: t("settings.tabSlack"),       Icon: Bell     },
+    { key: "permissions", label: t("settings.tabPermissions"), Icon: Shield   },
+    { key: "areas",       label: t("settings.tabAreas"),       Icon: Building },
+    { key: "branding",    label: t("settings.tabBranding"),    Icon: Palette  },
+    { key: "profile",     label: t("settings.tabProfile"),     Icon: User     },
   ];
 
   const tabs = isSuperAdmin ? allTabs : allTabs.filter(t => t.key === "profile");
@@ -85,10 +87,10 @@ function SettingsPage() {
             color: "var(--foreground)",
             margin: 0, lineHeight: 1.2,
           }}>
-            {isSuperAdmin ? "Configuración" : "Mi Perfil"}
+            {isSuperAdmin ? t("settings.titleAdmin") : t("settings.titleProfile")}
           </h1>
           <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "3px 0 0" }}>
-            {isSuperAdmin ? "Personaliza el tablero, agente IA, permisos y áreas" : "Gestiona tu información personal y contraseña"}
+            {isSuperAdmin ? t("settings.subtitleAdmin") : t("settings.subtitleProfile")}
           </p>
         </div>
       </div>
@@ -144,6 +146,7 @@ function SortableColumnRow({
   onToggleCompleted: (id: string, val: boolean) => void;
   onRemove: (id: string) => void;
 }) {
+  const { t } = useLang();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: c.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const isEditing = editing?.id === c.id;
@@ -165,7 +168,7 @@ function SortableColumnRow({
         {...listeners}
         tabIndex={-1}
         style={{ cursor: "grab", background: "none", border: "none", padding: 0, flexShrink: 0 }}
-        aria-label="Reordenar"
+        aria-label={t("settings.columnReorder")}
       >
         <GripVertical size={16} style={{ color: "var(--border)" }} />
       </button>
@@ -243,7 +246,7 @@ function SortableColumnRow({
               onCheckedChange={(v) => onToggleCompleted(c.id, v)}
               className="scale-75"
             />
-            Completado
+            {t("settings.columnCompleted")}
           </label>
           <button
             onClick={() => setEditing({ id: c.id, name: c.name, color: c.color })}
@@ -253,7 +256,7 @@ function SortableColumnRow({
               color: "var(--muted-foreground)", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
-            aria-label="Editar columna"
+            aria-label={t("settings.columnEdit")}
           >
             <Pencil size={12} />
           </button>

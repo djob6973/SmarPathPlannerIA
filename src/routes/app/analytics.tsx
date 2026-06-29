@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useLang } from "@/lib/lang-context";
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
@@ -127,11 +128,13 @@ function buildCompletedOverTime(
 function AnalyticsPage() {
   const { areaId, isSuperAdmin, hasPermission } = useAuth();
 
+  const { t, lang } = useLang();
+
   if (!hasPermission("view_analytics")) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
-        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Sin acceso</p>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No tienes permiso para ver el módulo de analítica.</p>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{t("common.noAccess")}</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>{t("analytics.noPermission")}</p>
       </div>
     );
   }
@@ -195,7 +198,7 @@ function AnalyticsPage() {
     d.setDate(d.getDate() - (6 - i));
     const ds = d.toISOString().slice(0, 10);
     return {
-      name: d.toLocaleDateString("es", { weekday: "short" }),
+      name: d.toLocaleDateString(lang === "en" ? "en" : lang === "pt" ? "pt" : "es", { weekday: "short" }),
       count: filteredRequests.filter(r => new Date(r.created_at).toISOString().slice(0, 10) === ds).length,
     };
   });
@@ -243,8 +246,8 @@ function AnalyticsPage() {
   const kpiPending     = isSol ? solPending         : initPending;
   const kpiCompleted   = isSol ? solCompleted       : initCompleted;
   const kpiRate        = isSol ? solRate            : initRate;
-  const kpiLabel       = isSol ? "solicitudes"      : "iniciativas";
-  const kpiTotalLabel  = isSol ? "Total solicitudes" : "Total iniciativas";
+  const kpiLabel       = isSol ? t("analytics.toggleRequests").toLowerCase() : t("analytics.toggleInitiatives").toLowerCase();
+  const kpiTotalLabel  = isSol ? t("analytics.kpiTotalRequests") : t("analytics.kpiTotalInitiatives");
   const accentColor    = CORAL;
   const accentBg       = "rgba(237,86,80,.12)";
   const activeByCol    = isSol ? solByCol           : initByCol;
@@ -264,10 +267,10 @@ function AnalyticsPage() {
             fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
             fontSize: 30, fontWeight: 500, color: "var(--foreground)", margin: 0, lineHeight: 1.2,
           }}>
-            Analítica
+            {t("analytics.title")}
           </h1>
           <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 4 }}>
-            Métricas y estado del roadmap
+            {t("analytics.subtitle")}
           </p>
         </div>
 
@@ -275,8 +278,8 @@ function AnalyticsPage() {
           {/* Toggle Solicitudes / Iniciativas */}
           <div style={{ display: "flex", background: "var(--muted)", borderRadius: "var(--r-xl, 16px)", padding: 3 }}>
             {([
-              { key: "solicitudes", label: "Solicitudes", icon: <Kanban size={14} />,    accent: CORAL   },
-              { key: "iniciativas", label: "Iniciativas", icon: <GitBranch size={14} />, accent: CORAL   },
+              { key: "solicitudes", label: t("analytics.toggleRequests"),  icon: <Kanban size={14} />,    accent: CORAL },
+              { key: "iniciativas", label: t("analytics.toggleInitiatives"), icon: <GitBranch size={14} />, accent: CORAL },
             ] as const).map(v => (
               <button
                 key={v.key}
@@ -305,9 +308,9 @@ function AnalyticsPage() {
               fontWeight: filterAssignedTo !== "all" ? 600 : 400,
             }}
           >
-            <option value="all">Asignado a: Todos</option>
+            <option value="all">{t("common.assignedToAll")}</option>
             {profiles.map(p => (
-              <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>
+              <option key={p.id} value={p.id}>{p.full_name ?? t("common.noName")}</option>
             ))}
           </select>
 
@@ -318,7 +321,7 @@ function AnalyticsPage() {
               onChange={e => setSelectedArea(e.target.value === "all" ? null : e.target.value)}
               style={sel}
             >
-              <option value="all">Todas las áreas</option>
+              <option value="all">{t("common.allAreas")}</option>
               {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}
@@ -329,9 +332,9 @@ function AnalyticsPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, marginBottom: 20 }}>
         {[
           { label: kpiTotalLabel,  value: kpiTotal,      icon: isSol ? <Kanban size={18} color={CORAL} />          : <GitBranch size={18} color={CORAL} />,          iconBg: accentBg              },
-          { label: "En progreso",  value: kpiInProgress, icon: <TrendingUp size={18} color="var(--muted-foreground)" />, iconBg: "var(--muted)"                     },
-          { label: "Pendientes",   value: kpiPending,    icon: <Clock size={18} color="var(--muted-foreground)" />,       iconBg: "var(--muted)"                     },
-          { label: "Completadas",  value: kpiCompleted,  icon: <CheckCircle2 size={18} color={COMPLETADO_GREEN} />,       iconBg: "rgba(32,207,132,.15)"             },
+          { label: t("analytics.kpiInProgress"), value: kpiInProgress, icon: <TrendingUp size={18} color="var(--muted-foreground)" />, iconBg: "var(--muted)"         },
+          { label: t("analytics.kpiPending"),    value: kpiPending,    icon: <Clock size={18} color="var(--muted-foreground)" />,       iconBg: "var(--muted)"         },
+          { label: t("analytics.kpiCompleted"),  value: kpiCompleted,  icon: <CheckCircle2 size={18} color={COMPLETADO_GREEN} />,       iconBg: "rgba(32,207,132,.15)" },
         ].map(k => (
           <div key={k.label} style={card}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -355,9 +358,9 @@ function AnalyticsPage() {
       <div style={{ ...card, marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <div>
-            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Tasa de completado</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{t("analytics.completionRate")}</p>
             <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "4px 0 0" }}>
-              {kpiCompleted} de {kpiTotal} {kpiLabel} completadas
+              {t("analytics.completionRateOf", { completed: kpiCompleted, total: kpiTotal, label: kpiLabel })}
             </p>
           </div>
           <span style={{ fontSize: 28, fontWeight: 700, color: COMPLETADO_GREEN }}>{kpiRate}%</span>
@@ -371,7 +374,7 @@ function AnalyticsPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
 
         <div style={card}>
-          <h3 style={ctitle}>Por estado</h3>
+          <h3 style={ctitle}>{t("analytics.byStatus")}</h3>
           {activeByCol.every(c => c.count === 0) ? <EmptyChart /> : (
             <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 180, paddingTop: 16 }}>
               {activeByCol.map((c, i) => (
@@ -392,7 +395,7 @@ function AnalyticsPage() {
         </div>
 
         <div style={card}>
-          <h3 style={ctitle}>Por prioridad</h3>
+          <h3 style={ctitle}>{t("analytics.byPriority")}</h3>
           {activePri.data.length === 0 ? <EmptyChart /> : (
             <div style={{ display: "flex", alignItems: "center", gap: 28, marginTop: 8 }}>
               <div style={{ position: "relative", flexShrink: 0 }}>
@@ -419,7 +422,7 @@ function AnalyticsPage() {
       <div style={{ ...card, marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
           <h3 style={{ ...ctitle, margin: 0 }}>
-            {isSol ? "Solicitudes completadas" : "Iniciativas completadas"}
+            {isSol ? t("analytics.chartRequests") : t("analytics.chartInitiatives")}
           </h3>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <select
@@ -443,7 +446,7 @@ function AnalyticsPage() {
                     transition: "all 120ms",
                   }}
                 >
-                  {p === "week" ? "Semana" : p === "month" ? "Mes" : "Trimestre"}
+                  {p === "week" ? t("analytics.periodWeek") : p === "month" ? t("analytics.periodMonth") : t("analytics.periodQuarter")}
                 </button>
               ))}
             </div>
@@ -463,14 +466,14 @@ function AnalyticsPage() {
               <YAxis allowDecimals={false} fontSize={11} tick={{ fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12, color: "var(--foreground)" }}
-                formatter={(v: any, name: string) => [v, name === "completadas" ? "Completadas" : "Acumulado"]}
+                formatter={(v: any, name: string) => [v, name === "completadas" ? t("analytics.legendCompleted") : t("analytics.legendCumulative")]}
               />
               <Legend
                 iconType="circle"
                 iconSize={8}
                 formatter={(name: string) => (
                   <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                    {name === "completadas" ? "Completadas" : "Acumulado"}
+                    {name === "completadas" ? t("analytics.legendCompleted") : t("analytics.legendCumulative")}
                   </span>
                 )}
               />
@@ -498,7 +501,7 @@ function AnalyticsPage() {
       {/* ── Solicitudes: Actividad últimos 7 días ── */}
       {isSol && (
         <div style={card}>
-          <h3 style={ctitle}>Actividad — últimos 7 días</h3>
+          <h3 style={ctitle}>{t("analytics.activity")}</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {activityData.map((d, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -520,7 +523,7 @@ function AnalyticsPage() {
       {/* ── Iniciativas: Avance por iniciativa (paginado) ── */}
       {!isSol && (
         <div style={card}>
-          <h3 style={ctitle}>Avance por iniciativa</h3>
+          <h3 style={ctitle}>{t("analytics.initiativeProgress")}</h3>
 
           {initiativesWithProgress.length === 0 ? (
             <EmptyChart />
@@ -548,7 +551,7 @@ function AnalyticsPage() {
                       </span>
                       <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--muted-foreground)", flexShrink: 0 }}>
                         <Link2 size={11} />
-                        {init.childCount > 0 ? `${init.completedChildCount}/${init.childCount}` : "0 vinculadas"}
+                        {init.childCount > 0 ? `${init.completedChildCount}/${init.childCount}` : t("analytics.noLinked")}
                       </span>
                       {init.progressPct !== null && (
                         <span style={{ fontSize: 12, fontWeight: 700, color: CORAL, flexShrink: 0, minWidth: 32, textAlign: "right" as const }}>
@@ -573,7 +576,7 @@ function AnalyticsPage() {
               {initiativesWithProgress.length > INIT_PAGE_SIZE && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
                   <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-                    {initFirstItem}–{initLastItem} de {initiativesWithProgress.length}
+                    {initFirstItem}–{initLastItem} {t("common.of")} {initiativesWithProgress.length}
                   </span>
                   <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                     <button onClick={() => setInitPage(1)} disabled={initSafePage === 1} style={pageNavBtn(initSafePage === 1)} title="Primera">
@@ -675,9 +678,10 @@ function Skeleton() {
 }
 
 function EmptyChart() {
+  const { t } = useLang();
   return (
     <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
-      Sin datos
+      {t("common.noData")}
     </div>
   );
 }

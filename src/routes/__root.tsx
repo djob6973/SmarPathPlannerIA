@@ -4,22 +4,39 @@ import {
   useRouter, HeadContent, Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { useLang } from "../lib/lang-context";
+import { translations } from "../locales/translations";
+
+// Safe hook usable outside LangProvider (404/error boundaries render before the provider)
+function useLangSafe() {
+  try { return useLang(); } catch {
+    const t = (key: string) => {
+      const parts = key.split(".");
+      let cur: any = translations.es;
+      for (const p of parts) cur = cur?.[p];
+      return typeof cur === "string" ? cur : key;
+    };
+    return { t };
+  }
+}
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "../lib/auth-context";
 import { ThemeProvider } from "../lib/theme-context";
+import { LangProvider } from "../lib/lang-context";
 import { Toaster } from "../components/ui/sonner";
 import { getCurrentUser, type CurrentUser } from "../lib/auth.functions";
 
 function NotFoundComponent() {
+  const { t } = useLangSafe();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <p className="text-7xl font-bold text-primary">404</p>
-        <h2 className="mt-4 text-xl font-semibold">Página no encontrada</h2>
-        <p className="mt-2 text-sm text-muted-foreground">La página que buscas no existe o fue movida.</p>
+        <h2 className="mt-4 text-xl font-semibold">{t("notFound.title")}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{t("notFound.message")}</p>
         <Link to="/" className="mt-6 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
-          Ir al inicio
+          {t("common.goHome")}
         </Link>
       </div>
     </div>
@@ -28,22 +45,23 @@ function NotFoundComponent() {
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
+  const { t } = useLangSafe();
   useEffect(() => { reportLovableError(error, { boundary: "tanstack_root_error_component" }); }, [error]);
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <p className="text-4xl">⚠️</p>
-        <h1 className="mt-4 text-xl font-semibold">Algo salió mal</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Ocurrió un error inesperado. Puedes intentar recargar.</p>
+        <h1 className="mt-4 text-xl font-semibold">{t("errorPage.title")}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t("errorPage.message")}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => { router.invalidate(); reset(); }}
             className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            Reintentar
+            {t("errorPage.retry")}
           </button>
           <a href="/" className="inline-flex items-center justify-center rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent transition-colors">
-            Ir al inicio
+            {t("common.goHome")}
           </a>
         </div>
       </div>
@@ -102,12 +120,14 @@ function RootComponent() {
   const { currentUser } = Route.useLoaderData();
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AuthProvider initialUser={currentUser}>
-          <Outlet />
-          <Toaster richColors position="top-right" />
-        </AuthProvider>
-      </ThemeProvider>
+      <LangProvider>
+        <ThemeProvider>
+          <AuthProvider initialUser={currentUser}>
+            <Outlet />
+            <Toaster richColors position="top-right" />
+          </AuthProvider>
+        </ThemeProvider>
+      </LangProvider>
     </QueryClientProvider>
   );
 }

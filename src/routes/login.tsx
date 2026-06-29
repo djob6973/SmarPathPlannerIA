@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useLang } from "@/lib/lang-context";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
 function LoginPage() {
+  const { t } = useLang();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -35,10 +37,10 @@ function LoginPage() {
       if (res.ok && data.ok) {
         window.location.href = "/app/dashboard";
       } else {
-        setError(data.error ?? "Error desconocido");
+        setError(data.error ?? t("login.unknownError"));
       }
     } catch {
-      setError("Error de conexión. Intenta de nuevo.");
+      setError(t("login.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -53,9 +55,9 @@ function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight">SmartPath Planner</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("login.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {mode === "login" ? "Inicia sesión en tu cuenta" : "Crea una nueva cuenta"}
+            {mode === "login" ? t("login.loginSubtitle") : t("login.registerSubtitle")}
           </p>
         </div>
 
@@ -63,13 +65,13 @@ function LoginPage() {
           {mode === "register" && (
             <div className="space-y-1.5">
               <label htmlFor="name" className="block text-sm font-medium">
-                Nombre
+                {t("login.name")}
               </label>
               <input
                 id="name"
                 name="name"
                 type="text"
-                placeholder="Tu nombre"
+                placeholder={t("login.namePlaceholder")}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
@@ -77,7 +79,7 @@ function LoginPage() {
 
           <div className="space-y-1.5">
             <label htmlFor="email" className="block text-sm font-medium">
-              Email
+              {t("login.email")}
             </label>
             <input
               id="email"
@@ -92,7 +94,7 @@ function LoginPage() {
 
           <div className="space-y-1.5">
             <label htmlFor="password" className="block text-sm font-medium">
-              Contraseña
+              {t("login.password")}
             </label>
             <input
               id="password"
@@ -114,21 +116,21 @@ function LoginPage() {
             className="inline-flex h-9 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {loading
-              ? "Cargando..."
+              ? t("login.loading")
               : mode === "login"
-                ? "Iniciar sesión"
-                : "Crear cuenta"}
+                ? t("login.loginBtn")
+                : t("login.registerBtn")}
           </button>
         </form>
 
         <p className="mt-4 text-center text-sm text-muted-foreground">
-          {mode === "login" ? "¿No tienes cuenta? " : "¿Ya tienes cuenta? "}
+          {mode === "login" ? t("login.noAccount") : t("login.hasAccount")}{" "}
           <button
             type="button"
             onClick={switchMode}
             className="font-medium text-foreground underline-offset-4 hover:underline"
           >
-            {mode === "login" ? "Crear cuenta" : "Iniciar sesión"}
+            {mode === "login" ? t("login.registerBtn") : t("login.loginBtn")}
           </button>
         </p>
       </div>

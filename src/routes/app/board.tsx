@@ -7,6 +7,7 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useAuth } from "@/lib/auth-context";
+import { useLang } from "@/lib/lang-context";
 import { getRequestsData, updateRequest, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
 import { getAreas, listProfiles } from "@/lib/data.functions";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RequestDetailModal } from "@/components/requests/request-detail-modal";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { es, enUS, ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/app/board")({
@@ -63,6 +64,8 @@ function getInitials(name: string | null): string {
 function KanbanCard({
   request, onClick, canEdit, profiles,
 }: { request: RequestRow; onClick: () => void; canEdit: boolean; profiles: ProfileMap }) {
+  const { lang } = useLang();
+  const dateLocale = lang === "en" ? enUS : lang === "pt" ? ptBR : es;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: request.id,
     disabled: !canEdit,
@@ -117,7 +120,7 @@ function KanbanCard({
               </span>
             )}
             <span style={{ fontSize: 10.5, color: "var(--muted-foreground)", whiteSpace: "nowrap", opacity: 0.7 }}>
-              {formatDistanceToNow(new Date(request.updated_at), { locale: es })}
+              {formatDistanceToNow(new Date(request.updated_at), { locale: dateLocale })}
             </span>
           </div>
         </div>
@@ -164,10 +167,11 @@ interface ColProps {
 }
 
 function KanbanColumn({ col, requests, canEdit, onCardClick, profiles, isBacklog = false }: ColProps) {
+  const { t } = useLang();
   const droppableId = isBacklog ? BACKLOG_ID : (col?.id ?? BACKLOG_ID);
   const { setNodeRef, isOver } = useDroppable({ id: droppableId });
   const dotColor = isBacklog ? "#C8C8C8" : (col?.color ?? "#D5D6D7");
-  const colName  = isBacklog ? "Sin estado" : (col?.name ?? "");
+  const colName  = isBacklog ? t("board.noStatus") : (col?.name ?? "");
 
   return (
     <div style={{ width: 286, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -220,7 +224,7 @@ function KanbanColumn({ col, requests, canEdit, onCardClick, profiles, isBacklog
           {requests.length === 0 && (
             <div style={{ height: 68, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <span style={{ fontSize: 12, color: "var(--muted-foreground)", opacity: 0.4 }}>
-                Arrastra aquí
+                {t("board.dropHere")}
               </span>
             </div>
           )}
@@ -234,12 +238,14 @@ function KanbanColumn({ col, requests, canEdit, onCardClick, profiles, isBacklog
 
 function BoardPage() {
   const { isSuperAdmin, areaId, hasPermission } = useAuth();
+  const { t, lang } = useLang();
+  const dateLocale = lang === "en" ? enUS : lang === "pt" ? ptBR : es;
 
   if (!hasPermission("view_board")) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
-        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Sin acceso</p>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No tienes permiso para ver el tablero.</p>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{t("common.noAccess")}</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>{t("board.noPermission")}</p>
       </div>
     );
   }
@@ -331,7 +337,7 @@ function BoardPage() {
     try {
       await updateRequest({ data: { requestId: String(active.id), status_column_id: targetColId, position: targetPosition } });
     } catch {
-      toast.error("Error al mover la tarjeta");
+      toast.error(t("requests.moveError"));
       reload();
     }
   };
@@ -395,7 +401,7 @@ function BoardPage() {
             fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 24,
             color: "var(--foreground)", letterSpacing: "-0.015em", margin: 0,
           }}>
-            Tablero
+            {t("board.title")}
           </h1>
           <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 3, marginBottom: 0 }}>
             {filteredRequests.length !== requests.length
@@ -418,9 +424,9 @@ function BoardPage() {
               fontWeight: filterAssignedTo !== "all" ? 600 : 400,
             }}
           >
-            <option value="all">Asignado a: Todos</option>
+            <option value="all">{t("common.assignedToAll")}</option>
             {Array.from(profiles.values()).map((p) => (
-              <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>
+              <option key={p.id} value={p.id}>{p.full_name ?? t("common.noName")}</option>
             ))}
           </select>
 
@@ -434,12 +440,12 @@ function BoardPage() {
                 }}
               >
                 <span style={{ width: 7, height: 7, borderRadius: 999, background: "var(--primary)", flexShrink: 0 }} />
-                <span style={{ color: "var(--muted-foreground)" }}>Área:</span>
-                <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{selectedAreaName ?? "Todas"}</span>
+                <span style={{ color: "var(--muted-foreground)" }}>{t("dashboard.areaLabel")}</span>
+                <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{selectedAreaName ?? t("dashboard.areaAll")}</span>
                 <IconChevron />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todas las áreas</SelectItem>
+                <SelectItem value="all">{t("common.allAreas")}</SelectItem>
                 {areas.map((a) => (
                   <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                 ))}
@@ -457,7 +463,7 @@ function BoardPage() {
               boxShadow: "0 2px 8px rgba(237,86,80,.25)",
             }}
           >
-            <IconSparkle /> Nueva con IA
+            <IconSparkle /> {t("requests.newWithAI")}
           </Link>
         </div>
       </div>

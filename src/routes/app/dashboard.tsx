@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, type ReactNode, type CSSProperties } from "react";
+import { useLang } from "@/lib/lang-context";
 import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
 import { getAreas, listProfiles } from "@/lib/data.functions";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { es, enUS, ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/app/dashboard")({
   component: DashboardPage,
@@ -27,11 +28,11 @@ const PRIORITY_CLASS: Record<string, string> = {
   low: "priority-low",
 };
 
-const PRIORITY_LABEL: Record<string, string> = {
-  urgent: "Urgente",
-  high: "Alta",
-  medium: "Media",
-  low: "Baja",
+const PRIORITY_LABEL_KEYS: Record<string, string> = {
+  urgent: "priority.urgent",
+  high: "priority.high",
+  medium: "priority.medium",
+  low: "priority.low",
 };
 
 // ─── inline SVG icons (match prototype exactly) ──────────────────────────────
@@ -176,12 +177,14 @@ function QuickAction({ to, title, desc, icon, iconStyle }: QuickActionProps) {
 
 function DashboardPage() {
   const { profile, areaId, isSuperAdmin, hasPermission } = useAuth();
+  const { t, lang } = useLang();
+  const dateLocale = lang === "en" ? enUS : lang === "pt" ? ptBR : es;
 
   if (!hasPermission("view_dashboard")) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
-        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Sin acceso</p>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No tienes permiso para ver el dashboard.</p>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{t("common.noAccess")}</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>{t("dashboard.noPermission")}</p>
       </div>
     );
   }
@@ -227,8 +230,8 @@ function DashboardPage() {
   const selectedAreaName = selectedArea ? areas.find((a) => a.id === selectedArea)?.name : null;
 
   const urgentPhrase = urgent > 0
-    ? `${urgent} solicitud${urgent > 1 ? "es urgentes" : " urgente"}`
-    : "todo al día";
+    ? `${urgent} ${urgent > 1 ? t("dashboard.urgentPlural") : t("dashboard.urgentSingular")}`
+    : t("dashboard.upToDate");
 
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 40px 64px", animation: "spIn 240ms ease" }}>
@@ -237,12 +240,12 @@ function DashboardPage() {
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, marginBottom: 28 }}>
         <div>
           <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 30, color: "var(--foreground)", letterSpacing: "-0.015em", margin: 0 }}>
-            Hola, <span style={{ textTransform: "capitalize" }}>{firstName}</span>
+            {t("dashboard.greeting")}, <span style={{ textTransform: "capitalize" }}>{firstName}</span>
           </h1>
           <p style={{ fontSize: 14.5, color: "var(--muted-foreground)", marginTop: 6 }}>
-            Este es el estado de tu roadmap hoy. Tienes{" "}
+            {t("dashboard.statusPrefix")}{" "}
             <span style={{ color: "var(--primary)", fontWeight: 600 }}>{urgentPhrase}</span>{" "}
-            por revisar.
+            {t("dashboard.statusSuffix")}
           </p>
         </div>
 
@@ -260,9 +263,9 @@ function DashboardPage() {
               fontWeight: filterAssignedTo !== "all" ? 600 : 400,
             }}
           >
-            <option value="all">Asignado a: Todos</option>
+            <option value="all">{t("common.assignedToAll")}</option>
             {profiles.map((p) => (
-              <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>
+              <option key={p.id} value={p.id}>{p.full_name ?? t("common.noName")}</option>
             ))}
           </select>
 
@@ -276,12 +279,12 @@ function DashboardPage() {
               }}
             >
               <span style={{ width: 7, height: 7, borderRadius: 999, background: "var(--primary)", flexShrink: 0 }} />
-              <span style={{ color: "var(--muted-foreground)" }}>Área:</span>
-              <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{selectedAreaName ?? "Todas"}</span>
+              <span style={{ color: "var(--muted-foreground)" }}>{t("dashboard.areaLabel")}</span>
+              <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{selectedAreaName ?? t("dashboard.areaAll")}</span>
               <IconChevron />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas las áreas</SelectItem>
+              <SelectItem value="all">{t("common.allAreas")}</SelectItem>
               {areas.map((a) => (
                 <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
               ))}
@@ -294,30 +297,30 @@ function DashboardPage() {
       {/* ── KPI grid ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 16 }}>
         <KpiCard
-          label="Total solicitudes"
+          label={t("dashboard.kpiTotal")}
           value={loading ? null : filteredRequests.length}
-          subtitle="en todas las áreas"
+          subtitle={t("dashboard.kpiTotalSub")}
           icon={<IconKanban />}
           iconStyle={{ background: "oklch(0.94 0.022 24)", color: "var(--primary)" }}
         />
         <KpiCard
-          label="En progreso"
+          label={t("dashboard.kpiInProgress")}
           value={loading ? null : inProgress}
-          subtitle="en curso o revisión"
+          subtitle={t("dashboard.kpiInProgressSub")}
           icon={<IconClockRun />}
           iconStyle={{ background: "var(--muted)", color: "var(--foreground)" }}
         />
         <KpiCard
-          label="Pendientes"
+          label={t("dashboard.kpiPending")}
           value={loading ? null : pending}
-          subtitle="por planear o sin estado"
+          subtitle={t("dashboard.kpiPendingSub")}
           icon={<IconClock />}
           iconStyle={{ background: "var(--muted)", color: "var(--foreground)" }}
         />
         <KpiCard
-          label="Completadas"
+          label={t("dashboard.kpiCompleted")}
           value={loading ? null : completed}
-          subtitle="cerradas este periodo"
+          subtitle={t("dashboard.kpiCompletedSub")}
           icon={<IconCheck />}
           iconStyle={{ background: "#EEF8D6", color: "#7AAE1B" }}
         />
@@ -330,13 +333,13 @@ function DashboardPage() {
         <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
             <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 16, color: "var(--foreground)", margin: 0 }}>
-              Solicitudes recientes
+              {t("dashboard.recentTitle")}
             </h2>
             <Link
               to="/app/requests"
               style={{ display: "flex", alignItems: "center", gap: 5, color: "var(--primary)", fontSize: 13, fontWeight: 600, textDecoration: "none", padding: "4px 8px", borderRadius: 8 }}
             >
-              Ver todas <IconArrow />
+              {t("dashboard.seeAll")} <IconArrow />
             </Link>
           </div>
 
@@ -350,8 +353,8 @@ function DashboardPage() {
 
             {!loading && recent.length === 0 && (
               <div style={{ padding: "32px 20px", textAlign: "center", color: "var(--muted-foreground)", fontSize: 14 }}>
-                Sin solicitudes aún.{" "}
-                <Link to="/app/chat" style={{ color: "var(--primary)", textDecoration: "none" }}>Crea una con el Chat IA</Link>.
+                {t("dashboard.noRequests")}{" "}
+                <Link to="/app/chat" style={{ color: "var(--primary)", textDecoration: "none" }}>{t("dashboard.createWithAI")}</Link>.
               </div>
             )}
 
@@ -368,7 +371,7 @@ function DashboardPage() {
                       {r.title}
                     </p>
                     <p style={{ fontSize: 11.5, color: "var(--muted-foreground)", opacity: 0.7, marginTop: 3, margin: 0 }}>
-                      actualizado {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true, locale: es })}
+                      {t("dashboard.updatedAt")} {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true, locale: dateLocale })}
                     </p>
                   </div>
                   {col && (
@@ -378,7 +381,7 @@ function DashboardPage() {
                     </span>
                   )}
                   <Badge className={`text-[10px] px-1.5 py-0 ${PRIORITY_CLASS[r.priority]}`}>
-                    {PRIORITY_LABEL[r.priority] ?? r.priority}
+                    {t(PRIORITY_LABEL_KEYS[r.priority] ?? r.priority)}
                   </Badge>
                 </div>
               );
@@ -389,26 +392,26 @@ function DashboardPage() {
         {/* Quick actions */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)", padding: "0 2px", margin: 0 }}>
-            Acciones rápidas
+            {t("dashboard.quickActions")}
           </p>
           <QuickAction
             to="/app/chat"
-            title="Nueva solicitud con IA"
-            desc="El agente te guía paso a paso"
+            title={t("dashboard.qaNewRequest")}
+            desc={t("dashboard.qaNewRequestDesc")}
             icon={<IconChat />}
             iconStyle={{ background: "oklch(0.94 0.022 24)", color: "var(--primary)" }}
           />
           <QuickAction
             to="/app/board"
-            title="Abrir el tablero"
-            desc="Gestiona por estado"
+            title={t("dashboard.qaBoard")}
+            desc={t("dashboard.qaBoardDesc")}
             icon={<IconBoard />}
             iconStyle={{ background: "var(--muted)", color: "var(--foreground)" }}
           />
           <QuickAction
             to="/app/analytics"
-            title="Ver analítica"
-            desc="KPIs y tendencias"
+            title={t("dashboard.qaAnalytics")}
+            desc={t("dashboard.qaAnalyticsDesc")}
             icon={<IconAnalytics />}
             iconStyle={{ background: "var(--muted)", color: "var(--foreground)" }}
           />
@@ -419,7 +422,7 @@ function DashboardPage() {
       {!loading && columns.length > 0 && filteredRequests.length > 0 && (
         <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: "20px 22px" }}>
           <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 16, color: "var(--foreground)", marginBottom: 18, marginTop: 0 }}>
-            Distribución por estado
+            {t("dashboard.distribution")}
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
             {columns.map((col) => {

@@ -1,8 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
+import { useLang } from "@/lib/lang-context";
+import type { Lang } from "@/locales/translations";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getPlatformSetting } from "@/lib/settings.functions";
@@ -123,6 +125,16 @@ function IconMonitor() {
   );
 }
 
+function IconGlobe() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a15 15 0 0 1 0 18M3 12h18" />
+      <path d="M3.6 8h16.8M3.6 16h16.8" />
+    </svg>
+  );
+}
+
 function IconLogOut() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -164,13 +176,13 @@ function DataicoMark({ size = 24 }: { size?: number }) {
 
 import type { AppPermission } from "@/lib/permissions.types";
 
-const NAV_ITEMS: { to: string; icon: React.ComponentType; label: string; permission?: AppPermission }[] = [
-  { to: "/app/dashboard", icon: IconDashboard, label: "Dashboard",   permission: "view_dashboard" },
-  { to: "/app/board",     icon: IconBoard,     label: "Tablero",     permission: "view_board"      },
-  { to: "/app/requests",  icon: IconRequests,  label: "Solicitudes" },
-  { to: "/app/chat",      icon: IconChat,      label: "Chat IA"     },
-  { to: "/app/analytics", icon: IconAnalytics, label: "Analítica",   permission: "view_analytics" },
-  { to: "/app/team",      icon: IconTeam,      label: "Equipo",      permission: "view_team"      },
+const NAV_ITEMS: { to: string; icon: React.ComponentType; labelKey: string; permission?: AppPermission }[] = [
+  { to: "/app/dashboard", icon: IconDashboard, labelKey: "nav.dashboard", permission: "view_dashboard" },
+  { to: "/app/board",     icon: IconBoard,     labelKey: "nav.board",     permission: "view_board"     },
+  { to: "/app/requests",  icon: IconRequests,  labelKey: "nav.requests"  },
+  { to: "/app/chat",      icon: IconChat,      labelKey: "nav.chat"      },
+  { to: "/app/analytics", icon: IconAnalytics, labelKey: "nav.analytics", permission: "view_analytics" },
+  { to: "/app/team",      icon: IconTeam,      labelKey: "nav.team",      permission: "view_team"      },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -185,6 +197,8 @@ interface AppSidebarProps {
 
 export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClick }: AppSidebarProps) {
   const { user, roles, hasRole, hasPermission, signOut, profile, isSuperAdmin } = useAuth();
+  const { t, lang, setLang } = useLang();
+  const [langOpen, setLangOpen] = useState(false);
 
   const { data: logoData, isLoading: logoLoading } = useQuery({
     queryKey: ["platform-setting", "logo_url"],
@@ -228,7 +242,13 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
 
   const nextTheme = theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
   const ThemeIcon = theme === "dark" ? IconMoon : theme === "light" ? IconSun : IconMonitor;
-  const themeLabel = theme === "dark" ? "Oscuro" : theme === "light" ? "Claro" : "Sistema";
+  const themeLabel = theme === "dark" ? t("theme.dark") : theme === "light" ? t("theme.light") : t("theme.system");
+
+  const LANGS: { key: Lang; flag: string }[] = [
+    { key: "es", flag: "🇪🇸" },
+    { key: "en", flag: "🇺🇸" },
+    { key: "pt", flag: "🇧🇷" },
+  ];
 
   // ── CSS variable tokens (mirror prototype --sb- vars via inline style on root)
   const sbVars = isDark
@@ -293,7 +313,8 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
 
       {/* ── Navigation ── */}
       <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV_ITEMS.filter(({ permission }) => !permission || hasPermission(permission)).map(({ to, icon: Icon, label }) => {
+        {NAV_ITEMS.filter(({ permission }) => !permission || hasPermission(permission)).map(({ to, icon: Icon, labelKey }) => {
+          const label = t(labelKey);
           const isActive = pathname.startsWith(to);
           return (
             <Link
@@ -322,7 +343,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
         {isSuperAdmin ? (
           <>
             <p style={{ padding: "0 12px", margin: "16px 0 6px", fontSize: 10, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--sb-text-muted)" }}>
-              Administración
+              {t("nav.admin")}
             </p>
             <Link
               to="/app/settings"
@@ -341,13 +362,13 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
               <span style={{ display: "inline-flex", width: 20, height: 20, alignItems: "center", justifyContent: "center", flexShrink: 0, color: pathname.startsWith("/app/settings") ? "#fff" : "var(--sb-text-muted)" }}>
                 <IconSettings />
               </span>
-              Configuración
+              {t("nav.settings")}
             </Link>
           </>
         ) : (
           <>
             <p style={{ padding: "0 12px", margin: "16px 0 6px", fontSize: 10, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--sb-text-muted)" }}>
-              Cuenta
+              {t("nav.account")}
             </p>
             <Link
               to="/app/settings"
@@ -366,7 +387,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
               <span style={{ display: "inline-flex", width: 20, height: 20, alignItems: "center", justifyContent: "center", flexShrink: 0, color: pathname.startsWith("/app/settings") ? "#fff" : "var(--sb-text-muted)" }}>
                 <IconSettings />
               </span>
-              Mi Perfil
+              {t("nav.myProfile")}
             </Link>
           </>
         )}
@@ -417,6 +438,51 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
           >
             <ThemeIcon />
           </button>
+
+          {/* Language selector */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setLangOpen((v) => !v)}
+              aria-label={t(`lang.${lang}`)}
+              title={t(`lang.${lang}`)}
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: langOpen ? "var(--sb-hover-bg)" : "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer", fontSize: 15 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
+              onMouseLeave={(e) => { if (!langOpen) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; } }}
+            >
+              <IconGlobe />
+            </button>
+            {langOpen && (
+              <div
+                style={{
+                  position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
+                  background: "var(--card)", border: "1px solid var(--border)",
+                  borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,.18)",
+                  padding: "6px", zIndex: 100, minWidth: 140,
+                  animation: "spIn .12s ease both",
+                }}
+                onMouseLeave={() => setLangOpen(false)}
+              >
+                {LANGS.map(({ key, flag }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setLang(key); setLangOpen(false); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      width: "100%", padding: "7px 10px", borderRadius: 8,
+                      border: "none", background: lang === key ? "var(--muted)" : "transparent",
+                      color: lang === key ? "var(--foreground)" : "var(--muted-foreground)",
+                      fontSize: 13, fontWeight: lang === key ? 600 : 400,
+                      cursor: "pointer", textAlign: "left",
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>{flag}</span>
+                    {t(`lang.${key}`)}
+                    {lang === key && <span style={{ marginLeft: "auto", fontSize: 10, color: "#ED5650" }}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* User row */}
@@ -446,12 +512,12 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
           <DropdownMenuContent side="top" align="start" className="w-52 mb-1">
             <div className="px-2 py-1.5">
               <p className="text-xs font-medium truncate">{displayName}</p>
-              <p className="text-xs text-muted-foreground capitalize">{roles.join(", ") || "sin rol"}</p>
+              <p className="text-xs text-muted-foreground capitalize">{roles.join(", ") || t("nav.noRole")}</p>
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
               <span style={{ marginRight: 8 }}><IconLogOut /></span>
-              Cerrar sesión
+              {t("nav.signOut")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

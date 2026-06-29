@@ -3,6 +3,8 @@ import { useState, useRef, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { sendChatMessage } from "@/lib/chat.functions";
 import { useAuth } from "@/lib/auth-context";
+import { useLang } from "@/lib/lang-context";
+import { translations } from "@/locales/translations";
 import { getAreas } from "@/lib/data.functions";
 import { toast } from "sonner";
 import { Bot, User, ArrowRight, Loader2, Sparkles, RotateCcw, CheckCircle2 } from "lucide-react";
@@ -29,11 +31,12 @@ const STARTERS = [
 
 function ChatPage() {
   const { hasPermission } = useAuth();
+  const { t } = useLang();
   if (!hasPermission("use_ai_features")) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
-        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Sin acceso</p>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No tienes permiso para usar el agente IA.</p>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{t("common.noAccess")}</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>{t("chat.noPermission")}</p>
       </div>
     );
   }
@@ -43,6 +46,7 @@ function ChatPage() {
 function ChatPageContent() {
   const send = useServerFn(sendChatMessage);
   const { isSuperAdmin, areaId, areaName } = useAuth();
+  const { t } = useLang();
   const [convId, setConvId] = useState<string | undefined>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -95,7 +99,7 @@ function ChatPageContent() {
         ]);
       }
     } catch (e: any) {
-      toast.error(e?.message ?? "Error al enviar mensaje");
+      toast.error(e?.message ?? t("chat.sendError"));
       setMessages((m) => m.slice(0, -1));
     } finally {
       setBusy(false);
@@ -107,8 +111,8 @@ function ChatPageContent() {
 
   const isEmpty = messages.length === 0;
   const displayAreaName = isSuperAdmin
-    ? (areas.find((a) => a.id === selectedArea)?.name ?? "Todas las áreas")
-    : (areaName ?? "Mi área");
+    ? (areas.find((a) => a.id === selectedArea)?.name ?? t("chat.allAreas"))
+    : (areaName ?? t("chat.myArea"));
 
   return (
     <div style={{
@@ -138,10 +142,10 @@ function ChatPageContent() {
               color: "var(--foreground)",
               margin: 0, lineHeight: 1.2,
             }}>
-              Agente IA
+              {t("chat.title")}
             </h1>
             <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
-              Captura de solicitudes · {displayAreaName}
+              {t("chat.captureSubtitle")} · {displayAreaName}
             </p>
           </div>
         </div>
@@ -153,13 +157,13 @@ function ChatPageContent() {
               onChange={(e) => setSelectedArea(e.target.value === "all" ? null : e.target.value)}
               style={selectStyle}
             >
-              <option value="all">Todas las áreas</option>
+              <option value="all">{t("common.allAreas")}</option>
               {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}
           {!isEmpty && (
             <button onClick={reset} style={ghostBtnStyle}>
-              <RotateCcw size={13} /> Nueva conversación
+              <RotateCcw size={13} /> {t("chat.newConversation")}
             </button>
           )}
         </div>
@@ -200,7 +204,7 @@ function ChatPageContent() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
             }}
-            placeholder="Describe tu proyecto o solicitud… (Enter para enviar)"
+            placeholder={t("chat.inputPlaceholder")}
             disabled={busy}
             rows={1}
             style={{
@@ -230,7 +234,7 @@ function ChatPageContent() {
           </button>
         </div>
         <p style={{ fontSize: 11, color: "var(--muted-foreground)", textAlign: "center", marginTop: 8 }}>
-          Shift+Enter para salto de línea
+          {t("chat.shiftEnter")}
         </p>
       </div>
     </div>
@@ -240,6 +244,7 @@ function ChatPageContent() {
 // ── Sub-components ───────────────────────────────────────
 
 function MessageBubble({ message: m }: { message: Message }) {
+  const { t } = useLang();
   const isUser = m.role === "user";
   return (
     <div style={{ display: "flex", gap: 11, justifyContent: isUser ? "flex-end" : "flex-start" }}>
@@ -271,10 +276,10 @@ function MessageBubble({ message: m }: { message: Message }) {
             </div>
             <div>
               <p style={{ fontSize: 12, fontWeight: 600, color: "#ED5650", margin: 0 }}>
-                Solicitud registrada en el roadmap
+                {t("chat.requestCreated")}
               </p>
               <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
-                Puedes verla en el Tablero o Solicitudes
+                {t("chat.requestCreatedSub")}
               </p>
             </div>
           </div>
@@ -363,6 +368,8 @@ function ThinkingBubble() {
 }
 
 function EmptyState({ onStarter }: { onStarter: (s: string) => void }) {
+  const { lang } = useLang();
+  const starterList = translations[lang].chat.starters;
   return (
     <div style={{
       flex: 1, display: "flex", flexDirection: "column",
@@ -392,7 +399,7 @@ function EmptyState({ onStarter }: { onStarter: (s: string) => void }) {
         </p>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 500 }}>
-        {STARTERS.map((s) => (
+        {starterList.map((s) => (
           <StarterButton key={s} text={s} onClick={() => onStarter(s)} />
         ))}
       </div>

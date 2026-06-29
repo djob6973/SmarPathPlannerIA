@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useLang } from "@/lib/lang-context";
 import { getRequestsData, deleteRequest, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
 import { getAreas, listProfiles } from "@/lib/data.functions";
 import { RequestDetailModal } from "@/components/requests/request-detail-modal";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 import { Search, MessageSquare, Trash2, ExternalLink, Plus, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, X, SlidersHorizontal } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { es, enUS, ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/app/requests")({
   validateSearch: (search: Record<string, unknown>): { openRequest?: string } => {
@@ -34,6 +35,8 @@ const GRID = "1fr 150px 110px 130px 56px";
 
 function RequestsPage() {
   const { user, hasPermission, areaId, isSuperAdmin } = useAuth();
+  const { t, lang } = useLang();
+  const dateLocale = lang === "en" ? enUS : lang === "pt" ? ptBR : es;
   const { openRequest } = Route.useSearch();
   const navigate = useNavigate();
   const [requests, setRequests]   = useState<RequestRow[]>([]);
@@ -158,13 +161,13 @@ function RequestsPage() {
 
   const remove = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("¿Eliminar esta solicitud?")) return;
+    if (!confirm(t("requests.deleteConfirm"))) return;
     try {
       await deleteRequest({ data: { requestId: id } });
-      toast.success("Solicitud eliminada");
+      toast.success(t("requests.deleteSuccess"));
       reload();
     } catch (err: any) {
-      toast.error(err?.message ?? "Error al eliminar");
+      toast.error(err?.message ?? t("requests.deleteError"));
     }
   };
 
@@ -180,12 +183,12 @@ function RequestsPage() {
             color: "var(--foreground)",
             margin: 0, lineHeight: 1.2,
           }}>
-            Solicitudes
+            {t("requests.title")}
           </h1>
           <p style={{ fontSize: 14, color: "var(--muted-foreground)", marginTop: 4 }}>
             {filtered.length === requests.length
-              ? `${requests.length} solicitudes`
-              : `${filtered.length} de ${requests.length} solicitudes`}
+              ? t("requests.countAll", { n: requests.length })
+              : t("requests.countFiltered", { n: filtered.length, total: requests.length })}
           </p>
         </div>
 
@@ -196,20 +199,20 @@ function RequestsPage() {
               onChange={(e) => setSelectedArea(e.target.value === "all" ? null : e.target.value)}
               style={selectStyle}
             >
-              <option value="all">Todas las áreas</option>
+              <option value="all">{t("common.allAreas")}</option>
               {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           )}
 
           {hasPermission("create_requests") && (
             <button onClick={() => setShowManual(true)} style={btnOutlineStyle}>
-              <Plus size={14} /> Nueva manual
+              <Plus size={14} /> {t("requests.newManual")}
             </button>
           )}
 
           {hasPermission("use_ai_features") && (
             <Link to="/app/chat" style={btnCoralStyle}>
-              <MessageSquare size={14} /> Nueva con IA
+              <MessageSquare size={14} /> {t("requests.newWithAI")}
             </Link>
           )}
         </div>
@@ -224,7 +227,7 @@ function RequestsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por título..."
+            placeholder={t("requests.searchPlaceholder")}
             style={{ ...filterInputStyle, paddingLeft: 38, width: "100%" }}
           />
         </div>
@@ -245,7 +248,7 @@ function RequestsPage() {
             }}
           >
             <SlidersHorizontal size={14} />
-            Filtros
+            {t("requests.filters")}
             {activeFilterCount > 0 && (
               <span style={{
                 background: "var(--primary)", color: "var(--primary-foreground)",
@@ -273,16 +276,16 @@ function RequestsPage() {
               {/* Prioridad + Estado */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                 <div>
-                  <label style={popoverLabelStyle}>Prioridad</label>
+                  <label style={popoverLabelStyle}>{t("requests.priority")}</label>
                   <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={popoverInputStyle}>
-                    <option value="all">Todas</option>
+                    <option value="all">{t("requests.allPriorities")}</option>
                     {PRIORITIES.map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={popoverLabelStyle}>Estado</label>
+                  <label style={popoverLabelStyle}>{t("requests.status")}</label>
                   <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={popoverInputStyle}>
-                    <option value="all">Todos</option>
+                    <option value="all">{t("requests.allStatuses")}</option>
                     {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
@@ -290,10 +293,10 @@ function RequestsPage() {
 
               {/* Asignado a */}
               <div style={{ marginBottom: 16 }}>
-                <label style={popoverLabelStyle}>Asignado a</label>
+                <label style={popoverLabelStyle}>{t("requests.assignedTo")}</label>
                 <select value={filterAssignedTo} onChange={(e) => setFilterAssignedTo(e.target.value)} style={popoverInputStyle}>
-                  <option value="all">Todos</option>
-                  {profiles.map((p) => <option key={p.id} value={p.id}>{p.full_name ?? "Sin nombre"}</option>)}
+                  <option value="all">{t("requests.allAssigned")}</option>
+                  {profiles.map((p) => <option key={p.id} value={p.id}>{p.full_name ?? t("common.noName")}</option>)}
                 </select>
               </div>
 
@@ -302,14 +305,14 @@ function RequestsPage() {
 
               {/* Fecha creación */}
               <div style={{ marginBottom: 12 }}>
-                <label style={popoverLabelStyle}>Fecha de creación</label>
+                <label style={popoverLabelStyle}>{t("requests.creationDate")}</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div>
-                    <span style={popoverSubLabelStyle}>Desde</span>
+                    <span style={popoverSubLabelStyle}>{t("common.from")}</span>
                     <input type="date" value={filterCreatedFrom} onChange={(e) => setFilterCreatedFrom(e.target.value)} style={popoverInputStyle} />
                   </div>
                   <div>
-                    <span style={popoverSubLabelStyle}>Hasta</span>
+                    <span style={popoverSubLabelStyle}>{t("common.to")}</span>
                     <input type="date" value={filterCreatedTo} onChange={(e) => setFilterCreatedTo(e.target.value)} style={popoverInputStyle} />
                   </div>
                 </div>
@@ -317,14 +320,14 @@ function RequestsPage() {
 
               {/* Fecha completada */}
               <div style={{ marginBottom: 20 }}>
-                <label style={popoverLabelStyle}>Fecha de completada</label>
+                <label style={popoverLabelStyle}>{t("requests.completedDate")}</label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div>
-                    <span style={popoverSubLabelStyle}>Desde</span>
+                    <span style={popoverSubLabelStyle}>{t("common.from")}</span>
                     <input type="date" value={filterCompletedFrom} onChange={(e) => setFilterCompletedFrom(e.target.value)} style={popoverInputStyle} />
                   </div>
                   <div>
-                    <span style={popoverSubLabelStyle}>Hasta</span>
+                    <span style={popoverSubLabelStyle}>{t("common.to")}</span>
                     <input type="date" value={filterCompletedTo} onChange={(e) => setFilterCompletedTo(e.target.value)} style={popoverInputStyle} />
                   </div>
                 </div>
@@ -342,7 +345,7 @@ function RequestsPage() {
                     opacity: activeFilterCount === 0 ? 0.45 : 1,
                   }}
                 >
-                  Limpiar todo
+                  {t("common.clearAll")}
                 </button>
                 <button
                   onClick={() => setFilterOpen(false)}
@@ -352,7 +355,7 @@ function RequestsPage() {
                     padding: "7px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer",
                   }}
                 >
-                  Aplicar
+                  {t("common.apply")}
                 </button>
               </div>
             </div>
@@ -373,7 +376,7 @@ function RequestsPage() {
           padding: "10px 20px",
           borderBottom: "1px solid var(--border)",
         }}>
-          {["Título", "Estado", "Prioridad", "Actualizado", ""].map((h, i) => (
+          {[t("requests.colTitle"), t("requests.colStatus"), t("requests.colPriority"), t("requests.colUpdated"), ""].map((h, i) => (
             <span key={i} style={{
               fontSize: 11, fontWeight: 600,
               textTransform: "uppercase" as const,
@@ -391,8 +394,8 @@ function RequestsPage() {
         ) : filtered.length === 0 ? (
           <div style={{ padding: "60px 20px", textAlign: "center", color: "var(--muted-foreground)", fontSize: 14 }}>
             {search || activeFilterCount > 0
-              ? "No hay solicitudes que coincidan con los filtros."
-              : "Sin solicitudes aún. Usa el Chat IA para crear una."}
+              ? t("requests.noResults")
+              : t("requests.empty")}
           </div>
         ) : (
           paginated.map((r, idx) => {
@@ -446,7 +449,7 @@ function RequestsPage() {
                       </span>
                     </>
                   ) : (
-                    <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Sin estado</span>
+                    <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{t("common.noStatus")}</span>
                   )}
                 </div>
 
@@ -465,7 +468,7 @@ function RequestsPage() {
 
                 {/* Updated at */}
                 <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                  {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true, locale: es })}
+                  {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true, locale: dateLocale })}
                 </span>
 
                 {/* Actions — revealed on row hover via .sp-row .row-actions CSS */}
@@ -505,7 +508,7 @@ function RequestsPage() {
         }}>
           {/* Left: rows per page + range info */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "var(--muted-foreground)" }}>
-            <span>Filas por página:</span>
+            <span>{t("common.rowsPerPage")}</span>
             <select
               value={pageSize}
               onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
@@ -514,7 +517,7 @@ function RequestsPage() {
               {PAGE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             <span style={{ marginLeft: 4 }}>
-              {firstItem}–{lastItem} de {filtered.length}
+              {firstItem}–{lastItem} {t("common.of")} {filtered.length}
             </span>
           </div>
 

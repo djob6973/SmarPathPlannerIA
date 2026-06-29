@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { listUsers, setUserRole, assignUserToArea, listAreas, adminResetPassword, updateUserProfile } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth-context";
+import { useLang } from "@/lib/lang-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -80,12 +81,13 @@ const skPulse: React.CSSProperties = {
 // ── TeamPage ──────────────────────────────────────────────────────
 function TeamPage() {
   const { hasPermission } = useAuth();
+  const { t } = useLang();
 
   if (!hasPermission("view_team")) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10 }}>
-        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Sin acceso</p>
-        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>No tienes permiso para ver el módulo de equipo.</p>
+        <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{t("common.noAccess")}</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>{t("team.noPermission")}</p>
       </div>
     );
   }
@@ -140,19 +142,19 @@ function TeamPage() {
     try {
       await setRole({ data: { userId, role: role as any, enabled } });
       reload();
-      toast.success(`Rol ${role} ${enabled ? "asignado" : "eliminado"}`);
+      toast.success(enabled ? t("team.roleAssigned", { role }) : t("team.roleRemoved", { role }));
     } catch (e: any) {
-      toast.error(e?.message ?? "Error al actualizar rol");
+      toast.error(e?.message ?? t("team.roleError"));
     }
   };
 
   const handleAreaChange = async (userId: string, areaId: string) => {
     try {
       await assignArea({ data: { userId, areaId: areaId === "none" ? null : areaId } });
-      toast.success("Área asignada exitosamente");
+      toast.success(t("team.areaAssigned"));
       reload();
     } catch (e: any) {
-      toast.error(e?.message ?? "Error al asignar área");
+      toast.error(e?.message ?? t("team.areaError"));
     }
   };
 
@@ -165,16 +167,16 @@ function TeamPage() {
   const handleEditProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editTarget) return;
-    if (!editName.trim()) { toast.error("El nombre es obligatorio"); return; }
-    if (!editEmail.trim()) { toast.error("El email es obligatorio"); return; }
+    if (!editName.trim()) { toast.error(t("team.nameRequired")); return; }
+    if (!editEmail.trim()) { toast.error(t("team.emailRequired")); return; }
     setEditLoading(true);
     try {
       await editProfile({ data: { userId: editTarget.id, full_name: editName.trim(), email: editEmail.trim() } });
-      toast.success("Perfil actualizado");
+      toast.success(t("team.profileUpdated"));
       setEditTarget(null);
       reload();
     } catch (e: any) {
-      toast.error(e?.message ?? "Error al actualizar perfil");
+      toast.error(e?.message ?? t("team.profileError"));
     } finally {
       setEditLoading(false);
     }
@@ -189,15 +191,15 @@ function TeamPage() {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetTarget) return;
-    if (newPwd !== confirmPwd) { toast.error("Las contraseñas no coinciden"); return; }
-    if (newPwd.length < 6) { toast.error("Mínimo 6 caracteres"); return; }
+    if (newPwd !== confirmPwd) { toast.error(t("team.pwdMismatch")); return; }
+    if (newPwd.length < 6) { toast.error(t("team.pwdMinLength")); return; }
     setResetLoading(true);
     try {
       await resetPwd({ data: { userId: resetTarget.id, newPassword: newPwd } });
-      toast.success(`Contraseña de ${resetTarget.full_name ?? resetTarget.email} restablecida`);
+      toast.success(t("team.pwdReset", { name: resetTarget.full_name ?? resetTarget.email }));
       setResetTarget(null);
     } catch (e: any) {
-      toast.error(e?.message ?? "Error al restablecer contraseña");
+      toast.error(e?.message ?? t("team.pwdResetError"));
     } finally {
       setResetLoading(false);
     }
@@ -230,10 +232,10 @@ function TeamPage() {
             color: "var(--foreground)",
             margin: 0, lineHeight: 1.2,
           }}>
-            Equipo
+            {t("team.title")}
           </h1>
           <p style={{ fontSize: 14, color: "var(--muted-foreground)", margin: "4px 0 0" }}>
-            {users.length} miembro{users.length !== 1 ? "s" : ""} registrado{users.length !== 1 ? "s" : ""}
+            {users.length === 1 ? t("team.memberCount_one", { n: 1 }) : t("team.memberCount_other", { n: users.length })}
           </p>
         </div>
       </div>
@@ -248,7 +250,7 @@ function TeamPage() {
         }}>
           <ShieldCheck size={15} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
           <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
-            Solo los super administradores y administradores de área pueden modificar asignaciones.
+            {t("team.readOnlyNotice")}
           </p>
         </div>
       )}
@@ -261,7 +263,7 @@ function TeamPage() {
         }} />
         <input
           type="text"
-          placeholder="Buscar usuarios..."
+          placeholder={t("team.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
@@ -339,7 +341,7 @@ function TeamPage() {
                         </div>
                         <div>
                           <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--foreground)", margin: 0, lineHeight: 1.3 }}>
-                            {u.full_name ?? "Sin nombre"}
+                            {u.full_name ?? t("common.noName")}
                           </p>
                           <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
                             {u.email}
@@ -361,7 +363,7 @@ function TeamPage() {
                           {rs.label}
                         </span>
                       ) : (
-                        <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>Sin rol</span>
+                        <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{t("nav.noRole")}</span>
                       )}
                     </td>
 
