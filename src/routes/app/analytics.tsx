@@ -22,11 +22,12 @@ type Request = Pick<RequestRow,
 >;
 type Column = Pick<ColumnRow, "id" | "name" | "color" | "is_completed">;
 
-const CORAL      = "#ED5650";
-const GREEN      = "#9DDD05";
-const GREEN_TEXT = "#7AAE1B";
-const INDIGO     = "#6366F1";
-const INDIGO_BG  = "rgba(99,102,241,.12)";
+const CORAL           = "#ED5650";
+const GREEN           = "#9DDD05";
+const GREEN_TEXT      = "#7AAE1B";
+const INDIGO          = "#6366F1";
+const INDIGO_BG       = "rgba(99,102,241,.12)";
+const COMPLETADO_GREEN = "rgb(32, 207, 132)";
 const INIT_PAGE_SIZE = 10;
 
 const priStyle: Record<string, React.CSSProperties> = {
@@ -244,8 +245,8 @@ function AnalyticsPage() {
   const kpiRate        = isSol ? solRate            : initRate;
   const kpiLabel       = isSol ? "solicitudes"      : "iniciativas";
   const kpiTotalLabel  = isSol ? "Total solicitudes" : "Total iniciativas";
-  const accentColor    = isSol ? CORAL              : INDIGO;
-  const accentBg       = isSol ? "rgba(237,86,80,.12)" : INDIGO_BG;
+  const accentColor    = CORAL;
+  const accentBg       = "rgba(237,86,80,.12)";
   const activeByCol    = isSol ? solByCol           : initByCol;
   const activeMaxByCol = isSol ? solMaxByCol        : initMaxByCol;
   const activePri      = isSol ? solPri             : initPri;
@@ -275,7 +276,7 @@ function AnalyticsPage() {
           <div style={{ display: "flex", background: "var(--muted)", borderRadius: "var(--r-xl, 16px)", padding: 3 }}>
             {([
               { key: "solicitudes", label: "Solicitudes", icon: <Kanban size={14} />,    accent: CORAL   },
-              { key: "iniciativas", label: "Iniciativas", icon: <GitBranch size={14} />, accent: INDIGO  },
+              { key: "iniciativas", label: "Iniciativas", icon: <GitBranch size={14} />, accent: CORAL   },
             ] as const).map(v => (
               <button
                 key={v.key}
@@ -327,10 +328,10 @@ function AnalyticsPage() {
       {/* ── KPI Cards ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, marginBottom: 20 }}>
         {[
-          { label: kpiTotalLabel,  value: kpiTotal,      icon: isSol ? <Kanban size={18} color={CORAL} />          : <GitBranch size={18} color={INDIGO} />,         iconBg: accentBg              },
+          { label: kpiTotalLabel,  value: kpiTotal,      icon: isSol ? <Kanban size={18} color={CORAL} />          : <GitBranch size={18} color={CORAL} />,          iconBg: accentBg              },
           { label: "En progreso",  value: kpiInProgress, icon: <TrendingUp size={18} color="var(--muted-foreground)" />, iconBg: "var(--muted)"                     },
           { label: "Pendientes",   value: kpiPending,    icon: <Clock size={18} color="var(--muted-foreground)" />,       iconBg: "var(--muted)"                     },
-          { label: "Completadas",  value: kpiCompleted,  icon: <CheckCircle2 size={18} color={GREEN_TEXT} />,              iconBg: "rgba(157,221,5,.15)"              },
+          { label: "Completadas",  value: kpiCompleted,  icon: <CheckCircle2 size={18} color={COMPLETADO_GREEN} />,       iconBg: "rgba(32,207,132,.15)"             },
         ].map(k => (
           <div key={k.label} style={card}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -359,10 +360,10 @@ function AnalyticsPage() {
               {kpiCompleted} de {kpiTotal} {kpiLabel} completadas
             </p>
           </div>
-          <span style={{ fontSize: 28, fontWeight: 700, color: isSol ? GREEN_TEXT : INDIGO }}>{kpiRate}%</span>
+          <span style={{ fontSize: 28, fontWeight: 700, color: COMPLETADO_GREEN }}>{kpiRate}%</span>
         </div>
         <div style={{ height: 8, borderRadius: 99, background: "var(--muted)", overflow: "hidden" }}>
-          <div style={{ width: `${kpiRate}%`, height: "100%", borderRadius: 99, background: isSol ? GREEN : INDIGO, transition: "width 700ms" }} />
+          <div style={{ width: `${kpiRate}%`, height: "100%", borderRadius: 99, background: COMPLETADO_GREEN, transition: "width 700ms" }} />
         </div>
       </div>
 
