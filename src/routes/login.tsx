@@ -54,7 +54,7 @@ function LoginPage() {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1a1a1a]">
-            <ChevronIcon />
+            <DataicoMark size={22} />
           </div>
           <div className="leading-none">
             <p className="text-sm font-bold tracking-tight text-[#1a1a1a]">SmartPath</p>
@@ -260,7 +260,7 @@ function LoginPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10">
-                <ChevronIcon small />
+                <DataicoMark size={14} />
               </div>
               <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
                 SmartPath Planner
@@ -274,12 +274,14 @@ function LoginPage() {
   );
 }
 
-function ChevronIcon({ small = false }: { small?: boolean }) {
-  const s = small ? 14 : 20;
+function DataicoMark({ size = 24 }: { size?: number }) {
+  const w = Math.round(size * (94 / 72));
   return (
-    <svg width={s} height={s} viewBox="0 0 20 20" fill="none">
-      <path d="M11.5 4L7 10L11.5 16" stroke="#ED5650" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M15.5 4L11 10L15.5 16" stroke="#ED5650" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 94 72" width={w} height={size} fill="#ED5650">
+      <path d="M3 36C3 17 16 3 33 3c5 0 9 2 12 6C37 11 28 22 25 36H3z"/>
+      <path d="M3 36C3 55 16 69 33 69c5 0 9-2 12-6C37 61 28 50 25 36H3z"/>
+      <path d="M50 36C50 17 63 3 80 3c5 0 9 2 12 6C84 11 75 22 72 36H50z"/>
+      <path d="M50 36C50 55 63 69 80 69c5 0 9-2 12-6C84 61 75 50 72 36H50z"/>
     </svg>
   );
 }
