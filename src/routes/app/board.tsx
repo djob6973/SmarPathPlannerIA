@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { SlidersHorizontal, Plus } from "lucide-react";
 import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   type DragStartEvent, type DragEndEvent, closestCorners, useDroppable,
@@ -10,6 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useLang } from "@/lib/lang-context";
 import { getRequestsData, updateRequest, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
 import { getAreas, listProfiles } from "@/lib/data.functions";
+import { ManualRequestModal } from "@/components/requests/manual-request-modal";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RequestDetailModal } from "@/components/requests/request-detail-modal";
@@ -234,6 +236,47 @@ function KanbanColumn({ col, requests, canEdit, onCardClick, profiles, isBacklog
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+const btnOutlineStyle: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 7,
+  height: 40, padding: "0 18px",
+  borderRadius: "var(--r-xl, 16px)",
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  fontSize: 13, fontWeight: 500,
+  cursor: "pointer", whiteSpace: "nowrap",
+};
+
+const btnCoralStyle: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 7,
+  height: 40, padding: "0 18px",
+  borderRadius: "var(--r-xl, 16px)",
+  background: "#ED5650", color: "white",
+  textDecoration: "none", fontSize: 13, fontWeight: 500,
+  whiteSpace: "nowrap", flexShrink: 0,
+};
+
+const popoverLabelStyle: React.CSSProperties = {
+  display: "block", fontSize: 11, fontWeight: 700,
+  textTransform: "uppercase", letterSpacing: ".08em",
+  color: "var(--muted-foreground)", marginBottom: 6,
+};
+
+const popoverSubLabelStyle: React.CSSProperties = {
+  display: "block", fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4,
+};
+
+const popoverInputStyle: React.CSSProperties = {
+  width: "100%", height: 36, padding: "0 10px",
+  borderRadius: "var(--r-sm, 10px)",
+  border: "1px solid var(--border)",
+  background: "var(--card)",
+  color: "var(--foreground)",
+  fontSize: 13, cursor: "pointer", outline: "none",
+};
+
 // ── BoardPage ─────────────────────────────────────────────────────────────────
 
 function BoardPage() {
@@ -259,6 +302,41 @@ function BoardPage() {
   const [areas, setAreas] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<ProfileMap>(new Map());
   const [filterAssignedTo, setFilterAssignedTo] = useState("all");
+  const [filterPriority, setFilterPriority]       = useState("all");
+  const [filterStatus, setFilterStatus]           = useState("all");
+  const [filterCreatedFrom, setFilterCreatedFrom] = useState("");
+  const [filterCreatedTo, setFilterCreatedTo]     = useState("");
+  const [filterCompletedFrom, setFilterCompletedFrom] = useState("");
+  const [filterCompletedTo, setFilterCompletedTo]     = useState("");
+  const [filterOpen, setFilterOpen]               = useState(false);
+  const [showManual, setShowManual]               = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  const activeFilterCount = [
+    filterAssignedTo !== "all",
+    filterPriority !== "all",
+    filterStatus !== "all",
+    !!filterCreatedFrom, !!filterCreatedTo,
+    !!filterCompletedFrom, !!filterCompletedTo,
+  ].filter(Boolean).length;
+
+  function clearAllFilters() {
+    setFilterAssignedTo("all");
+    setFilterPriority("all");
+    setFilterStatus("all");
+    setFilterCreatedFrom(""); setFilterCreatedTo("");
+    setFilterCompletedFrom(""); setFilterCompletedTo("");
+  }
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const canEdit = hasPermission("change_request_status") || hasPermission("edit_all_requests") || hasPermission("edit_own_requests");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -343,10 +421,17 @@ function BoardPage() {
   };
 
   const filteredRequests = useMemo(() =>
-    requests.filter((r) =>
-      filterAssignedTo === "all" || r.assigned_to === filterAssignedTo
-    ),
-    [requests, filterAssignedTo]
+    requests.filter((r) => {
+      if (filterAssignedTo !== "all" && r.assigned_to !== filterAssignedTo) return false;
+      if (filterPriority !== "all" && r.priority !== filterPriority) return false;
+      if (filterStatus !== "all" && r.status_column_id !== filterStatus) return false;
+      if (filterCreatedFrom && r.created_at < filterCreatedFrom) return false;
+      if (filterCreatedTo && r.created_at > filterCreatedTo + "T23:59:59") return false;
+      if (filterCompletedFrom && (!r.completed_at || r.completed_at < filterCompletedFrom)) return false;
+      if (filterCompletedTo && (!r.completed_at || r.completed_at > filterCompletedTo + "T23:59:59")) return false;
+      return true;
+    }),
+    [requests, filterAssignedTo, filterPriority, filterStatus, filterCreatedFrom, filterCreatedTo, filterCompletedFrom, filterCompletedTo]
   );
 
   const activeRequest  = activeId ? filteredRequests.find((r) => r.id === activeId) : null;
@@ -411,25 +496,6 @@ function BoardPage() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <select
-            value={filterAssignedTo}
-            onChange={(e) => setFilterAssignedTo(e.target.value)}
-            style={{
-              height: 38, padding: "0 14px",
-              borderRadius: 999,
-              border: "1px solid var(--border)",
-              background: "var(--card)",
-              color: filterAssignedTo !== "all" ? "var(--primary)" : "var(--foreground)",
-              fontSize: 13, cursor: "pointer", outline: "none",
-              fontWeight: filterAssignedTo !== "all" ? 600 : 400,
-            }}
-          >
-            <option value="all">{t("common.assignedToAll")}</option>
-            {Array.from(profiles.values()).map((p) => (
-              <option key={p.id} value={p.id}>{p.full_name ?? t("common.noName")}</option>
-            ))}
-          </select>
-
           {isSuperAdmin && areas.length > 0 && (
             <Select value={selectedArea || "all"} onValueChange={(v) => setSelectedArea(v === "all" ? null : v)}>
               <SelectTrigger
@@ -453,18 +519,151 @@ function BoardPage() {
             </Select>
           )}
 
-          <Link
-            to="/app/chat"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 7,
-              background: "#ED5650", color: "#fff", borderRadius: 999,
-              padding: "9px 20px", fontSize: 13.5, fontWeight: 600,
-              textDecoration: "none", flexShrink: 0,
-              boxShadow: "0 2px 8px rgba(237,86,80,.25)",
-            }}
-          >
-            <IconSparkle /> {t("requests.newWithAI")}
-          </Link>
+          {/* Filter popover */}
+          <div ref={filterRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setFilterOpen((v) => !v)}
+              style={{
+                display: "flex", alignItems: "center", gap: 7,
+                padding: "8px 14px",
+                borderRadius: "var(--r-sm, 10px)",
+                border: `1px solid ${filterOpen || activeFilterCount > 0 ? "var(--primary)" : "var(--border)"}`,
+                background: filterOpen || activeFilterCount > 0 ? "color-mix(in srgb, var(--primary) 10%, transparent)" : "var(--card)",
+                color: activeFilterCount > 0 ? "var(--primary)" : "var(--muted-foreground)",
+                fontSize: 13, cursor: "pointer", fontWeight: 500,
+                transition: "all 120ms", whiteSpace: "nowrap",
+              }}
+            >
+              <SlidersHorizontal size={14} />
+              {t("requests.filters")}
+              {activeFilterCount > 0 && (
+                <span style={{
+                  background: "var(--primary)", color: "var(--primary-foreground)",
+                  borderRadius: 99, fontSize: 10, fontWeight: 700,
+                  minWidth: 18, height: 18, lineHeight: 1,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  padding: "0 5px",
+                }}>
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {filterOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 50,
+                width: 340,
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-card, 20px)",
+                boxShadow: "0 12px 40px rgba(0,0,0,.3)",
+                padding: 20,
+                animation: "spIn .15s ease both",
+              }}>
+                {/* Prioridad + Estado */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                  <div>
+                    <label style={popoverLabelStyle}>{t("requests.priority")}</label>
+                    <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={popoverInputStyle}>
+                      <option value="all">{t("requests.allPriorities")}</option>
+                      {["urgent","high","medium","low"].map((p) => (
+                        <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={popoverLabelStyle}>{t("requests.status")}</label>
+                    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={popoverInputStyle}>
+                      <option value="all">{t("requests.allStatuses")}</option>
+                      {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Asignado a */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={popoverLabelStyle}>{t("requests.assignedTo")}</label>
+                  <select value={filterAssignedTo} onChange={(e) => setFilterAssignedTo(e.target.value)} style={popoverInputStyle}>
+                    <option value="all">{t("requests.allAssigned")}</option>
+                    {Array.from(profiles.values()).map((p) => (
+                      <option key={p.id} value={p.id}>{p.full_name ?? t("common.noName")}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: 1, background: "var(--border)", margin: "0 0 16px" }} />
+
+                {/* Fecha creación */}
+                <div style={{ marginBottom: 12 }}>
+                  <label style={popoverLabelStyle}>{t("requests.creationDate")}</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <span style={popoverSubLabelStyle}>{t("common.from")}</span>
+                      <input type="date" value={filterCreatedFrom} onChange={(e) => setFilterCreatedFrom(e.target.value)} style={popoverInputStyle} />
+                    </div>
+                    <div>
+                      <span style={popoverSubLabelStyle}>{t("common.to")}</span>
+                      <input type="date" value={filterCreatedTo} onChange={(e) => setFilterCreatedTo(e.target.value)} style={popoverInputStyle} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fecha completada */}
+                <div style={{ marginBottom: 20 }}>
+                  <label style={popoverLabelStyle}>{t("requests.completedDate")}</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <span style={popoverSubLabelStyle}>{t("common.from")}</span>
+                      <input type="date" value={filterCompletedFrom} onChange={(e) => setFilterCompletedFrom(e.target.value)} style={popoverInputStyle} />
+                    </div>
+                    <div>
+                      <span style={popoverSubLabelStyle}>{t("common.to")}</span>
+                      <input type="date" value={filterCompletedTo} onChange={(e) => setFilterCompletedTo(e.target.value)} style={popoverInputStyle} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <button
+                    onClick={clearAllFilters}
+                    disabled={activeFilterCount === 0}
+                    style={{
+                      background: "transparent", border: "none", padding: "4px 0",
+                      color: activeFilterCount === 0 ? "var(--muted-foreground)" : "#ef4444",
+                      fontSize: 13, cursor: activeFilterCount === 0 ? "default" : "pointer",
+                      opacity: activeFilterCount === 0 ? 0.45 : 1,
+                    }}
+                  >
+                    {t("common.clearAll")}
+                  </button>
+                  <button
+                    onClick={() => setFilterOpen(false)}
+                    style={{
+                      background: "var(--primary)", color: "var(--primary-foreground)",
+                      border: "none", borderRadius: "var(--r-sm, 10px)",
+                      padding: "7px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    }}
+                  >
+                    {t("common.apply")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {hasPermission("create_requests") && (
+            <button onClick={() => setShowManual(true)} style={btnOutlineStyle}>
+              <Plus size={14} /> {t("requests.newManual")}
+            </button>
+          )}
+
+          {hasPermission("use_ai_features") && (
+            <Link to="/app/chat" style={btnCoralStyle}>
+              <IconSparkle /> {t("requests.newWithAI")}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -529,6 +728,13 @@ function BoardPage() {
           requestId={selectedId}
           onClose={() => setSelectedId(null)}
           onUpdated={reload}
+        />
+      )}
+
+      {showManual && (
+        <ManualRequestModal
+          onClose={() => setShowManual(false)}
+          onCreated={reload}
         />
       )}
     </div>
