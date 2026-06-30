@@ -1,6 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getAuthContext } from "./server-auth";
+import { db } from "./db";
+
+// Public — no auth required (used on login page for branding)
+export const getPublicLogoUrl = createServerFn({ method: "GET" })
+  .handler(async () => {
+    try {
+      const rows = await db<{ value: string | null }[]>`
+        SELECT value FROM platform_settings WHERE key = 'logo_url' LIMIT 1
+      `;
+      return { value: rows[0]?.value ?? null };
+    } catch {
+      return { value: null };
+    }
+  });
 
 export const getPlatformSetting = createServerFn({ method: "GET" })
   .inputValidator((input: { key: string }) => input)

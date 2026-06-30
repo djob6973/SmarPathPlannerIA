@@ -1,19 +1,41 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
+import { getPublicLogoUrl } from "@/lib/settings.functions";
 
 export const Route = createFileRoute("/login")({
+  loader: async () => {
+    try {
+      const { value } = await getPublicLogoUrl();
+      return { logoUrl: value };
+    } catch {
+      return { logoUrl: null };
+    }
+  },
   component: LoginPage,
 });
 
 function LoginPage() {
   const { t } = useLang();
+  const { logoUrl } = Route.useLoaderData();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
+
+  useEffect(() => {
+    if (!logoUrl) return;
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      document.head.appendChild(link);
+    }
+    link.rel = "icon";
+    link.href = logoUrl;
+    link.type = logoUrl.endsWith(".svg") ? "image/svg+xml" : "image/png";
+  }, [logoUrl]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -54,7 +76,9 @@ function LoginPage() {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1a1a1a]">
-            <DataicoMark size={22} />
+            {logoUrl
+              ? <img src={logoUrl} alt="Logo" style={{ height: 24, width: "auto", maxWidth: 30, objectFit: "contain" }} />
+              : <DataicoMark size={22} />}
           </div>
           <div className="leading-none">
             <p className="text-sm font-bold tracking-tight text-[#1a1a1a]">SmartPath</p>
@@ -260,7 +284,9 @@ function LoginPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10">
-                <DataicoMark size={14} />
+                {logoUrl
+                  ? <img src={logoUrl} alt="Logo" style={{ height: 16, width: "auto", objectFit: "contain", filter: "brightness(0.7)" }} />
+                  : <DataicoMark size={14} />}
               </div>
               <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
                 SmartPath Planner
