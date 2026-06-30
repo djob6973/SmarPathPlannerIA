@@ -393,32 +393,6 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
 
         {/* Utility buttons row */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", gap: 4, padding: 4 }}>
-          {/* Notifications */}
-          <button
-            onClick={onNotificationsClick}
-            aria-label="Notificaciones"
-            style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
-          >
-            <IconBell />
-            {unreadCount > 0 && (
-              <span style={{ position: "absolute", top: 4, right: 5, width: 8, height: 8, background: "#ED5650", border: `1.5px solid var(--sb-bg)`, borderRadius: 999 }} />
-            )}
-          </button>
-
-          {/* Search */}
-          <button
-            onClick={onSearchClick}
-            aria-label="Buscar (⌘K)"
-            title="Buscar (⌘K)"
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
-          >
-            <IconSearch />
-          </button>
-
           {/* Theme toggle */}
           <button
             onClick={() => setTheme(nextTheme)}
