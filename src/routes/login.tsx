@@ -75,10 +75,10 @@ function LoginPage() {
       <div className="relative flex w-full flex-col bg-white px-10 py-10 md:w-[52%] lg:w-[46%]">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1a1a1a]">
+          <div className="flex items-center justify-center">
             {logoUrl
-              ? <img src={logoUrl} alt="Logo" style={{ height: 24, width: "auto", maxWidth: 30, objectFit: "contain" }} />
-              : <DataicoMark size={22} />}
+              ? <img src={logoUrl} alt="Logo" style={{ height: 40, width: "auto", maxWidth: 52, objectFit: "contain" }} />
+              : <DataicoMark size={36} />}
           </div>
           <div className="leading-none">
             <p className="text-sm font-bold tracking-tight text-[#1a1a1a]">SmartPath</p>
