@@ -23,6 +23,7 @@ type TeamUser = {
   roles: string[];
   area_id: string | null;
   created_at?: string;
+  is_active?: boolean;
 };
 
 const ROLES = ["super_admin", "area_admin", "manager", "agent", "client", "viewer"] as const;
@@ -108,6 +109,7 @@ function TeamPage() {
   const [editTarget, setEditTarget]     = useState<TeamUser | null>(null);
   const [editName, setEditName]         = useState("");
   const [editEmail, setEditEmail]       = useState("");
+  const [editActive, setEditActive]     = useState(true);
   const [editLoading, setEditLoading]   = useState(false);
 
   // reset password dialog
@@ -162,6 +164,7 @@ function TeamPage() {
     setEditTarget(user);
     setEditName(user.full_name ?? "");
     setEditEmail(user.email);
+    setEditActive(user.is_active !== false);
   };
 
   const handleEditProfile = async (e: React.FormEvent) => {
@@ -171,7 +174,7 @@ function TeamPage() {
     if (!editEmail.trim()) { toast.error(t("team.emailRequired")); return; }
     setEditLoading(true);
     try {
-      await editProfile({ data: { userId: editTarget.id, full_name: editName.trim(), email: editEmail.trim() } });
+      await editProfile({ data: { userId: editTarget.id, full_name: editName.trim(), email: editEmail.trim(), is_active: editActive } });
       toast.success(t("team.profileUpdated"));
       setEditTarget(null);
       reload();
@@ -434,29 +437,12 @@ function TeamPage() {
 
           {/* Header */}
           <div style={{ padding: "24px 24px 20px", borderBottom: "1px solid var(--border)" }}>
-            <DialogTitle style={{ fontSize: 17, fontWeight: 600, margin: "0 0 12px" }}>
-              Editar miembro
+            <DialogTitle style={{ fontSize: 17, fontWeight: 600, margin: "0 0 4px" }}>
+              Editar usuario
             </DialogTitle>
-            {editTarget && (() => {
-              const eidx    = users.findIndex((u) => u.id === editTarget.id);
-              const color   = AVATAR_COLOR;
-              const initials = (editTarget.full_name ?? editTarget.email).slice(0, 2).toUpperCase();
-              return (
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{
-                    width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                    background: color + "22", border: `2px solid ${color}44`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color, fontSize: 13, fontWeight: 700,
-                  }}>
-                    {initials}
-                  </div>
-                  <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
-                    Actualiza el perfil, roles y área del miembro.
-                  </p>
-                </div>
-              );
-            })()}
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
+              Actualiza el perfil, roles y área del miembro.
+            </p>
           </div>
 
           {/* Body */}
@@ -555,16 +541,29 @@ function TeamPage() {
                     Estado de la cuenta
                   </p>
                   <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: "2px 0 0" }}>
-                    El usuario puede iniciar sesión
+                    {editActive ? "El usuario puede iniciar sesión" : "El usuario no puede iniciar sesión"}
                   </p>
                 </div>
-                <span style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  fontSize: 13, fontWeight: 600, color: "#10B981",
-                }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10B981", flexShrink: 0 }} />
-                  Activo
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setEditActive((v) => !v)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    fontSize: 13, fontWeight: 600,
+                    color: editActive ? "#10B981" : "var(--muted-foreground)",
+                    background: editActive ? "rgba(16,185,129,.12)" : "var(--border)",
+                    border: "none", borderRadius: 999,
+                    padding: "5px 12px", cursor: "pointer",
+                    transition: "all .15s",
+                  }}
+                >
+                  <span style={{
+                    width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+                    background: editActive ? "#10B981" : "var(--muted-foreground)",
+                    transition: "background .15s",
+                  }} />
+                  {editActive ? "Activo" : "Inactivo"}
+                </button>
               </div>
 
             </div>

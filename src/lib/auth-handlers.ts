@@ -51,7 +51,7 @@ export async function handleLogin(request: Request): Promise<Response> {
     }
 
     const rows = await db`
-      SELECT id, password_hash FROM profiles WHERE email = ${email.toLowerCase().trim()}
+      SELECT id, password_hash, is_active FROM profiles WHERE email = ${email.toLowerCase().trim()}
     `;
 
     if (!rows.length || !rows[0].password_hash) {
@@ -60,6 +60,10 @@ export async function handleLogin(request: Request): Promise<Response> {
 
     const valid = verifyPassword(password, rows[0].password_hash);
     if (!valid) return json({ error: "Email o contraseña incorrectos" }, { status: 401 });
+
+    if (rows[0].is_active === false) {
+      return json({ error: "Tu cuenta está desactivada. Contacta al administrador." }, { status: 403 });
+    }
 
     const sessionId = await createSession(rows[0].id);
     const isHttps = new URL(request.url).protocol === "https:";

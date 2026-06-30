@@ -47,7 +47,7 @@ export const listUsers = createServerFn({ method: "GET" }).handler(async () => {
   await assertSuperAdmin(auth.userId);
 
   const profiles = await db<any[]>`
-    SELECT id, full_name, email, created_at, area_id FROM profiles
+    SELECT id, full_name, email, created_at, area_id, is_active FROM profiles
   `;
   const roles = await db<{ user_id: string; role: string; area_id: string | null }[]>`
     SELECT user_id, role, area_id FROM user_roles_smart_path
@@ -263,6 +263,7 @@ export const updateUserProfile = createServerFn({ method: "POST" })
       userId: z.string().uuid(),
       full_name: z.string().min(1).optional(),
       email: z.string().email().optional(),
+      is_active: z.boolean().optional(),
     }).parse(input)
   )
   .handler(async ({ data }) => {
@@ -274,6 +275,7 @@ export const updateUserProfile = createServerFn({ method: "POST" })
     const values: unknown[] = [];
     if (data.full_name !== undefined) { updates.push(`full_name = $${updates.length + 1}`); values.push(data.full_name); }
     if (data.email !== undefined) { updates.push(`email = $${updates.length + 1}`); values.push(data.email); }
+    if (data.is_active !== undefined) { updates.push(`is_active = $${updates.length + 1}`); values.push(data.is_active); }
     if (updates.length === 0) return { ok: true };
 
     values.push(data.userId);
