@@ -81,18 +81,18 @@ function LoginPage() {
               : <DataicoMark size={36} />}
           </div>
           <div className="leading-none">
-            <p className="text-sm font-bold tracking-tight text-[#1a1a1a]">SmartPath</p>
-            <p className="text-[10px] font-medium uppercase tracking-widest text-gray-400">Planner IA</p>
+            <p className="text-base font-bold tracking-tight text-[#1a1a1a]">SmartPath</p>
+            <p className="font-mono text-[9px] uppercase tracking-widest text-gray-400">Planner IA</p>
           </div>
         </div>
 
         {/* Form area */}
         <div className="flex flex-1 flex-col justify-center py-12">
           <div className="mx-auto w-full max-w-sm">
-            <h1 className="text-[28px] font-bold text-[#1a1a1a]">
+            <h1 className="text-[30px] font-semibold tracking-[-0.01em] text-[#1a1a1a]">
               {mode === "login" ? "Bienvenido de vuelta" : "Crear cuenta"}
             </h1>
-            <p className="mt-1.5 text-sm text-gray-500">
+            <p className="mt-1.5 text-[14px] leading-relaxed text-gray-500">
               {mode === "login"
                 ? "Inicia sesión para gestionar tu roadmap, solicitudes y analítica."
                 : "Regístrate para empezar a usar SmartPath Planner."}
@@ -101,7 +101,7 @@ function LoginPage() {
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
               {mode === "register" && (
                 <div>
-                  <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-gray-500">
+                  <label className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-[.12em] text-gray-500">
                     Nombre
                   </label>
                   <div className="relative">
@@ -136,11 +136,11 @@ function LoginPage() {
 
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-[.12em] text-gray-500">
                     Contraseña
                   </label>
                   {mode === "login" && (
-                    <button type="button" className="text-[11px] font-medium text-[#ED5650] hover:underline">
+                    <button type="button" className="text-[12px] font-medium text-[#ED5650] hover:underline">
                       ¿Olvidaste tu contraseña?
                     </button>
                   )}
@@ -181,7 +181,7 @@ function LoginPage() {
                       </svg>
                     )}
                   </div>
-                  <span className="text-sm text-gray-600">Recordar este equipo durante 30 días</span>
+                  <span className="text-[13px] text-gray-600">Recordar este equipo durante 30 días</span>
                 </label>
               )}
 
@@ -192,7 +192,7 @@ function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="h-11 w-full rounded-lg bg-[#ED5650] text-sm font-semibold text-white shadow-sm hover:bg-[#d94e48] disabled:opacity-60 transition-colors"
+                className="h-11 w-full rounded-lg bg-[#ED5650] text-[14px] font-semibold text-white shadow-sm hover:bg-[#d94e48] disabled:opacity-60 transition-colors"
               >
                 {loading
                   ? "Cargando..."
@@ -202,7 +202,7 @@ function LoginPage() {
               </button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-gray-500">
+            <p className="mt-6 text-center text-[13px] text-gray-500">
               {mode === "login" ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
               <button
                 type="button"
@@ -216,7 +216,7 @@ function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-[10px] font-medium uppercase tracking-widest text-gray-300">
+        <p className="text-center font-mono text-[9px] uppercase tracking-widest text-gray-300">
           SmartPath Planner · Planificación con IA
         </p>
       </div>
@@ -243,7 +243,7 @@ function LoginPage() {
 
         <div className="relative flex flex-1 flex-col justify-between px-14 py-12">
           {/* Top label */}
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">
+          <p className="font-mono text-[10px] uppercase tracking-[.2em] text-gray-500">
             Sistema // Planificación
           </p>
 
@@ -251,18 +251,18 @@ function LoginPage() {
           <div>
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#ED5650]/15 px-3.5 py-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-[#ED5650]" />
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-[#ED5650]">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#ED5650]">
                 Impulsado por IA
               </span>
             </div>
 
-            <h2 className="text-[36px] font-bold leading-tight text-white lg:text-[42px]">
+            <h2 className="text-[48px] font-bold leading-[1.1] tracking-[-0.02em] text-white">
               Convierte cada solicitud en un roadmap claro y priorizado.
             </h2>
 
             <div className="mt-4 h-0.5 w-12 bg-[#ED5650]" />
 
-            <p className="mt-5 text-sm leading-relaxed text-gray-400">
+            <p className="mt-5 text-[14px] leading-relaxed text-gray-400">
               SmartPath Planner organiza tus solicitudes, prioriza iniciativas y te muestra el avance — con un agente que te guía paso a paso.
             </p>
 
@@ -274,7 +274,7 @@ function LoginPage() {
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3">
                   <span className="shrink-0 text-[13px] font-bold text-[#ED5650]">{">>"}</span>
-                  <span className="text-sm text-gray-300">{item}</span>
+                  <span className="text-[13px] text-gray-300">{item}</span>
                 </li>
               ))}
             </ul>
@@ -288,11 +288,11 @@ function LoginPage() {
                   ? <img src={logoUrl} alt="Logo" style={{ height: 16, width: "auto", objectFit: "contain", filter: "brightness(0.7)" }} />
                   : <DataicoMark size={14} />}
               </div>
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-500">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-gray-500">
                 SmartPath Planner
               </span>
             </div>
-            <span className="text-[11px] font-medium text-gray-600">2026</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-gray-600">© 2026</span>
           </div>
         </div>
       </div>
