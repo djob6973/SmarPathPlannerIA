@@ -257,8 +257,8 @@ function LoginPage() {
             </div>
 
             <h2 className="text-[40px] font-bold leading-[1.15] tracking-[-0.02em] text-white">
-              Olvídate de formularios complejos.<br />
-              <span className="text-gray-300">De una idea a una solicitud<br />lista para gestionar.<br />Nuestro asistente IA recopila<br />el contexto y la crea por ti.</span>
+              De una idea a una solicitud<br />lista para gestionar.<br />
+              <span className="text-gray-300">Nuestro asistente IA recopila<br />el contexto y la crea por ti.</span>
             </h2>
 
             <div className="mt-4 h-0.5 w-12 bg-[#ED5650]" />
