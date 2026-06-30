@@ -56,7 +56,7 @@ const dlLabel: React.CSSProperties = {
 
 const dlInput: React.CSSProperties = {
   height: 42, borderRadius: 10,
-  background: "var(--background)", border: "1px solid var(--border)",
+  background: "#ffffff", border: "1px solid var(--border)",
   fontSize: 13,
 };
 
@@ -434,7 +434,7 @@ function TeamPage() {
       {editTarget && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,.5)" }}
+          style={{ background: "rgba(0,0,0,.18)" }}
           onClick={(e) => e.target === e.currentTarget && setEditTarget(null)}
         >
           <div style={{
@@ -484,7 +484,7 @@ function TeamPage() {
                     required
                     style={{
                       width: "100%", height: 42, borderRadius: 10,
-                      background: "var(--background)", border: "1px solid var(--border)",
+                      background: "#ffffff", border: "1px solid var(--border)",
                       color: "var(--foreground)", fontSize: 13,
                       padding: "0 12px", outline: "none", fontFamily: "inherit",
                       boxSizing: "border-box",
@@ -502,7 +502,7 @@ function TeamPage() {
                         <div style={{
                           display: "flex", alignItems: "center", justifyContent: "space-between",
                           height: 42, borderRadius: 10, padding: "0 12px",
-                          background: "var(--background)", border: "1px solid var(--border)",
+                          background: "#ffffff", border: "1px solid var(--border)",
                           pointerEvents: "none",
                         }}>
                           {rs ? (
@@ -548,7 +548,7 @@ function TeamPage() {
                       <div style={{
                         display: "flex", alignItems: "center", justifyContent: "space-between",
                         height: 42, borderRadius: 10, padding: "0 12px",
-                        background: "var(--background)", border: "1px solid var(--border)",
+                        background: "#ffffff", border: "1px solid var(--border)",
                         pointerEvents: "none",
                       }}>
                         <span style={{ fontSize: 13, color: editTarget.area_id ? "var(--foreground)" : "var(--muted-foreground)" }}>
@@ -577,7 +577,7 @@ function TeamPage() {
                 {/* Estado de la cuenta */}
                 <div style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  background: "var(--background)", border: "1px solid var(--border)",
+                  background: "#ffffff", border: "1px solid var(--border)",
                   borderRadius: 10, padding: "14px 16px",
                 }}>
                   <div>
