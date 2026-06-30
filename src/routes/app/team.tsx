@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useServerFn } from "@tanstack/react-start";
 import { listUsers, setUserRole, assignUserToArea, listAreas, adminResetPassword, updateUserProfile } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth-context";
@@ -430,11 +431,10 @@ function TeamPage() {
         </div>
       )}
 
-      {/* ── Edit modal (custom overlay) ── */}
-      {editTarget && (
+      {/* ── Edit modal (portal → renders at body level) ── */}
+      {editTarget && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,.18)" }}
+          style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", background: "rgba(0,0,0,.45)", zIndex: 9998, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
           onClick={(e) => e.target === e.currentTarget && setEditTarget(null)}
         >
           <div style={{
@@ -444,6 +444,7 @@ function TeamPage() {
             borderRadius: 16,
             overflow: "hidden",
             boxShadow: "0 20px 60px rgba(0,0,0,.18)",
+            zIndex: 9999, position: "relative",
           }}>
 
             {/* Header */}
@@ -646,7 +647,8 @@ function TeamPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Reset password dialog ── */}
