@@ -57,7 +57,7 @@ const dlLabel: React.CSSProperties = {
 
 const dlInput: React.CSSProperties = {
   height: 42, borderRadius: 10,
-  background: "#ffffff", border: "1px solid var(--border)",
+  background: "var(--input-field)", border: "1px solid var(--border)",
   fontSize: 13,
 };
 
@@ -478,7 +478,7 @@ function TeamPage() {
                     required
                     style={{
                       width: "100%", height: 42, borderRadius: 10,
-                      background: "#ffffff", border: "1px solid var(--border)",
+                      background: "var(--input-field)", border: "1px solid var(--border)",
                       color: "var(--foreground)", fontSize: 13,
                       padding: "0 12px", outline: "none", fontFamily: "inherit",
                       boxSizing: "border-box",
@@ -496,7 +496,7 @@ function TeamPage() {
                         <div style={{
                           display: "flex", alignItems: "center", justifyContent: "space-between",
                           height: 42, borderRadius: 10, padding: "0 12px",
-                          background: "#ffffff", border: "1px solid var(--border)",
+                          background: "var(--input-field)", border: "1px solid var(--border)",
                           pointerEvents: "none",
                         }}>
                           {rs ? (
@@ -542,7 +542,7 @@ function TeamPage() {
                       <div style={{
                         display: "flex", alignItems: "center", justifyContent: "space-between",
                         height: 42, borderRadius: 10, padding: "0 12px",
-                        background: "#ffffff", border: "1px solid var(--border)",
+                        background: "var(--input-field)", border: "1px solid var(--border)",
                         pointerEvents: "none",
                       }}>
                         <span style={{ fontSize: 13, color: editTarget.area_id ? "var(--foreground)" : "var(--muted-foreground)" }}>
@@ -571,7 +571,7 @@ function TeamPage() {
                 {/* Estado de la cuenta */}
                 <div style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  background: "#ffffff", border: "1px solid var(--border)",
+                  background: "var(--input-field)", border: "1px solid var(--border)",
                   borderRadius: 10, padding: "14px 16px",
                 }}>
                   <div>
