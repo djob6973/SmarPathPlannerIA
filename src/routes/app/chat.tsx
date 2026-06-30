@@ -23,10 +23,7 @@ type Message = {
 };
 
 const STARTERS = [
-  "Necesito un sistema de gestión de inventarios para nuestra tienda.",
-  "Quiero desarrollar una app móvil de seguimiento de hábitos.",
-  "Necesito integrar pagos con Stripe en nuestro e-commerce.",
-  "Queremos un dashboard de analítica para el equipo de ventas.",
+  "Necesito un sistema de evaluación interactivo.",
 ];
 
 function ChatPage() {
@@ -432,7 +429,7 @@ function StarterButton({ text, onClick }: { text: string; onClick: () => void })
 // ── Shared styles ────────────────────────────────────────
 
 const selectStyle: React.CSSProperties = {
-  height: 36, padding: "0 14px",
+  height: 40, padding: "0 14px",
   borderRadius: "var(--r-xl, 16px)",
   border: "1px solid var(--border)",
   background: "var(--card)",
