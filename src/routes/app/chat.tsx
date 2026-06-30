@@ -395,7 +395,7 @@ function EmptyState({ onStarter }: { onStarter: (s: string) => void }) {
           Cuéntame tu idea. Te haré preguntas para estructurarla y la registraré en el roadmap automáticamente.
         </p>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 500 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center", width: "100%" }}>
         {starterList.map((s) => (
           <StarterButton key={s} text={s} onClick={() => onStarter(s)} />
         ))}
