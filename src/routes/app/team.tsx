@@ -302,7 +302,7 @@ function TeamPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                {(["USUARIO", "ROL", "ÁREA", "EVALUACIONES", "INGRESO", "ACCIONES"] as const).map((col) => (
+                {(["USUARIO", "ROL", "ÁREA", "INGRESO", "ACCIONES"] as const).map((col) => (
                   <th key={col} style={{
                     padding: "13px 20px",
                     textAlign: "left",
@@ -377,13 +377,6 @@ function TeamPage() {
                       </span>
                     </td>
 
-                    {/* EVALUACIONES */}
-                    <td style={{ padding: "14px 20px" }}>
-                      <span style={{ fontSize: 13, color: "var(--foreground)" }}>
-                        {u.roles.length}
-                      </span>
-                    </td>
-
                     {/* INGRESO */}
                     <td style={{ padding: "14px 20px" }}>
                       <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
@@ -415,7 +408,7 @@ function TeamPage() {
                         {canManageUsers && (
                           <button
                             title="Eliminar usuario"
-                            style={{ ...iconBtn, color: "rgba(237,86,80,.6)" }}
+                            style={{ ...iconBtn }}
                             onClick={() => toast.info("Función próximamente disponible")}
                           >
                             <Trash2 size={14} />
@@ -730,7 +723,7 @@ function SkeletonTable() {
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            {["USUARIO", "ROL", "ÁREA", "EVALUACIONES", "INGRESO", "ACCIONES"].map((col) => (
+            {["USUARIO", "ROL", "ÁREA", "INGRESO", "ACCIONES"].map((col) => (
               <th key={col} style={{
                 padding: "13px 20px",
                 textAlign: "left",
@@ -761,9 +754,6 @@ function SkeletonTable() {
               </td>
               <td style={{ padding: "14px 20px" }}>
                 <div style={{ ...skPulse, height: 13, width: 70, borderRadius: 6 }} />
-              </td>
-              <td style={{ padding: "14px 20px" }}>
-                <div style={{ ...skPulse, height: 13, width: 24, borderRadius: 6 }} />
               </td>
               <td style={{ padding: "14px 20px" }}>
                 <div style={{ ...skPulse, height: 13, width: 48, borderRadius: 6 }} />
