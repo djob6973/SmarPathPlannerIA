@@ -57,7 +57,7 @@ const dlLabel: React.CSSProperties = {
 
 const dlInput: React.CSSProperties = {
   height: 42, borderRadius: 10,
-  background: "var(--muted)", border: "1px solid var(--border)",
+  background: "var(--secondary)", border: "1px solid var(--border)",
   fontSize: 13,
 };
 
@@ -433,16 +433,13 @@ function TeamPage() {
 
       {/* ── Edit dialog (profile + roles + área) ── */}
       <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
-        <DialogContent className="p-0 sm:max-w-[420px] overflow-hidden">
+        <DialogContent className="p-0 sm:max-w-[420px] overflow-hidden rounded-2xl">
 
           {/* Header */}
           <div style={{ padding: "24px 24px 20px", borderBottom: "1px solid var(--border)" }}>
-            <DialogTitle style={{ fontSize: 17, fontWeight: 600, margin: "0 0 4px" }}>
+            <DialogTitle style={{ fontSize: 17, fontWeight: 600, margin: 0 }}>
               Editar usuario
             </DialogTitle>
-            <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: 0 }}>
-              Actualiza el perfil, roles y área del miembro.
-            </p>
           </div>
 
           {/* Body */}
@@ -534,7 +531,7 @@ function TeamPage() {
               {/* Estado de la cuenta */}
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
-                background: "var(--muted)", borderRadius: 10, padding: "14px 16px",
+                background: "var(--secondary)", border: "1px solid var(--border)", borderRadius: 10, padding: "14px 16px",
               }}>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
