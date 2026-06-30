@@ -72,7 +72,7 @@ function AppLayout() {
 
       <main className="flex flex-1 flex-col overflow-hidden">
         {/* ── Top header bar ── */}
-        <header className="flex h-14 shrink-0 items-center justify-end gap-3 border-b border-border bg-background px-5">
+        <header className="flex h-14 shrink-0 items-center justify-end gap-3 bg-background px-5">
           {/* Search */}
           <button
             onClick={() => setSearchOpen(true)}
