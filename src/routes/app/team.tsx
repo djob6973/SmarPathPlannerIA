@@ -29,12 +29,12 @@ type TeamUser = {
 const ROLES = ["super_admin", "area_admin", "manager", "agent", "client", "viewer"] as const;
 
 const ROLE_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  super_admin: { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Super Admin" },
-  area_admin:  { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Admin Área" },
-  manager:     { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Manager" },
-  agent:       { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Agente" },
-  client:      { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Participante" },
-  viewer:      { bg: "rgba(100,116,139,.12)", color: "#64748B", label: "Viewer" },
+  super_admin: { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Super Admin" },
+  area_admin:  { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Admin Área" },
+  manager:     { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Manager" },
+  agent:       { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Agente" },
+  client:      { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Participante" },
+  viewer:      { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Viewer" },
 };
 
 const AVATAR_COLOR = "#ED5650";
