@@ -256,8 +256,9 @@ function LoginPage() {
               </span>
             </div>
 
-            <h2 className="text-[48px] font-bold leading-[1.1] tracking-[-0.02em] text-white">
-              Convierte cada solicitud en un roadmap claro y priorizado.
+            <h2 className="text-[40px] font-bold leading-[1.15] tracking-[-0.02em] text-white">
+              Olvídate de formularios complejos.<br />
+              <span className="text-gray-300">La IA recopila el contexto y crea la solicitud por ti.</span>
             </h2>
 
             <div className="mt-4 h-0.5 w-12 bg-[#ED5650]" />
