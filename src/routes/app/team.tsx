@@ -65,7 +65,7 @@ const dlInput: React.CSSProperties = {
 const iconBtn: React.CSSProperties = {
   width: 30, height: 30,
   borderRadius: 8,
-  border: "1px solid var(--border)",
+  border: "none",
   background: "transparent",
   display: "flex", alignItems: "center", justifyContent: "center",
   cursor: "pointer",
