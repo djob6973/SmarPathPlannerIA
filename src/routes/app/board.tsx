@@ -497,26 +497,22 @@ function BoardPage() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {isSuperAdmin && areas.length > 0 && (
-            <Select value={selectedArea || "all"} onValueChange={(v) => setSelectedArea(v === "all" ? null : v)}>
-              <SelectTrigger
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  background: "var(--card)", border: "1px solid var(--border)", borderRadius: 999,
-                  padding: "7px 14px", height: "auto", fontSize: 13, width: "auto", minWidth: 0,
-                }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: 999, background: "var(--primary)", flexShrink: 0 }} />
-                <span style={{ color: "var(--muted-foreground)" }}>{t("dashboard.areaLabel")}</span>
-                <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{selectedAreaName ?? t("dashboard.areaAll")}</span>
-                <IconChevron />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("common.allAreas")}</SelectItem>
-                {areas.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              value={selectedArea ?? "all"}
+              onChange={(e) => setSelectedArea(e.target.value === "all" ? null : e.target.value)}
+              style={{
+                height: 40, padding: "0 14px",
+                borderRadius: "var(--r-xl, 16px)",
+                border: "1px solid var(--border)",
+                background: "var(--card)",
+                color: "var(--foreground)",
+                fontSize: 13,
+                cursor: "pointer", outline: "none",
+              }}
+            >
+              <option value="all">{t("common.allAreas")}</option>
+              {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
           )}
 
           {/* Filter popover */}
