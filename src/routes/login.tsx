@@ -269,7 +269,7 @@ function LoginPage() {
 
             <ul className="mt-8 space-y-4">
               {[
-                "Nueva solicitud guiada por el agente de IA",
+                "Solicitud asistida IA",
                 "Tablero por estado y priorización automática",
                 "Analítica de KPIs y tendencias en tiempo real",
               ].map((item) => (
