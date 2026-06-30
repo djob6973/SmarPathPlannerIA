@@ -1,11 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useMemo, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useState, useMemo, useRef, type ReactNode, type CSSProperties } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
 import { useAuth } from "@/lib/auth-context";
 import { getRequestsData, type RequestRow, type ColumnRow } from "@/lib/requests.functions";
 import { getAreas, listProfiles } from "@/lib/data.functions";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDistanceToNow } from "date-fns";
 import { es, enUS, ptBR } from "date-fns/locale";
 
@@ -193,8 +193,42 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [areas, setAreas] = useState<any[]>([]);
-  const [filterAssignedTo, setFilterAssignedTo] = useState("all");
+  const [filterAssignedTo, setFilterAssignedTo]   = useState("all");
+  const [filterPriority, setFilterPriority]       = useState("all");
+  const [filterStatus, setFilterStatus]           = useState("all");
+  const [filterCreatedFrom, setFilterCreatedFrom] = useState("");
+  const [filterCreatedTo, setFilterCreatedTo]     = useState("");
+  const [filterCompletedFrom, setFilterCompletedFrom] = useState("");
+  const [filterCompletedTo, setFilterCompletedTo]     = useState("");
+  const [filterOpen, setFilterOpen]               = useState(false);
   const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([]);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  const activeFilterCount = [
+    filterAssignedTo !== "all",
+    filterPriority !== "all",
+    filterStatus !== "all",
+    !!filterCreatedFrom, !!filterCreatedTo,
+    !!filterCompletedFrom, !!filterCompletedTo,
+  ].filter(Boolean).length;
+
+  function clearAllFilters() {
+    setFilterAssignedTo("all");
+    setFilterPriority("all");
+    setFilterStatus("all");
+    setFilterCreatedFrom(""); setFilterCreatedTo("");
+    setFilterCompletedFrom(""); setFilterCompletedTo("");
+  }
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const effectiveAreaId = isSuperAdmin ? selectedArea : areaId;
@@ -212,10 +246,17 @@ function DashboardPage() {
   }, [areaId, isSuperAdmin, selectedArea]);
 
   const filteredRequests = useMemo(() =>
-    requests.filter((r) =>
-      filterAssignedTo === "all" || r.assigned_to === filterAssignedTo
-    ),
-    [requests, filterAssignedTo]
+    requests.filter((r) => {
+      if (filterAssignedTo !== "all" && r.assigned_to !== filterAssignedTo) return false;
+      if (filterPriority !== "all" && r.priority !== filterPriority) return false;
+      if (filterStatus !== "all" && r.status_column_id !== filterStatus) return false;
+      if (filterCreatedFrom && r.created_at < filterCreatedFrom) return false;
+      if (filterCreatedTo && r.created_at > filterCreatedTo + "T23:59:59") return false;
+      if (filterCompletedFrom && (!r.completed_at || r.completed_at < filterCompletedFrom)) return false;
+      if (filterCompletedTo && (!r.completed_at || r.completed_at > filterCompletedTo + "T23:59:59")) return false;
+      return true;
+    }),
+    [requests, filterAssignedTo, filterPriority, filterStatus, filterCreatedFrom, filterCreatedTo, filterCompletedFrom, filterCompletedTo]
   );
 
   const completedIds = new Set(columns.filter((c) => c.is_completed).map((c) => c.id));
@@ -250,47 +291,138 @@ function DashboardPage() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <select
-            value={filterAssignedTo}
-            onChange={(e) => setFilterAssignedTo(e.target.value)}
-            style={{
-              height: 38, padding: "0 14px",
-              borderRadius: 999,
-              border: "1px solid var(--border)",
-              background: "var(--card)",
-              color: filterAssignedTo !== "all" ? "var(--primary)" : "var(--foreground)",
-              fontSize: 13, cursor: "pointer", outline: "none",
-              fontWeight: filterAssignedTo !== "all" ? 600 : 400,
-            }}
-          >
-            <option value="all">{t("common.assignedToAll")}</option>
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>{p.full_name ?? t("common.noName")}</option>
-            ))}
-          </select>
-
-          {isSuperAdmin && (
-          <Select value={selectedArea || "all"} onValueChange={(v) => setSelectedArea(v === "all" ? null : v)}>
-            <SelectTrigger
+          {isSuperAdmin && areas.length > 0 && (
+            <select
+              value={selectedArea ?? "all"}
+              onChange={(e) => setSelectedArea(e.target.value === "all" ? null : e.target.value)}
               style={{
-                display: "flex", alignItems: "center", gap: 6,
-                background: "var(--card)", border: "1px solid var(--border)", borderRadius: 999,
-                padding: "7px 14px", height: "auto", fontSize: 13, width: "auto", minWidth: 0,
+                height: 40, padding: "0 14px",
+                borderRadius: "var(--r-xl, 16px)",
+                border: "1px solid var(--border)",
+                background: "var(--card)",
+                color: "var(--foreground)",
+                fontSize: 13, cursor: "pointer", outline: "none",
               }}
             >
-              <span style={{ width: 7, height: 7, borderRadius: 999, background: "var(--primary)", flexShrink: 0 }} />
-              <span style={{ color: "var(--muted-foreground)" }}>{t("dashboard.areaLabel")}</span>
-              <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{selectedAreaName ?? t("dashboard.areaAll")}</span>
-              <IconChevron />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("common.allAreas")}</SelectItem>
-              {areas.map((a) => (
-                <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+              <option value="all">{t("common.allAreas")}</option>
+              {areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          )}
+
+          {/* Filter popover */}
+          <div ref={filterRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setFilterOpen((v) => !v)}
+              style={{
+                display: "flex", alignItems: "center", gap: 7,
+                padding: "8px 14px",
+                borderRadius: "var(--r-sm, 10px)",
+                border: `1px solid ${filterOpen || activeFilterCount > 0 ? "var(--primary)" : "var(--border)"}`,
+                background: filterOpen || activeFilterCount > 0 ? "color-mix(in srgb, var(--primary) 10%, transparent)" : "var(--card)",
+                color: activeFilterCount > 0 ? "var(--primary)" : "var(--muted-foreground)",
+                fontSize: 13, cursor: "pointer", fontWeight: 500,
+                transition: "all 120ms", whiteSpace: "nowrap",
+              }}
+            >
+              <SlidersHorizontal size={14} />
+              {t("requests.filters")}
+              {activeFilterCount > 0 && (
+                <span style={{
+                  background: "var(--primary)", color: "var(--primary-foreground)",
+                  borderRadius: 99, fontSize: 10, fontWeight: 700,
+                  minWidth: 18, height: 18, lineHeight: 1,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  padding: "0 5px",
+                }}>
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {filterOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 50,
+                width: 340,
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-card, 20px)",
+                boxShadow: "0 12px 40px rgba(0,0,0,.3)",
+                padding: 20,
+                animation: "spIn .15s ease both",
+              }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".08em", color: "var(--muted-foreground)", marginBottom: 6 }}>{t("requests.priority")}</label>
+                    <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: "var(--r-sm, 10px)", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: 13, cursor: "pointer", outline: "none" }}>
+                      <option value="all">{t("requests.allPriorities")}</option>
+                      {["urgent","high","medium","low"].map((p) => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".08em", color: "var(--muted-foreground)", marginBottom: 6 }}>{t("requests.status")}</label>
+                    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: "var(--r-sm, 10px)", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: 13, cursor: "pointer", outline: "none" }}>
+                      <option value="all">{t("requests.allStatuses")}</option>
+                      {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".08em", color: "var(--muted-foreground)", marginBottom: 6 }}>{t("requests.assignedTo")}</label>
+                  <select value={filterAssignedTo} onChange={(e) => setFilterAssignedTo(e.target.value)} style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: "var(--r-sm, 10px)", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: 13, cursor: "pointer", outline: "none" }}>
+                    <option value="all">{t("requests.allAssigned")}</option>
+                    {profiles.map((p) => <option key={p.id} value={p.id}>{p.full_name ?? t("common.noName")}</option>)}
+                  </select>
+                </div>
+
+                <div style={{ height: 1, background: "var(--border)", margin: "0 0 16px" }} />
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".08em", color: "var(--muted-foreground)", marginBottom: 6 }}>{t("requests.creationDate")}</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <span style={{ display: "block", fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4 }}>{t("common.from")}</span>
+                      <input type="date" value={filterCreatedFrom} onChange={(e) => setFilterCreatedFrom(e.target.value)} style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: "var(--r-sm, 10px)", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: 13, outline: "none" }} />
+                    </div>
+                    <div>
+                      <span style={{ display: "block", fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4 }}>{t("common.to")}</span>
+                      <input type="date" value={filterCreatedTo} onChange={(e) => setFilterCreatedTo(e.target.value)} style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: "var(--r-sm, 10px)", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: 13, outline: "none" }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: "block", fontSize: 11, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".08em", color: "var(--muted-foreground)", marginBottom: 6 }}>{t("requests.completedDate")}</label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <span style={{ display: "block", fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4 }}>{t("common.from")}</span>
+                      <input type="date" value={filterCompletedFrom} onChange={(e) => setFilterCompletedFrom(e.target.value)} style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: "var(--r-sm, 10px)", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: 13, outline: "none" }} />
+                    </div>
+                    <div>
+                      <span style={{ display: "block", fontSize: 11, color: "var(--muted-foreground)", marginBottom: 4 }}>{t("common.to")}</span>
+                      <input type="date" value={filterCompletedTo} onChange={(e) => setFilterCompletedTo(e.target.value)} style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: "var(--r-sm, 10px)", border: "1px solid var(--border)", background: "var(--card)", color: "var(--foreground)", fontSize: 13, outline: "none" }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <button
+                    onClick={clearAllFilters}
+                    disabled={activeFilterCount === 0}
+                    style={{ background: "transparent", border: "none", padding: "4px 0", color: activeFilterCount === 0 ? "var(--muted-foreground)" : "#ef4444", fontSize: 13, cursor: activeFilterCount === 0 ? "default" : "pointer", opacity: activeFilterCount === 0 ? 0.45 : 1 }}
+                  >
+                    {t("common.clearAll")}
+                  </button>
+                  <button
+                    onClick={() => setFilterOpen(false)}
+                    style={{ background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "var(--r-sm, 10px)", padding: "7px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    {t("common.apply")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
