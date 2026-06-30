@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
+import { Languages } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useLang } from "@/lib/lang-context";
@@ -125,15 +126,6 @@ function IconMonitor() {
   );
 }
 
-function IconGlobe() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 3a15 15 0 0 1 0 18M3 12h18" />
-      <path d="M3.6 8h16.8M3.6 16h16.8" />
-    </svg>
-  );
-}
 
 function IconLogOut() {
   return (
@@ -449,7 +441,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
               onMouseLeave={(e) => { if (!langOpen) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; } }}
             >
-              <IconGlobe />
+              <Languages className="size-5" strokeWidth={1.5} />
             </button>
             {langOpen && (
               <div
