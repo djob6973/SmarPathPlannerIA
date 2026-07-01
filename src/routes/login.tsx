@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, Check, ArrowLeft } from "lucide-react";
 import { useLang } from "@/lib/lang-context";
 import { getPublicLogoUrl } from "@/lib/settings.functions";
 
@@ -13,8 +13,20 @@ export const Route = createFileRoute("/login")({
       return { logoUrl: null };
     }
   },
+  head: () => ({
+    meta: [
+      { title: "Iniciar sesión — SmartPath Planner" },
+      { name: "description", content: "Inicia sesión en SmartPath Planner, el sistema de roadmap inteligente con IA." },
+    ],
+  }),
   component: LoginPage,
 });
+
+const FEATURES = [
+  "Solicitud asistida IA",
+  "Tablero por estado y priorización automática",
+  "Analítica de KPIs y tendencias en tiempo real",
+];
 
 function LoginPage() {
   const { t } = useLang();
@@ -36,6 +48,11 @@ function LoginPage() {
     link.href = logoUrl;
     link.type = logoUrl.endsWith(".svg") ? "image/svg+xml" : "image/png";
   }, [logoUrl]);
+
+  function switchMode(next: "login" | "register") {
+    setMode(next);
+    setError(null);
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -69,232 +86,257 @@ function LoginPage() {
     }
   }
 
+  const isLogin = mode === "login";
+
   return (
-    <div className="flex min-h-screen">
+    <div className="grid min-h-screen w-full lg:grid-cols-2">
       {/* ── Left panel ── */}
-      <div className="relative flex w-full flex-col bg-white px-10 py-10 md:w-[52%] lg:w-[46%]">
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center">
-            {logoUrl
-              ? <img src={logoUrl} alt="Logo" style={{ height: 40, width: "auto", maxWidth: 52, objectFit: "contain" }} />
-              : <DataicoMark size={36} />}
+      <div className="flex flex-col bg-[#F5F5F5] px-6 pt-6 pb-4 sm:px-8 sm:pt-8 sm:pb-6 md:px-12 md:pt-12 md:pb-8">
+        {/* Logo / Back */}
+        {isLogin ? (
+          <div className="mb-6 flex items-center gap-2.5 sm:mb-10">
+            <div className="flex items-center justify-center">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="Logo"
+                  className="h-9 max-w-[80px] shrink-0 object-contain"
+                />
+              ) : (
+                <div
+                  className="flex size-9 items-center justify-center rounded-[10px]"
+                  style={{ background: "#1a1a1a", color: "#fff" }}
+                >
+                  <DataicoMark size={16} />
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col leading-none">
+              <span className="text-base font-bold tracking-tight text-[#1a1a1a]">SmartPath</span>
+              <span className="mt-[3px] font-mono text-[9px] uppercase tracking-widest text-gray-400">
+                Planner IA
+              </span>
+            </div>
           </div>
-          <div className="leading-none">
-            <p className="text-base font-bold tracking-tight text-[#1a1a1a]">SmartPath</p>
-            <p className="font-mono text-[9px] uppercase tracking-widest text-gray-400">Planner IA</p>
-          </div>
-        </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => switchMode("login")}
+            className="mb-6 flex items-center gap-1.5 text-[13px] text-gray-500 hover:text-[#1a1a1a] sm:mb-10"
+          >
+            <ArrowLeft className="size-4" strokeWidth={1.5} />
+            Volver
+          </button>
+        )}
 
         {/* Form area */}
-        <div className="flex flex-1 flex-col justify-center py-12">
-          <div className="mx-auto w-full max-w-sm">
-            <h1 className="text-[30px] font-semibold tracking-[-0.01em] text-[#1a1a1a]">
-              {mode === "login" ? "Bienvenido de vuelta" : "Crear cuenta"}
-            </h1>
-            <p className="mt-1.5 text-[14px] leading-relaxed text-gray-500">
-              {mode === "login"
-                ? "Inicia sesión para gestionar tu roadmap, solicitudes y analítica."
-                : "Regístrate para empezar a usar SmartPath Planner."}
-            </p>
+        <div className="mx-auto w-full max-w-[360px] flex-1 flex flex-col justify-start">
+          <h1 className="text-[22px] font-semibold leading-[1.2] tracking-[-0.01em] text-[#1a1a1a] sm:text-[26px]">
+            {isLogin ? "Bienvenido de vuelta" : "Crear cuenta"}
+          </h1>
+          <p className="mt-2 text-[13px] leading-relaxed text-gray-500">
+            {isLogin
+              ? "Inicia sesión para gestionar tu roadmap, solicitudes y analítica."
+              : "Regístrate para empezar a usar SmartPath Planner."}
+          </p>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-              {mode === "register" && (
-                <div>
-                  <label className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-[.12em] text-gray-500">
-                    Nombre
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      placeholder="Tu nombre"
-                      className="h-11 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 text-sm text-[#1a1a1a] placeholder:text-gray-400 focus:border-[#ED5650] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-gray-500">
-                  Correo electrónico
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    placeholder="tu@email.com"
-                    className="h-11 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-sm text-[#1a1a1a] placeholder:text-gray-400 focus:border-[#ED5650] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
-                  />
-                </div>
+          <form onSubmit={handleSubmit} className="mt-6 space-y-3.5">
+            {error && (
+              <div className="rounded-lg bg-red-50 px-3 py-2.5 text-sm text-[#ED5650]">
+                {error}
               </div>
+            )}
 
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-[.12em] text-gray-500">
-                    Contraseña
-                  </label>
-                  {mode === "login" && (
-                    <button type="button" className="text-[12px] font-medium text-[#ED5650] hover:underline">
-                      ¿Olvidaste tu contraseña?
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    autoComplete={mode === "login" ? "current-password" : "new-password"}
-                    placeholder="••••••••"
-                    minLength={6}
-                    className="h-11 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-10 text-sm text-[#1a1a1a] placeholder:text-gray-400 focus:border-[#ED5650] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {/* Full name — register only */}
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <label htmlFor="name" className="block text-[10px] font-bold uppercase tracking-[.12em] text-gray-500">
+                  Nombre
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  placeholder="Tu nombre"
+                  disabled={loading}
+                  className="h-11 w-full rounded-xl border-transparent bg-white px-4 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                />
+              </div>
+            )}
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-[.12em] text-gray-500">
+                Correo electrónico
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-[15px] text-gray-400" strokeWidth={1.5} />
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  placeholder="tu@email.com"
+                  disabled={loading}
+                  className="h-11 w-full rounded-xl border-transparent bg-white pl-9 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-[10px] font-bold uppercase tracking-[.12em] text-gray-500">
+                  Contraseña
+                </label>
+                {isLogin && (
+                  <button type="button" className="text-[12px] font-medium text-[#ED5650] hover:underline">
+                    ¿Olvidaste tu contraseña?
                   </button>
-                </div>
+                )}
               </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-[15px] text-gray-400" strokeWidth={1.5} />
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  placeholder="••••••••"
+                  minLength={6}
+                  disabled={loading}
+                  className="h-11 w-full rounded-xl border-transparent bg-white pl-9 pr-9 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  tabIndex={-1}
+                >
+                  {showPassword
+                    ? <EyeOff className="size-[15px]" strokeWidth={1.5} />
+                    : <Eye className="size-[15px]" strokeWidth={1.5} />}
+                </button>
+              </div>
+            </div>
 
-              {mode === "login" && (
-                <label className="flex cursor-pointer items-center gap-2.5">
-                  <div
-                    onClick={() => setRemember((v) => !v)}
-                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                      remember ? "border-[#ED5650] bg-[#ED5650]" : "border-gray-300 bg-white"
-                    }`}
-                  >
-                    {remember && (
-                      <svg viewBox="0 0 10 8" className="h-2.5 w-2.5 fill-none stroke-white stroke-2">
-                        <path d="M1 4l2.5 2.5L9 1" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="text-[13px] text-gray-600">Recordar este equipo durante 30 días</span>
-                </label>
-              )}
+            {/* Remember device */}
+            {isLogin && (
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={remember}
+                  onClick={() => setRemember((v) => !v)}
+                  className={
+                    "mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded-[6px] transition-colors " +
+                    (remember ? "bg-[#ED5650]" : "border border-gray-300 bg-white")
+                  }
+                >
+                  {remember && <Check className="size-3 text-white" strokeWidth={3} />}
+                </button>
+                <span className="text-[13px] text-gray-500">
+                  Recordar este equipo durante 30 días
+                </span>
+              </label>
+            )}
 
-              {error && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-[#ED5650]">{error}</p>
-              )}
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-full py-3.5 text-[14px] font-semibold text-white shadow-sm transition-colors disabled:opacity-60"
+              style={{ background: "#ED5650" }}
+            >
+              {loading ? "Cargando..." : isLogin ? "Iniciar sesión" : "Crear cuenta"}
+            </button>
+          </form>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="h-11 w-full rounded-lg bg-[#ED5650] text-[14px] font-semibold text-white shadow-sm hover:bg-[#d94e48] disabled:opacity-60 transition-colors"
-              >
-                {loading
-                  ? "Cargando..."
-                  : mode === "login"
-                  ? "Iniciar sesión"
-                  : "Crear cuenta"}
-              </button>
-            </form>
-
+          {/* Switch mode */}
+          {isLogin && (
             <p className="mt-6 text-center text-[13px] text-gray-500">
-              {mode === "login" ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
+              ¿No tienes cuenta?{" "}
               <button
                 type="button"
-                onClick={() => { setMode((m) => (m === "login" ? "register" : "login")); setError(null); }}
+                onClick={() => switchMode("register")}
                 className="font-semibold text-[#ED5650] hover:underline"
               >
-                {mode === "login" ? "Crear cuenta" : "Iniciar sesión"}
+                Crear cuenta
               </button>
             </p>
-          </div>
+          )}
         </div>
 
-        {/* Footer */}
-        <p className="text-center font-mono text-[9px] uppercase tracking-widest text-gray-300">
+        <p className="text-left font-mono text-[9px] uppercase tracking-widest text-gray-300">
           SmartPath Planner · Planificación con IA
         </p>
       </div>
 
       {/* ── Right panel ── */}
-      <div className="relative hidden flex-col overflow-hidden bg-[#1a1a1a] md:flex md:w-[48%] lg:w-[54%]">
-        {/* Decorative chevron background */}
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-end overflow-hidden opacity-[0.06]">
-          <svg viewBox="0 0 500 600" className="h-full w-auto" fill="none">
-            <g fill="#ED5650">
-              <path d="M120 80 L240 300 L120 520 L160 520 L280 300 L160 80Z" />
-              <path d="M220 80 L340 300 L220 520 L260 520 L380 300 L260 80Z" />
-              <path d="M320 80 L440 300 L320 520 L360 520 L480 300 L360 80Z" />
-            </g>
-          </svg>
+      <div
+        className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-start px-8 pb-6 pt-12 lg:px-12 lg:pb-8 xl:pt-20"
+        style={{ background: "#1a1a1a", color: "#F1F1F1" }}
+      >
+        {/* Chevron pattern background */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden select-none" aria-hidden>
+          {Array.from({ length: 7 }).map((_, row) => (
+            <div key={row} className="flex" style={{ marginTop: row === 0 ? 80 : 0 }}>
+              {Array.from({ length: 5 }).map((_, col) => (
+                <span
+                  key={col}
+                  className="font-bold text-white/[0.035]"
+                  style={{ fontSize: 120, lineHeight: 1.1, letterSpacing: "-0.02em" }}
+                >
+                  »
+                </span>
+              ))}
+            </div>
+          ))}
         </div>
 
-        {/* Large decorative chevrons — right edge */}
-        <div className="pointer-events-none absolute right-0 top-0 h-full opacity-[0.04]">
-          <svg viewBox="0 0 300 800" className="h-full" fill="none">
-            <path d="M60 0 L240 400 L60 800 L120 800 L300 400 L120 0Z" fill="#ffffff" />
-          </svg>
+        {/* Top label */}
+        <div className="relative font-mono text-[10px] uppercase tracking-[.2em] text-white/40 mb-6 lg:mb-10">
+          Sistema // Planificación
         </div>
 
-        <div className="relative flex flex-1 flex-col justify-between px-14 py-12">
-          {/* Top label */}
-          <p className="font-mono text-[10px] uppercase tracking-[.2em] text-gray-500">
-            Sistema // Planificación
+        {/* Hero content */}
+        <div className="relative max-w-[420px] space-y-4 xl:max-w-[560px]">
+          <div
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider"
+            style={{ background: "rgba(237,86,80,.18)", color: "#ED5650" }}
+          >
+            <span className="size-1.5 rounded-full bg-[#ED5650]" />
+            Impulsado por IA
+          </div>
+
+          <h2
+            className="max-w-full text-[22px] font-bold leading-[1.2] tracking-[-0.02em] text-white xl:max-w-[480px] xl:text-[30px]"
+            style={{ whiteSpace: "pre-line" }}
+          >
+            {"De una idea a una solicitud\nlista para gestionar.\nNuestro asistente IA recopila\nel contexto y la crea por ti."}
+          </h2>
+
+          <div className="h-[3px] w-10 rounded-full bg-[#ED5650]" />
+
+          <p className="max-w-full text-[13px] leading-relaxed text-white/55 xl:max-w-[360px]">
+            SmartPath Planner organiza tus solicitudes, prioriza iniciativas y te muestra el avance — con un agente que te guía paso a paso.
           </p>
 
-          {/* Main content */}
-          <div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#ED5650]/15 px-3.5 py-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#ED5650]" />
-              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#ED5650]">
-                Impulsado por IA
-              </span>
-            </div>
+          <ul className="space-y-3 pt-1">
+            {FEATURES.map((feat, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="mt-0.5 font-bold text-[#ED5650] text-[13px]">{">>"}</span>
+                <span className="text-[13px] text-white/70">{feat}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-            <h2 className="text-[40px] font-bold leading-[1.15] tracking-[-0.02em] text-white">
-              De una idea a una solicitud<br />lista para gestionar.<br />
-              <span className="text-gray-300">Nuestro asistente IA recopila<br />el contexto y la crea por ti.</span>
-            </h2>
-
-            <div className="mt-4 h-0.5 w-12 bg-[#ED5650]" />
-
-            <p className="mt-5 text-[14px] leading-relaxed text-gray-400">
-              SmartPath Planner organiza tus solicitudes, prioriza iniciativas y te muestra el avance — con un agente que te guía paso a paso.
-            </p>
-
-            <ul className="mt-8 space-y-4">
-              {[
-                "Solicitud asistida IA",
-                "Tablero por estado y priorización automática",
-                "Analítica de KPIs y tendencias en tiempo real",
-              ].map((item) => (
-                <li key={item} className="flex items-start gap-3">
-                  <span className="shrink-0 text-[13px] font-bold text-[#ED5650]">{">>"}</span>
-                  <span className="text-[13px] text-gray-300">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Bottom */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10">
-                {logoUrl
-                  ? <img src={logoUrl} alt="Logo" style={{ height: 16, width: "auto", objectFit: "contain", filter: "brightness(0.7)" }} />
-                  : <DataicoMark size={14} />}
-              </div>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-gray-500">
-                SmartPath Planner
-              </span>
-            </div>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-gray-600">© 2026</span>
-          </div>
+        {/* Bottom */}
+        <div className="relative mt-auto font-mono text-[10px] uppercase tracking-widest text-white/30">
+          © 2026 SmartPath Planner
         </div>
       </div>
     </div>
