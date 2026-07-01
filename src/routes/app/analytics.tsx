@@ -167,6 +167,48 @@ function buildCompletedOverTime(
   });
 }
 
+function buildReceivedOverTime(
+  subset: Request[],
+  period: "week" | "month" | "quarter",
+  year: number,
+) {
+  const now = new Date();
+  const isCurrentYear = year === now.getFullYear();
+  let points: { name: string; recibidas: number }[];
+  if (period === "week") {
+    const totalWeeks = isCurrentYear ? isoWeek(now) : 52;
+    points = Array.from({ length: Math.min(totalWeeks, 26) }, (_, i) => ({
+      name: `S${i + 1}`,
+      recibidas: subset.filter(r => {
+        const rd = new Date(r.created_at);
+        return rd.getFullYear() === year && isoWeek(rd) === i + 1;
+      }).length,
+    }));
+  } else if (period === "month") {
+    const months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    points = months.map((name, i) => ({
+      name,
+      recibidas: subset.filter(r => {
+        const rd = new Date(r.created_at);
+        return rd.getFullYear() === year && rd.getMonth() === i;
+      }).length,
+    }));
+  } else {
+    points = ["Q1","Q2","Q3","Q4"].map((name, i) => ({
+      name,
+      recibidas: subset.filter(r => {
+        const rd = new Date(r.created_at);
+        return rd.getFullYear() === year && Math.floor(rd.getMonth() / 3) === i;
+      }).length,
+    }));
+  }
+  let cumulative = 0;
+  return points.map(p => {
+    cumulative += p.recibidas;
+    return { ...p, acumulado: cumulative };
+  });
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 function AnalyticsPage() {
@@ -281,17 +323,6 @@ function AnalyticsPage() {
   const solDifficulty  = buildDifficultyData(filteredRequests);
   const solCompletedReqs = filteredRequests.filter(r => r.status_column_id && completedIds.has(r.status_column_id));
 
-  const activityData = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    const ds = d.toISOString().slice(0, 10);
-    return {
-      name: d.toLocaleDateString(lang === "en" ? "en" : lang === "pt" ? "pt" : "es", { weekday: "short" }),
-      count: filteredRequests.filter(r => new Date(r.created_at).toISOString().slice(0, 10) === ds).length,
-    };
-  });
-  const maxAct = Math.max(...activityData.map(d => d.count), 1);
-
   // ── Iniciativas data ────────────────────────────────────────────────────────
   const initCompleted  = initiatives.filter(r => r.status_column_id && completedIds.has(r.status_column_id)).length;
   const initInProgress = initiatives.filter(r => r.status_column_id && !completedIds.has(r.status_column_id)).length;
@@ -349,6 +380,7 @@ function AnalyticsPage() {
   const activeDifficulty = isSol ? solDifficulty    : initDifficulty;
   const activeCompleted = isSol ? solCompletedReqs  : initCompletedReqs;
   const completedOverTime = buildCompletedOverTime(activeCompleted, period, year);
+  const receivedOverTime = buildReceivedOverTime(filteredRequests, period, year);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -715,24 +747,84 @@ function AnalyticsPage() {
         </div>
       </div>
 
-      {/* ── Solicitudes: Actividad últimos 7 días ── */}
+      {/* ── Solicitudes: Solicitudes recibidas ── */}
       {isSol && (
-        <div style={card}>
-          <h3 style={ctitle}>{t("analytics.activity")}</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {activityData.map((d, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <span style={{ fontSize: 12, color: "var(--muted-foreground)", width: 34, textAlign: "right" as const, textTransform: "capitalize" as const }}>
-                  {d.name}
-                </span>
-                <div style={{ flex: 1, height: 10, borderRadius: 5, background: "var(--muted)", overflow: "hidden" }}>
-                  <div style={{ width: `${(d.count / maxAct) * 100}%`, height: "100%", borderRadius: 5, background: "rgba(237,86,80,.7)", transition: "width 600ms" }} />
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)", width: 20, textAlign: "right" as const }}>
-                  {d.count}
-                </span>
+        <div style={{ ...card, marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+            <h3 style={{ ...ctitle, margin: 0 }}>
+              {t("analytics.chartReceived")}
+            </h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <select
+                value={String(year)}
+                onChange={e => setYear(Number(e.target.value))}
+                style={{ ...sel, height: 32, fontSize: 12, padding: "0 10px" }}
+              >
+                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <div style={{ display: "flex", gap: 2, background: "var(--muted)", borderRadius: "var(--r-md, 10px)", padding: 3 }}>
+                {(["week", "month", "quarter"] as const).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    style={{
+                      padding: "4px 13px", borderRadius: 7,
+                      border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                      background: period === p ? "var(--card)" : "transparent",
+                      color: period === p ? "var(--foreground)" : "var(--muted-foreground)",
+                      boxShadow: period === p ? "0 1px 3px rgba(0,0,0,.08)" : "none",
+                      transition: "all 120ms",
+                    }}
+                  >
+                    {p === "week" ? t("analytics.periodWeek") : p === "month" ? t("analytics.periodMonth") : t("analytics.periodQuarter")}
+                  </button>
+                ))}
               </div>
-            ))}
+            </div>
+          </div>
+          <div style={{ height: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={receivedOverTime} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="areaGradReceived" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor={accentColor} stopOpacity={0.22} />
+                    <stop offset="95%" stopColor={accentColor} stopOpacity={0}    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="name" fontSize={11} tick={{ fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} fontSize={11} tick={{ fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12, color: "var(--foreground)" }}
+                  formatter={(v: any, name: string) => [v, name === "recibidas" ? t("analytics.legendReceived") : t("analytics.legendCumulative")]}
+                />
+                <Legend
+                  iconType="circle"
+                  iconSize={8}
+                  formatter={(name: string) => (
+                    <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                      {name === "recibidas" ? t("analytics.legendReceived") : t("analytics.legendCumulative")}
+                    </span>
+                  )}
+                />
+                <Area
+                  type="monotone" dataKey="recibidas"
+                  stroke={accentColor} strokeWidth={2}
+                  fill="url(#areaGradReceived)"
+                  dot={{ fill: accentColor, r: 4, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: accentColor }}
+                  name="recibidas"
+                />
+                <Line
+                  type="monotone" dataKey="acumulado"
+                  stroke="#9CA3AF" strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={{ fill: "#9CA3AF", r: 4, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: "#9CA3AF" }}
+                  name="acumulado"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}
