@@ -537,7 +537,11 @@ function AnalyticsPage() {
           {activeByCol.every(c => c.count === 0) ? <EmptyChart /> : (
             <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 180, paddingTop: 16 }}>
               {activeByCol.map((c, i) => (
-                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end", gap: 6 }}>
+                <div
+                  key={i}
+                  title={`${Math.round((c.count / (kpiTotal || 1)) * 100)}% del total`}
+                  style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end", gap: 6, cursor: "default" }}
+                >
                   <span style={{ fontSize: 11, fontWeight: 600, color: "var(--foreground)" }}>{c.count}</span>
                   <div style={{
                     width: "100%", minWidth: 14,
@@ -563,7 +567,7 @@ function AnalyticsPage() {
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11 }}>
                 {activePri.data.map(d => (
-                  <div key={d.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div key={d.key} title={`${d.value} de ${activePri.total}`} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "default" }}>
                     <span style={{ width: 10, height: 10, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
                     <span style={{ flex: 1, fontSize: 13, color: "var(--foreground)" }}>{d.label}</span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" }}>
@@ -585,7 +589,11 @@ function AnalyticsPage() {
           {activeByType.every(c => c.count === 0) ? <EmptyChart /> : (
             <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 180, paddingTop: 16 }}>
               {activeByType.map((c, i) => (
-                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end", gap: 6 }}>
+                <div
+                  key={i}
+                  title={`${Math.round((c.count / (kpiTotal || 1)) * 100)}% del total`}
+                  style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end", gap: 6, cursor: "default" }}
+                >
                   <span style={{ fontSize: 11, fontWeight: 600, color: "var(--foreground)" }}>{c.count}</span>
                   <div style={{
                     width: "100%", minWidth: 14,
@@ -613,7 +621,7 @@ function AnalyticsPage() {
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11 }}>
                 {activeDifficulty.data.map(d => (
-                  <div key={d.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div key={d.key} title={`${d.value} de ${activeDifficulty.total}`} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "default" }}>
                     <span style={{ width: 10, height: 10, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
                     <span style={{ flex: 1, fontSize: 13, color: "var(--foreground)" }}>{d.label}</span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" }}>
