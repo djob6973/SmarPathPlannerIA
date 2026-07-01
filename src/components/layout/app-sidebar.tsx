@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
-import { Languages } from "lucide-react";
+import { Languages, KeyRound, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useLang } from "@/lib/lang-context";
@@ -102,7 +102,7 @@ function IconBell() {
 
 function IconSun() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="4" />
       <path d="M12 2v2M12 20v2m-7.1-14.1 1.4 1.4m12.4 12.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m12.4-12.4 1.4-1.4" />
     </svg>
@@ -111,7 +111,7 @@ function IconSun() {
 
 function IconMoon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
     </svg>
   );
@@ -119,7 +119,7 @@ function IconMoon() {
 
 function IconMonitor() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="3" width="20" height="14" rx="2" />
       <path d="M8 21h8M12 17v4" />
     </svg>
@@ -391,20 +391,8 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
       {/* ── Footer ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 12 }}>
 
-        {/* Utility buttons row */}
+        {/* Utility buttons row: language · theme · change password · logout */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", gap: 4, padding: 4 }}>
-          {/* Theme toggle */}
-          <button
-            onClick={() => setTheme(nextTheme)}
-            aria-label={`Tema: ${themeLabel}`}
-            title={`Tema: ${themeLabel}`}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
-          >
-            <ThemeIcon />
-          </button>
-
           {/* Language selector */}
           <div style={{ position: "relative" }}>
             <button
@@ -415,7 +403,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
               onMouseLeave={(e) => { if (!langOpen) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; } }}
             >
-              <Languages className="size-5" strokeWidth={1.5} />
+              <Languages className="size-[16px]" strokeWidth={1.5} />
             </button>
             {langOpen && (
               <div
@@ -449,6 +437,42 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
               </div>
             )}
           </div>
+
+          {/* Theme toggle */}
+          <button
+            onClick={() => setTheme(nextTheme)}
+            aria-label={`Tema: ${themeLabel}`}
+            title={`Tema: ${themeLabel}`}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
+          >
+            <ThemeIcon />
+          </button>
+
+          {/* Change password */}
+          <Link
+            to="/app/settings"
+            aria-label={t("nav.changePassword")}
+            title={t("nav.changePassword")}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer", textDecoration: "none" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
+          >
+            <KeyRound className="size-[16px]" strokeWidth={1.5} />
+          </Link>
+
+          {/* Logout */}
+          <button
+            onClick={handleSignOut}
+            aria-label={t("nav.signOut")}
+            title={t("nav.signOut")}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
+          >
+            <LogOut className="size-[16px]" strokeWidth={1.5} />
+          </button>
         </div>
 
         {/* User row */}
