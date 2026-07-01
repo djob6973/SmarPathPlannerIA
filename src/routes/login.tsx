@@ -139,10 +139,10 @@ function LoginPage() {
 
         {/* Form area */}
         <div className="mx-auto w-full max-w-[360px] flex-1 flex flex-col justify-center xl:max-w-[400px] 2xl:max-w-[440px]">
-          <h1 className="text-[22px] font-semibold leading-[1.2] tracking-[-0.01em] text-[#1a1a1a] sm:text-[26px] xl:text-[30px] 2xl:text-[34px]">
+          <h1 className="text-[19.8px] font-semibold leading-[1.2] tracking-[-0.01em] text-[#1a1a1a] sm:text-[23.4px] xl:text-[27px] 2xl:text-[30.6px]">
             {isLogin ? "Bienvenido de vuelta" : "Crear cuenta"}
           </h1>
-          <p className="mt-2 text-[13px] leading-relaxed text-gray-500 xl:text-[14px] 2xl:text-[15px]">
+          <p className="mt-2 text-[12.6px] leading-relaxed text-gray-500 xl:text-[13.6px] 2xl:text-[14.6px]">
             {isLogin
               ? "Inicia sesión para gestionar tu roadmap, solicitudes y analítica."
               : "Regístrate para empezar a usar SmartPath Planner."}
@@ -344,7 +344,7 @@ function LoginPage() {
             </div>
 
             <h2
-              className="max-w-full text-[22px] font-bold leading-[1.2] tracking-[-0.02em] text-white xl:max-w-[480px] xl:text-[30px] 2xl:max-w-[560px] 2xl:text-[34px]"
+              className="max-w-full text-[19.8px] font-bold leading-[1.2] tracking-[-0.02em] text-white xl:max-w-[480px] xl:text-[27px] 2xl:max-w-[560px] 2xl:text-[30.6px]"
               style={{ whiteSpace: "pre-line" }}
             >
               {"De una idea a una solicitud\nlista para gestionar.\nNuestro asistente IA recopila\nel contexto y la crea por ti."}
