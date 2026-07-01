@@ -35,6 +35,22 @@ const PRIORITY_LABEL_KEYS: Record<string, string> = {
   low: "priority.low",
 };
 
+const TYPE_ORDER = ["bug", "task", "feature"] as const;
+const TYPE_COLORS: Record<string, string> = {
+  bug: "#ED5650",
+  task: "#9CA3AF",
+  feature: "#FFFFFF",
+};
+
+const DIFFICULTY_ORDER = ["very_low", "low", "medium", "high", "very_high"] as const;
+const DIFFICULTY_COLORS: Record<string, string> = {
+  very_low: "#22C55E",
+  low: "#84CC16",
+  medium: "#EAB308",
+  high: "#F97316",
+  very_high: "#EF4444",
+};
+
 // ─── inline SVG icons (match prototype exactly) ──────────────────────────────
 
 function IconKanban() {
@@ -571,6 +587,67 @@ function DashboardPage() {
                   </div>
                   <div style={{ height: 7, borderRadius: 999, background: "var(--muted)", overflow: "hidden" }}>
                     <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: col.color, transition: "width 500ms ease" }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Distribution by type ── */}
+      {!loading && filteredRequests.length > 0 && (
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: "20px 22px" }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 16, color: "var(--foreground)", marginBottom: 18, marginTop: 0 }}>
+            {t("dashboard.distributionByType")}
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
+            {TYPE_ORDER.map((key) => {
+              const color = TYPE_COLORS[key];
+              const border = key === "feature" ? "1px solid var(--border)" : "none";
+              const count = filteredRequests.filter((r) => r.type === key).length;
+              const pct = filteredRequests.length > 0 ? Math.round((count / filteredRequests.length) * 100) : 0;
+              return (
+                <div key={key}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--foreground)" }}>
+                      <span style={{ width: 9, height: 9, borderRadius: 999, background: color, border, boxSizing: "border-box" }} />
+                      {t(`type.${key}` as any)}
+                    </span>
+                    <span style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>{count} · {pct}%</span>
+                  </div>
+                  <div style={{ height: 7, borderRadius: 999, background: "var(--muted)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: color, border, boxSizing: "border-box", transition: "width 500ms ease" }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Distribution by difficulty ── */}
+      {!loading && filteredRequests.length > 0 && (
+        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 20, padding: "20px 22px" }}>
+          <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 500, fontSize: 16, color: "var(--foreground)", marginBottom: 18, marginTop: 0 }}>
+            {t("dashboard.distributionByDifficulty")}
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
+            {DIFFICULTY_ORDER.map((key) => {
+              const color = DIFFICULTY_COLORS[key];
+              const count = filteredRequests.filter((r) => r.difficulty === key).length;
+              const pct = filteredRequests.length > 0 ? Math.round((count / filteredRequests.length) * 100) : 0;
+              return (
+                <div key={key}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--foreground)" }}>
+                      <span style={{ width: 9, height: 9, borderRadius: 999, background: color }} />
+                      {t(`difficulty.${key}` as any)}
+                    </span>
+                    <span style={{ fontSize: 12.5, color: "var(--muted-foreground)" }}>{count} · {pct}%</span>
+                  </div>
+                  <div style={{ height: 7, borderRadius: 999, background: "var(--muted)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 999, width: `${pct}%`, background: color, transition: "width 500ms ease" }} />
                   </div>
                 </div>
               );
