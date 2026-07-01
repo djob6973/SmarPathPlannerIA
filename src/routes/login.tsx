@@ -167,7 +167,7 @@ function LoginPage() {
                   type="text"
                   placeholder="Tu nombre"
                   disabled={loading}
-                  className="h-11 w-full rounded-xl xl:h-12 border-transparent bg-white px-4 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                  className="h-10 w-full rounded-xl xl:h-11 border-transparent bg-white px-4 text-[13px] text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
                 />
               </div>
             )}
@@ -187,7 +187,7 @@ function LoginPage() {
                   autoComplete="email"
                   placeholder="tu@email.com"
                   disabled={loading}
-                  className="h-11 w-full rounded-xl xl:h-12 border-transparent bg-white pl-9 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                  className="h-10 w-full rounded-xl xl:h-11 border-transparent bg-white pl-9 text-[13px] text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
                 />
               </div>
             </div>
@@ -215,7 +215,7 @@ function LoginPage() {
                   placeholder="••••••••"
                   minLength={6}
                   disabled={loading}
-                  className="h-11 w-full rounded-xl xl:h-12 border-transparent bg-white pl-9 pr-9 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                  className="h-10 w-full rounded-xl xl:h-11 border-transparent bg-white pl-9 pr-9 text-[13px] text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
                 />
                 <button
                   type="button"
@@ -247,7 +247,7 @@ function LoginPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={loading}
-                  className="h-11 w-full rounded-xl xl:h-12 border-transparent bg-white px-4 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                  className="h-10 w-full rounded-xl xl:h-11 border-transparent bg-white px-4 text-[13px] text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
                 />
               </div>
             )}
@@ -277,7 +277,7 @@ function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-full py-3.5 text-[14px] font-semibold text-white shadow-sm transition-colors disabled:opacity-60 xl:py-4 xl:text-[15px]"
+              className="w-full rounded-full py-3 text-[13px] font-semibold text-white shadow-sm transition-colors disabled:opacity-60 xl:py-3.5 xl:text-[14px]"
               style={{ background: "#ED5650" }}
             >
               {loading ? "Cargando..." : isLogin ? "Iniciar sesión" : "Crear cuenta"}
