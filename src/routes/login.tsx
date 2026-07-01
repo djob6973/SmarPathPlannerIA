@@ -36,6 +36,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(true);
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
     if (!logoUrl) return;
@@ -52,6 +53,7 @@ function LoginPage() {
   function switchMode(next: "login" | "register") {
     setMode(next);
     setError(null);
+    setConfirmPassword("");
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -64,6 +66,12 @@ function LoginPage() {
     const password = (form.elements.namedItem("password") as HTMLInputElement).value;
     const nameEl = form.elements.namedItem("name") as HTMLInputElement | null;
     const name = nameEl?.value || undefined;
+
+    if (mode === "register" && password !== confirmPassword) {
+      setError("Las contraseñas no coinciden");
+      setLoading(false);
+      return;
+    }
 
     const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
 
@@ -130,17 +138,17 @@ function LoginPage() {
         )}
 
         {/* Form area */}
-        <div className="mx-auto w-full max-w-[360px] flex-1 flex flex-col justify-start">
-          <h1 className="text-[22px] font-semibold leading-[1.2] tracking-[-0.01em] text-[#1a1a1a] sm:text-[26px]">
+        <div className="mx-auto w-full max-w-[360px] flex-1 flex flex-col justify-center xl:max-w-[400px] 2xl:max-w-[440px]">
+          <h1 className="text-[22px] font-semibold leading-[1.2] tracking-[-0.01em] text-[#1a1a1a] sm:text-[26px] xl:text-[30px] 2xl:text-[34px]">
             {isLogin ? "Bienvenido de vuelta" : "Crear cuenta"}
           </h1>
-          <p className="mt-2 text-[13px] leading-relaxed text-gray-500">
+          <p className="mt-2 text-[13px] leading-relaxed text-gray-500 xl:text-[14px] 2xl:text-[15px]">
             {isLogin
               ? "Inicia sesión para gestionar tu roadmap, solicitudes y analítica."
               : "Regístrate para empezar a usar SmartPath Planner."}
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-3.5">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-3.5 xl:mt-8 xl:space-y-4">
             {error && (
               <div className="rounded-lg bg-red-50 px-3 py-2.5 text-sm text-[#ED5650]">
                 {error}
@@ -159,7 +167,7 @@ function LoginPage() {
                   type="text"
                   placeholder="Tu nombre"
                   disabled={loading}
-                  className="h-11 w-full rounded-xl border-transparent bg-white px-4 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                  className="h-11 w-full rounded-xl xl:h-12 border-transparent bg-white px-4 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
                 />
               </div>
             )}
@@ -179,7 +187,7 @@ function LoginPage() {
                   autoComplete="email"
                   placeholder="tu@email.com"
                   disabled={loading}
-                  className="h-11 w-full rounded-xl border-transparent bg-white pl-9 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                  className="h-11 w-full rounded-xl xl:h-12 border-transparent bg-white pl-9 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
                 />
               </div>
             </div>
@@ -207,7 +215,7 @@ function LoginPage() {
                   placeholder="••••••••"
                   minLength={6}
                   disabled={loading}
-                  className="h-11 w-full rounded-xl border-transparent bg-white pl-9 pr-9 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                  className="h-11 w-full rounded-xl xl:h-12 border-transparent bg-white pl-9 pr-9 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
                 />
                 <button
                   type="button"
@@ -221,6 +229,28 @@ function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {/* Confirm password — register only */}
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <label htmlFor="confirmPassword" className="text-[10px] font-bold uppercase tracking-[.12em] text-gray-500">
+                  Confirmar contraseña
+                </label>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  minLength={6}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={loading}
+                  className="h-11 w-full rounded-xl xl:h-12 border-transparent bg-white px-4 text-sm text-[#1a1a1a] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#ED5650]/20 transition-all"
+                />
+              </div>
+            )}
 
             {/* Remember device */}
             {isLogin && (
@@ -247,7 +277,7 @@ function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-full py-3.5 text-[14px] font-semibold text-white shadow-sm transition-colors disabled:opacity-60"
+              className="w-full rounded-full py-3.5 text-[14px] font-semibold text-white shadow-sm transition-colors disabled:opacity-60 xl:py-4 xl:text-[15px]"
               style={{ background: "#ED5650" }}
             >
               {loading ? "Cargando..." : isLogin ? "Iniciar sesión" : "Crear cuenta"}
