@@ -449,7 +449,7 @@ export function ColumnsSettings() {
         )}
 
         {!loading && cols.length > 0 && (
-          <div style={{ padding: "10px 18px", background: "var(--muted)" }}>
+          <div style={{ padding: "10px 18px", background: "var(--input-field)" }}>
             <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: 0 }}>
               Arrastra las filas para reordenar · El switch <strong>Completado</strong> marca columnas que cierran solicitudes en analítica
             </p>
@@ -1032,7 +1032,7 @@ function BrandingSettings() {
               width: "100%", minHeight: 160,
               border: `1.5px dashed ${dropHover ? "#ED5650" : "var(--border)"}`,
               borderRadius: "var(--r-md, 12px)",
-              background: dropHover ? "rgba(237,86,80,.06)" : "var(--muted)",
+              background: dropHover ? "rgba(237,86,80,.06)" : "var(--input-field)",
               display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center",
               gap: 10, marginBottom: 16,
