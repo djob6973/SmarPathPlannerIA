@@ -7,7 +7,7 @@ import { postSlackMessage, getSlackConfigFromDb } from "./slack";
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type RequestRow = {
   id: string; title: string; description: string | null; objective: string | null;
-  process: string | null; priority: string; status_column_id: string | null;
+  process: string | null; priority: string; difficulty: string; type: string; status_column_id: string | null;
   created_by: string; assigned_to: string | null; area_id: string | null;
   position: number; expires_at: string | null; completed_at: string | null;
   parent_request_id: string | null;
@@ -135,6 +135,8 @@ export const createRequest = createServerFn({ method: "POST" })
       objective: z.string().nullable().optional(),
       process: z.string().nullable().optional(),
       priority: z.enum(["low", "medium", "high", "urgent"]).default("medium"),
+      difficulty: z.enum(["very_low", "low", "medium", "high", "very_high"]).default("medium"),
+      type: z.enum(["bug", "task", "feature"]).default("task"),
       status_column_id: z.string().uuid().nullable().optional(),
       assigned_to: z.string().uuid().nullable().optional(),
       area_id: z.string().uuid().nullable().optional(),
@@ -149,13 +151,15 @@ export const createRequest = createServerFn({ method: "POST" })
     const areaId = data.area_id ?? userProfile.area_id;
 
     const rows = await db<RequestRow[]>`
-      INSERT INTO requests (title, description, objective, process, priority, status_column_id, assigned_to, created_by, area_id, parent_request_id)
+      INSERT INTO requests (title, description, objective, process, priority, difficulty, type, status_column_id, assigned_to, created_by, area_id, parent_request_id)
       VALUES (
         ${data.title},
         ${data.description ?? null},
         ${data.objective ?? null},
         ${data.process ?? null},
         ${data.priority},
+        ${data.difficulty},
+        ${data.type},
         ${data.status_column_id ?? null},
         ${data.assigned_to ?? null},
         ${userId},
@@ -213,6 +217,8 @@ export const updateRequest = createServerFn({ method: "POST" })
       objective: z.string().nullable().optional(),
       process: z.string().nullable().optional(),
       priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+      difficulty: z.enum(["very_low", "low", "medium", "high", "very_high"]).optional(),
+      type: z.enum(["bug", "task", "feature"]).optional(),
       status_column_id: z.string().uuid().nullable().optional(),
       assigned_to: z.string().uuid().nullable().optional(),
       position: z.number().int().optional(),
@@ -290,6 +296,8 @@ export const updateRequest = createServerFn({ method: "POST" })
     if (fields.objective !== undefined) { updates.push(`objective = $${updates.length + 1}`); values.push(fields.objective); }
     if (fields.process !== undefined) { updates.push(`process = $${updates.length + 1}`); values.push(fields.process); }
     if (fields.priority !== undefined) { updates.push(`priority = $${updates.length + 1}`); values.push(fields.priority); }
+    if (fields.difficulty !== undefined) { updates.push(`difficulty = $${updates.length + 1}`); values.push(fields.difficulty); }
+    if (fields.type !== undefined) { updates.push(`type = $${updates.length + 1}`); values.push(fields.type); }
     if (fields.status_column_id !== undefined) { updates.push(`status_column_id = $${updates.length + 1}`); values.push(fields.status_column_id); }
     if (fields.assigned_to !== undefined) { updates.push(`assigned_to = $${updates.length + 1}`); values.push(fields.assigned_to); }
     if (fields.position !== undefined) { updates.push(`position = $${updates.length + 1}`); values.push(fields.position); }

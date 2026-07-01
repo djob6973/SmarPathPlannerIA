@@ -41,6 +41,10 @@ const PRIORITY_CLASS: Record<string, string> = {
   medium: "priority-medium", low: "priority-low",
 };
 
+const TYPE_CLASS: Record<string, string> = {
+  bug: "tipo-bug", task: "tipo-task", feature: "tipo-feature",
+};
+
 interface RequestDetailModalProps {
   requestId: string | null;
   onClose: () => void;
@@ -77,6 +81,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [editObjective, setEditObjective] = useState("");
   const [editProcess, setEditProcess] = useState("");
   const [editPriority, setEditPriority] = useState("");
+  const [editDifficulty, setEditDifficulty] = useState("");
+  const [editType, setEditType] = useState("");
   const [editStatusColumnId, setEditStatusColumnId] = useState<string | null>(null);
   const [editAssignedTo, setEditAssignedTo] = useState<string | null>(null);
   const [updatingRequest, setUpdatingRequest] = useState(false);
@@ -362,6 +368,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
     setEditObjective(request.objective ?? "");
     setEditProcess(request.process ?? "");
     setEditPriority(request.priority);
+    setEditDifficulty(request.difficulty);
+    setEditType(request.type);
     setEditStatusColumnId(request.status_column_id);
     setEditAssignedTo(request.assigned_to);
     setIsEditingRequest(true);
@@ -370,7 +378,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const cancelEditingRequest = () => {
     setIsEditingRequest(false);
     setEditTitle(""); setEditDescription(""); setEditObjective("");
-    setEditProcess(""); setEditPriority(""); setEditStatusColumnId(null); setEditAssignedTo(null);
+    setEditProcess(""); setEditPriority(""); setEditDifficulty(""); setEditType("");
+    setEditStatusColumnId(null); setEditAssignedTo(null);
   };
 
   const saveRequestEdits = async () => {
@@ -384,6 +393,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
         objective: editObjective.trim() || null,
         process: editProcess.trim() || null,
         priority: editPriority as any,
+        difficulty: editDifficulty as any,
+        type: editType as any,
         status_column_id: editStatusColumnId,
         assigned_to: editAssignedTo,
       }});
@@ -394,6 +405,8 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
         objective: editObjective.trim() || null,
         process: editProcess.trim() || null,
         priority: editPriority,
+        difficulty: editDifficulty,
+        type: editType,
         status_column_id: editStatusColumnId,
         assigned_to: editAssignedTo,
       } : r);
@@ -765,6 +778,30 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                         <SelectItem value="medium">{t("priority.medium")}</SelectItem>
                         <SelectItem value="high">{t("priority.high")}</SelectItem>
                         <SelectItem value="urgent">{t("priority.urgent")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.colDifficulty")}</label>
+                    <Select value={editDifficulty} onValueChange={setEditDifficulty}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="very_low">{t("difficulty.very_low")}</SelectItem>
+                        <SelectItem value="low">{t("difficulty.low")}</SelectItem>
+                        <SelectItem value="medium">{t("difficulty.medium")}</SelectItem>
+                        <SelectItem value="high">{t("difficulty.high")}</SelectItem>
+                        <SelectItem value="very_high">{t("difficulty.very_high")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.colType")}</label>
+                    <Select value={editType} onValueChange={setEditType}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bug">{t("type.bug")}</SelectItem>
+                        <SelectItem value="task">{t("type.task")}</SelectItem>
+                        <SelectItem value="feature">{t("type.feature")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1267,6 +1304,20 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.colPriority")}</p>
                   <Badge className={cn("text-xs px-2 py-0.5", PRIORITY_CLASS[request.priority])}>
                     {t(`priority.${request.priority}` as any)}
+                  </Badge>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.colDifficulty")}</p>
+                  <Badge variant="secondary" className="text-xs px-2 py-0.5">
+                    {t(`difficulty.${request.difficulty}` as any)}
+                  </Badge>
+                </div>
+
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">{t("requests.colType")}</p>
+                  <Badge className={cn("text-xs px-2 py-0.5", TYPE_CLASS[request.type])}>
+                    {t(`type.${request.type}` as any)}
                   </Badge>
                 </div>
 

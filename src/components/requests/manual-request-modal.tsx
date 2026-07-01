@@ -24,6 +24,8 @@ export function ManualRequestModal({ onClose, onCreated }: ManualRequestModalPro
   const [objective, setObjective] = useState("");
   const [process, setProcess] = useState("");
   const [priority, setPriority] = useState("medium");
+  const [difficulty, setDifficulty] = useState("medium");
+  const [type, setType] = useState("task");
   const [statusColumnId, setStatusColumnId] = useState<string | null>(null);
   const [assignedTo, setAssignedTo] = useState<string | null>(null);
   const [columns, setColumns] = useState<any[]>([]);
@@ -68,6 +70,8 @@ export function ManualRequestModal({ onClose, onCreated }: ManualRequestModalPro
         objective: objective.trim() || null,
         process: process.trim() || null,
         priority: priority as any,
+        difficulty: difficulty as any,
+        type: type as any,
         status_column_id: statusColumnId || null,
         assigned_to: assignedTo || null,
         parent_request_id: parentRequestId || null,
@@ -137,6 +141,30 @@ export function ManualRequestModal({ onClose, onCreated }: ManualRequestModalPro
                       <SelectItem value="medium">medium</SelectItem>
                       <SelectItem value="high">high</SelectItem>
                       <SelectItem value="urgent">urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Dificultad</label>
+                  <Select value={difficulty} onValueChange={setDifficulty}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="very_low">Muy Baja</SelectItem>
+                      <SelectItem value="low">Baja</SelectItem>
+                      <SelectItem value="medium">Media</SelectItem>
+                      <SelectItem value="high">Alta</SelectItem>
+                      <SelectItem value="very_high">Muy Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Tipo</label>
+                  <Select value={type} onValueChange={setType}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bug">BUG</SelectItem>
+                      <SelectItem value="task">TASK</SelectItem>
+                      <SelectItem value="feature">FEATURE</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

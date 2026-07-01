@@ -271,6 +271,10 @@
   .priority-medium   { @apply bg-yellow-500/15 text-yellow-400 border border-yellow-500/30; }
   .priority-low      { @apply bg-slate-500/15 text-slate-400 border border-slate-500/30; }
 
+  .tipo-bug     { background-color: rgba(237,86,80,.15); color: #ED5650; border: 1px solid rgba(237,86,80,.3); }
+  .tipo-task    { @apply bg-slate-500/15 text-slate-400 border border-slate-500/30; }
+  .tipo-feature { @apply bg-white text-foreground border border-border; }
+
   /* ── Typography patterns ── */
   .font-metric {
     font-family: var(--font-display);

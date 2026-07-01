@@ -110,6 +110,8 @@ async function _run() {
       process          TEXT,
       status_column_id UUID REFERENCES public.kanban_columns(id) ON DELETE SET NULL,
       priority         TEXT NOT NULL DEFAULT 'medium',
+      difficulty       TEXT NOT NULL DEFAULT 'medium',
+      type             TEXT NOT NULL DEFAULT 'task',
       created_by       UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
       assigned_to      UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
       custom_data      JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -128,6 +130,8 @@ async function _run() {
     CREATE INDEX IF NOT EXISTS idx_requests_completed_at ON public.requests(completed_at);
     ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS parent_request_id UUID REFERENCES public.requests(id) ON DELETE SET NULL;
     CREATE INDEX IF NOT EXISTS idx_requests_parent ON public.requests(parent_request_id);
+    ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS difficulty TEXT NOT NULL DEFAULT 'medium';
+    ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'task';
     DROP TRIGGER IF EXISTS trg_requests_updated_at ON public.requests;
     CREATE TRIGGER trg_requests_updated_at
       BEFORE UPDATE ON public.requests
