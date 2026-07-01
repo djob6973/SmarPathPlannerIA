@@ -18,7 +18,7 @@ export const Route = createFileRoute("/app/analytics")({
 });
 
 type Request = Pick<RequestRow,
-  "id" | "title" | "priority" | "status_column_id" |
+  "id" | "title" | "priority" | "difficulty" | "type" | "status_column_id" |
   "created_at" | "updated_at" | "completed_at" | "parent_request_id" |
   "assigned_to" | "created_by"
 >;
@@ -46,6 +46,22 @@ const PRIORITY_LABELS: Record<string, string> = {
   urgent: "Urgent", high: "High", medium: "Medium", low: "Low",
 };
 
+const TYPE_ORDER = ["bug", "task", "feature"] as const;
+const TYPE_COLORS: Record<string, string> = {
+  bug: "#ED5650", task: "#9CA3AF", feature: "#FFFFFF",
+};
+const TYPE_LABELS: Record<string, string> = {
+  bug: "BUG", task: "TASK", feature: "FEATURE",
+};
+
+const DIFFICULTY_ORDER = ["very_low", "low", "medium", "high", "very_high"] as const;
+const DIFFICULTY_COLORS: Record<string, string> = {
+  very_low: "#22C55E", low: "#84CC16", medium: "#EAB308", high: "#F97316", very_high: "#EF4444",
+};
+const DIFFICULTY_LABELS: Record<string, string> = {
+  very_low: "Muy Baja", low: "Baja", medium: "Media", high: "Alta", very_high: "Muy Alta",
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildByCol(subset: Request[], columns: Column[]) {
@@ -61,6 +77,33 @@ function buildPriorityData(subset: Request[]) {
     key: p, label: PRIORITY_LABELS[p],
     value: subset.filter(r => r.priority === p).length,
     color: PRIORITY_COLORS[p],
+  })).filter(d => d.value > 0);
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  let cum = 0;
+  const conic = data.length > 0
+    ? `conic-gradient(${data.map(d => {
+        const pct = (d.value / total) * 100;
+        const part = `${d.color} ${cum.toFixed(1)}% ${(cum + pct).toFixed(1)}%`;
+        cum += pct;
+        return part;
+      }).join(", ")})`
+    : "var(--muted)";
+  return { data, total, conic };
+}
+
+function buildByType(subset: Request[]) {
+  return TYPE_ORDER.map(key => ({
+    name: TYPE_LABELS[key],
+    count: subset.filter(r => r.type === key).length,
+    color: TYPE_COLORS[key],
+  }));
+}
+
+function buildDifficultyData(subset: Request[]) {
+  const data = DIFFICULTY_ORDER.map(d => ({
+    key: d, label: DIFFICULTY_LABELS[d],
+    value: subset.filter(r => r.difficulty === d).length,
+    color: DIFFICULTY_COLORS[d],
   })).filter(d => d.value > 0);
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
   let cum = 0;
@@ -233,6 +276,9 @@ function AnalyticsPage() {
   const solByCol       = buildByCol(filteredRequests, columns);
   const solMaxByCol    = Math.max(...solByCol.map(c => c.count), 1);
   const solPri         = buildPriorityData(filteredRequests);
+  const solByType      = buildByType(filteredRequests);
+  const solMaxByType   = Math.max(...solByType.map(c => c.count), 1);
+  const solDifficulty  = buildDifficultyData(filteredRequests);
   const solCompletedReqs = filteredRequests.filter(r => r.status_column_id && completedIds.has(r.status_column_id));
 
   const activityData = Array.from({ length: 7 }, (_, i) => {
@@ -254,6 +300,9 @@ function AnalyticsPage() {
   const initByCol      = buildByCol(initiatives, columns);
   const initMaxByCol   = Math.max(...initByCol.map(c => c.count), 1);
   const initPri        = buildPriorityData(initiatives);
+  const initByType     = buildByType(initiatives);
+  const initMaxByType  = Math.max(...initByType.map(c => c.count), 1);
+  const initDifficulty = buildDifficultyData(initiatives);
   const initCompletedReqs = initiatives.filter(r => r.status_column_id && completedIds.has(r.status_column_id));
 
   const initiativesWithProgress = initiatives
@@ -295,6 +344,9 @@ function AnalyticsPage() {
   const activeByCol    = isSol ? solByCol           : initByCol;
   const activeMaxByCol = isSol ? solMaxByCol        : initMaxByCol;
   const activePri      = isSol ? solPri             : initPri;
+  const activeByType   = isSol ? solByType          : initByType;
+  const activeMaxByType = isSol ? solMaxByType      : initMaxByType;
+  const activeDifficulty = isSol ? solDifficulty    : initDifficulty;
   const activeCompleted = isSol ? solCompletedReqs  : initCompletedReqs;
   const completedOverTime = buildCompletedOverTime(activeCompleted, period, year);
 
@@ -516,6 +568,56 @@ function AnalyticsPage() {
                     <span style={{ flex: 1, fontSize: 13, color: "var(--foreground)" }}>{d.label}</span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" }}>
                       {Math.round((d.value / activePri.total) * 100)}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Por Tipo + Por Dificultad ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+
+        <div style={card}>
+          <h3 style={ctitle}>{t("analytics.byType")}</h3>
+          {activeByType.every(c => c.count === 0) ? <EmptyChart /> : (
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 180, paddingTop: 16 }}>
+              {activeByType.map((c, i) => (
+                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end", gap: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--foreground)" }}>{c.count}</span>
+                  <div style={{
+                    width: "100%", minWidth: 14,
+                    height: Math.max((c.count / activeMaxByType) * 120, c.count > 0 ? 6 : 0),
+                    background: c.color, borderRadius: "5px 5px 0 0",
+                    border: c.color === "#FFFFFF" ? "1px solid var(--border)" : "none",
+                    boxSizing: "border-box" as const,
+                  }} />
+                  <span style={{ fontSize: 10, color: "var(--muted-foreground)", textAlign: "center" as const, lineHeight: 1.2, maxWidth: 70, wordBreak: "break-word" as const }}>
+                    {c.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={card}>
+          <h3 style={ctitle}>{t("analytics.byDifficulty")}</h3>
+          {activeDifficulty.data.length === 0 ? <EmptyChart /> : (
+            <div style={{ display: "flex", alignItems: "center", gap: 28, marginTop: 8 }}>
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <div style={{ width: 130, height: 130, borderRadius: "50%", background: activeDifficulty.conic }} />
+                <div style={{ position: "absolute", inset: 22, borderRadius: "50%", background: "var(--card)" }} />
+              </div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11 }}>
+                {activeDifficulty.data.map(d => (
+                  <div key={d.key} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 13, color: "var(--foreground)" }}>{d.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted-foreground)" }}>
+                      {Math.round((d.value / activeDifficulty.total) * 100)}%
                     </span>
                   </div>
                 ))}
