@@ -299,7 +299,7 @@ function LoginPage() {
           )}
         </div>
 
-        <p className="text-left font-mono text-[9px] uppercase tracking-widest text-gray-300">
+        <p className="mt-6 text-left font-mono text-[9px] uppercase tracking-widest text-gray-300">
           SmartPath Planner · Planificación con IA
         </p>
       </div>
