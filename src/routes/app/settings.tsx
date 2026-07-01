@@ -28,6 +28,9 @@ import { PermissionsManager } from "@/components/admin/permissions-manager";
 import { AreasManager } from "@/components/admin/areas-manager";
 
 export const Route = createFileRoute("/app/settings")({
+  validateSearch: (search: Record<string, unknown>): { tab?: Tab } => ({
+    tab: typeof search.tab === "string" ? (search.tab as Tab) : undefined,
+  }),
   component: SettingsPage,
 });
 
@@ -51,7 +54,8 @@ const cardStyle: React.CSSProperties = {
 function SettingsPage() {
   const { isSuperAdmin } = useAuth();
   const { t } = useLang();
-  const [tab, setTab] = useState<Tab>(isSuperAdmin ? "columns" : "profile");
+  const { tab: tabParam } = Route.useSearch();
+  const [tab, setTab] = useState<Tab>(tabParam ?? (isSuperAdmin ? "columns" : "profile"));
 
   const allTabs: { key: Tab; label: string; Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }> }[] = [
     { key: "columns",     label: t("settings.tabColumns"),     Icon: Columns3 },

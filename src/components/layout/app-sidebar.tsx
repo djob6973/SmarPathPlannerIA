@@ -9,10 +9,6 @@ import type { Lang } from "@/locales/translations";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getPlatformSetting } from "@/lib/settings.functions";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 // ─── SVG icons (match prototype stroke-width="1.6") ──────────────────────────
 
@@ -117,25 +113,6 @@ function IconMoon() {
   );
 }
 
-function IconMonitor() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2" />
-      <path d="M8 21h8M12 17v4" />
-    </svg>
-  );
-}
-
-
-function IconLogOut() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  );
-}
 
 function IconChevronRight() {
   return (
@@ -232,9 +209,9 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
     navigate({ to: "/login" });
   };
 
-  const nextTheme = theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
-  const ThemeIcon = theme === "dark" ? IconMoon : theme === "light" ? IconSun : IconMonitor;
-  const themeLabel = theme === "dark" ? t("theme.dark") : theme === "light" ? t("theme.light") : t("theme.system");
+  const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
+  const ThemeIcon = resolvedTheme === "dark" ? IconMoon : IconSun;
+  const themeLabel = resolvedTheme === "dark" ? t("theme.dark") : t("theme.light");
 
   const LANGS: { key: Lang; flag: string }[] = [
     { key: "es", flag: "🇪🇸" },
@@ -453,6 +430,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
           {/* Change password */}
           <Link
             to="/app/settings"
+            search={{ tab: "profile" }}
             aria-label={t("nav.changePassword")}
             title={t("nav.changePassword")}
             style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer", textDecoration: "none" }}
@@ -476,41 +454,28 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
         </div>
 
         {/* User row */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 10, border: 0, background: "transparent", cursor: "pointer", width: "100%", textAlign: "left", color: "var(--sb-text)" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-            >
-              <span style={{ width: 36, height: 36, borderRadius: 999, background: "#ED5650", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 14 }}>
-                {initials}
-              </span>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--sb-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {displayName}
-                </span>
-                <span style={{ display: "block", fontSize: 11, color: "var(--sb-text-muted)", textTransform: "capitalize", marginTop: 1 }}>
-                  {roleLabel}
-                </span>
-              </span>
-              <span style={{ color: "var(--sb-text-muted)", flexShrink: 0 }}>
-                <IconChevronRight />
-              </span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-52 mb-1">
-            <div className="px-2 py-1.5">
-              <p className="text-xs font-medium truncate">{displayName}</p>
-              <p className="text-xs text-muted-foreground capitalize">{roles.join(", ") || t("nav.noRole")}</p>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
-              <span style={{ marginRight: 8 }}><IconLogOut /></span>
-              {t("nav.signOut")}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Link
+          to="/app/settings"
+          search={{ tab: "profile" }}
+          style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: 10, textDecoration: "none", width: "100%", textAlign: "left", color: "var(--sb-text)" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+        >
+          <span style={{ width: 36, height: 36, borderRadius: 999, background: "#ED5650", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 14 }}>
+            {initials}
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: 13, fontWeight: 500, color: "var(--sb-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {displayName}
+            </span>
+            <span style={{ display: "block", fontSize: 11, color: "var(--sb-text-muted)", textTransform: "capitalize", marginTop: 1 }}>
+              {roleLabel}
+            </span>
+          </span>
+          <span style={{ color: "var(--sb-text-muted)", flexShrink: 0 }}>
+            <IconChevronRight />
+          </span>
+        </Link>
       </div>
     </aside>
   );
