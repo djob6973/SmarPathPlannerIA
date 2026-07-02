@@ -437,7 +437,7 @@ function BoardPage() {
   const activeRequest  = activeId ? filteredRequests.find((r) => r.id === activeId) : null;
   const backlogRequests = filteredRequests
     .filter((r) => !r.status_column_id)
-    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const selectedAreaName = selectedArea ? areas.find((a) => a.id === selectedArea)?.name : null;
 
   // ── Loading skeleton ──────────────────────────────────────────────────────────
@@ -678,7 +678,9 @@ function BoardPage() {
                 col={col}
                 requests={filteredRequests
                   .filter((r) => r.status_column_id === col.id)
-                  .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))}
+                  .sort((a, b) => col.is_completed
+                    ? new Date(b.completed_at ?? 0).getTime() - new Date(a.completed_at ?? 0).getTime()
+                    : new Date(b.created_at).getTime() - new Date(a.created_at).getTime())}
                 canEdit={canEdit}
                 onCardClick={setSelectedId}
                 profiles={profiles}
