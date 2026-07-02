@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as AssignSuperAdminRouteImport } from './routes/assign-super-admin'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -23,11 +22,6 @@ import { Route as AppChatRouteImport } from './routes/app/chat'
 import { Route as AppBoardRouteImport } from './routes/app/board'
 import { Route as AppAnalyticsRouteImport } from './routes/app/analytics'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AssignSuperAdminRoute = AssignSuperAdminRouteImport.update({
   id: '/assign-super-admin',
   path: '/assign-super-admin',
@@ -93,7 +87,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/assign-super-admin': typeof AssignSuperAdminRoute
-  '/login': typeof LoginRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/board': typeof AppBoardRoute
   '/app/chat': typeof AppChatRoute
@@ -107,7 +100,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assign-super-admin': typeof AssignSuperAdminRoute
-  '/login': typeof LoginRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/board': typeof AppBoardRoute
   '/app/chat': typeof AppChatRoute
@@ -123,7 +115,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/assign-super-admin': typeof AssignSuperAdminRoute
-  '/login': typeof LoginRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/board': typeof AppBoardRoute
   '/app/chat': typeof AppChatRoute
@@ -140,7 +131,6 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/assign-super-admin'
-    | '/login'
     | '/app/analytics'
     | '/app/board'
     | '/app/chat'
@@ -154,7 +144,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/assign-super-admin'
-    | '/login'
     | '/app/analytics'
     | '/app/board'
     | '/app/chat'
@@ -169,7 +158,6 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/assign-super-admin'
-    | '/login'
     | '/app/analytics'
     | '/app/board'
     | '/app/chat'
@@ -185,18 +173,10 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   AssignSuperAdminRoute: typeof AssignSuperAdminRoute
-  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/assign-super-admin': {
       id: '/assign-super-admin'
       path: '/assign-super-admin'
@@ -314,7 +294,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   AssignSuperAdminRoute: AssignSuperAdminRoute,
-  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

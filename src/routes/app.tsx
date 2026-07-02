@@ -41,22 +41,24 @@ function AppLayout() {
 
   const handleUnreadChange = useCallback((count: number) => setUnreadCount(count), []);
 
-  // Auth is loaded server-side via the root route loader.
-  // If we reach here without a user, the SSR headers didn't have X-Forwarded-Email.
+  // Auth is loaded server-side via the root route loader from X-Forwarded-Email.
+  // Reaching this with no user means the perimeter's SSO header didn't come through
+  // (misconfiguration or a stale edge cache) — there's no login page to send them to,
+  // since the platform's SSO already gates the whole domain before requests get here.
   if (!isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="max-w-sm text-center">
-          <p className="text-2xl font-semibold mb-2">Sesión no iniciada</p>
+          <p className="text-2xl font-semibold mb-2">No se pudo verificar tu sesión</p>
           <p className="text-sm text-muted-foreground mb-6">
-            Tu sesión ha expirado o no has iniciado sesión.
+            Intenta recargar la página. Si el problema persiste, contacta al administrador de la plataforma.
           </p>
-          <a
-            href="/login"
+          <button
+            onClick={() => window.location.reload()}
             className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            Iniciar sesión
-          </a>
+            Recargar
+          </button>
         </div>
       </div>
     );

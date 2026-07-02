@@ -53,14 +53,12 @@ async function _run() {
       full_name   TEXT,
       email       TEXT NOT NULL UNIQUE,
       avatar_url    TEXT,
-      password_hash TEXT,
       area_id     UUID REFERENCES public.areas(id) ON DELETE SET NULL,
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(email);
     CREATE INDEX IF NOT EXISTS idx_profiles_area  ON public.profiles(area_id);
-    ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
     ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
     DROP TRIGGER IF EXISTS trg_profiles_updated_at ON public.profiles;
     CREATE TRIGGER trg_profiles_updated_at
@@ -186,15 +184,6 @@ async function _run() {
     );
     CREATE INDEX IF NOT EXISTS idx_notifications_user      ON public.notifications(user_id);
     CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON public.notifications(user_id, read);
-
-    CREATE TABLE IF NOT EXISTS public.sessions (
-      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-      expires_at TIMESTAMPTZ NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-    CREATE INDEX IF NOT EXISTS idx_sessions_user    ON public.sessions(user_id);
-    CREATE INDEX IF NOT EXISTS idx_sessions_expires ON public.sessions(expires_at);
 
     CREATE TABLE IF NOT EXISTS public.ai_settings (
       id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),

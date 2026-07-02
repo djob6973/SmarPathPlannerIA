@@ -18,7 +18,6 @@ export interface AuthState {
   hasAnyRole: (roles: AppRole[]) => boolean;
   hasPermission: (permission: AppPermission) => boolean;
   hasAnyPermission: (permissions: AppPermission[]) => boolean;
-  signOut: () => Promise<void>;
   refreshRoles: () => Promise<void>;
   refreshPermissions: () => Promise<void>;
 }
@@ -70,9 +69,6 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
     hasAnyRole: (rs) => rs.some((r) => roles.includes(r)),
     hasPermission: (p) => permissions.includes(p),
     hasAnyPermission: (ps) => ps.some((p) => permissions.includes(p)),
-    signOut: async () => {
-      window.location.href = "/api/auth/signout";
-    },
     refreshRoles: reload,
     refreshPermissions: reload,
   };

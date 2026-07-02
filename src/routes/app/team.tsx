@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useServerFn } from "@tanstack/react-start";
-import { listUsers, setUserRole, assignUserToArea, listAreas, adminResetPassword, updateUserProfile } from "@/lib/admin.functions";
+import { listUsers, setUserRole, assignUserToArea, listAreas, updateUserProfile } from "@/lib/admin.functions";
 import { useAuth } from "@/lib/auth-context";
 import { useLang } from "@/lib/lang-context";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Users, KeyRound, ShieldCheck, Pencil, Search, Trash2, X } from "lucide-react";
+import { Users, ShieldCheck, Pencil, Search, Trash2, X } from "lucide-react";
 
 export const Route = createFileRoute("/app/team")({
   component: TeamPage,
@@ -97,7 +97,6 @@ function TeamPage() {
   const setRole     = useServerFn(setUserRole);
   const assignArea  = useServerFn(assignUserToArea);
   const getAreas    = useServerFn(listAreas);
-  const resetPwd    = useServerFn(adminResetPassword);
   const editProfile = useServerFn(updateUserProfile);
 
   const [users, setUsers]               = useState<TeamUser[]>([]);
@@ -111,12 +110,6 @@ function TeamPage() {
   const [editEmail, setEditEmail]       = useState("");
   const [editActive, setEditActive]     = useState(true);
   const [editLoading, setEditLoading]   = useState(false);
-
-  // reset password dialog
-  const [resetTarget, setResetTarget]   = useState<TeamUser | null>(null);
-  const [newPwd, setNewPwd]             = useState("");
-  const [confirmPwd, setConfirmPwd]     = useState("");
-  const [resetLoading, setResetLoading] = useState(false);
 
   const canManageRoles = hasPermission("manage_roles");
   const canManageUsers = hasPermission("manage_users");
@@ -182,29 +175,6 @@ function TeamPage() {
       toast.error(e?.message ?? t("team.profileError"));
     } finally {
       setEditLoading(false);
-    }
-  };
-
-  const openResetDialog = (user: TeamUser) => {
-    setResetTarget(user);
-    setNewPwd("");
-    setConfirmPwd("");
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetTarget) return;
-    if (newPwd !== confirmPwd) { toast.error(t("team.pwdMismatch")); return; }
-    if (newPwd.length < 6) { toast.error(t("team.pwdMinLength")); return; }
-    setResetLoading(true);
-    try {
-      await resetPwd({ data: { userId: resetTarget.id, newPassword: newPwd } });
-      toast.success(t("team.pwdReset", { name: resetTarget.full_name ?? resetTarget.email }));
-      setResetTarget(null);
-    } catch (e: any) {
-      toast.error(e?.message ?? t("team.pwdResetError"));
-    } finally {
-      setResetLoading(false);
     }
   };
 
@@ -394,15 +364,6 @@ function TeamPage() {
                             style={iconBtn}
                           >
                             <Pencil size={14} />
-                          </button>
-                        )}
-                        {canManageUsers && (
-                          <button
-                            onClick={() => openResetDialog(u)}
-                            title="Restablecer contraseña"
-                            style={iconBtn}
-                          >
-                            <KeyRound size={14} />
                           </button>
                         )}
                         {canManageUsers && (
@@ -643,57 +604,6 @@ function TeamPage() {
         </div>,
         document.body
       )}
-
-      {/* ── Reset password dialog ── */}
-      <Dialog open={!!resetTarget} onOpenChange={(open) => !open && setResetTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Restablecer contraseña</DialogTitle>
-          </DialogHeader>
-          <p style={{ fontSize: 13, color: "var(--muted-foreground)", margin: "0 0 4px" }}>
-            Nueva contraseña para{" "}
-            <span style={{ fontWeight: 600, color: "var(--foreground)" }}>
-              {resetTarget?.full_name ?? resetTarget?.email}
-            </span>
-          </p>
-          <form onSubmit={handleResetPassword} className="space-y-4 pt-1">
-            <div className="space-y-1.5">
-              <Label htmlFor="reset-pwd">Nueva contraseña</Label>
-              <Input
-                id="reset-pwd"
-                type="password"
-                value={newPwd}
-                onChange={(e) => setNewPwd(e.target.value)}
-                required
-                minLength={6}
-                autoComplete="new-password"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="reset-confirm">Confirmar contraseña</Label>
-              <Input
-                id="reset-confirm"
-                type="password"
-                value={confirmPwd}
-                onChange={(e) => setConfirmPwd(e.target.value)}
-                required
-                autoComplete="new-password"
-              />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setResetTarget(null)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={resetLoading}>
-                {resetLoading
-                  ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  : "Restablecer"
-                }
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

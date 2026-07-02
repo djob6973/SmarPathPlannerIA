@@ -2,8 +2,6 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
-import { handleLogin, handleRegister, handleSignout } from "./lib/auth-handlers";
-import { handleGoogleSignin, handleGoogleCallback } from "./lib/google-oauth-handlers";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -41,35 +39,6 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
-    // Handle auth routes before TanStack Start (need raw Request/Response to set cookies).
-    const pathname = new URL(request.url).pathname;
-    if (pathname === "/api/auth/login" && request.method === "POST") return handleLogin(request);
-    if (pathname === "/api/auth/register" && request.method === "POST") return handleRegister(request);
-    if (pathname === "/api/auth/signout") return handleSignout(request);
-    if (pathname === "/api/auth/google" && request.method === "GET") return handleGoogleSignin(request);
-    if (pathname === "/api/auth/google/callback") return handleGoogleCallback(request);
-
-    // TEMPORARY — confirms whether Dokku's perimeter actually injects X-Forwarded-Email
-    // for this app before we commit to trusting it as the sole identity source.
-    // Remove this route once verified either way.
-    if (pathname === "/api/_debug/whoami") {
-      return new Response(
-        JSON.stringify(
-          {
-            xForwardedEmail: request.headers.get("x-forwarded-email"),
-            xForwardedUser: request.headers.get("x-forwarded-user"),
-            xForwardedProto: request.headers.get("x-forwarded-proto"),
-            host: request.headers.get("host"),
-            hasSessionCookie: (request.headers.get("cookie") ?? "").includes("smartpath_session="),
-            hasOauth2ProxyCookie: (request.headers.get("cookie") ?? "").includes("_oauth2_proxy"),
-          },
-          null,
-          2,
-        ),
-        { headers: { "content-type": "application/json" } },
-      );
-    }
-
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

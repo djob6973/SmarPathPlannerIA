@@ -12,7 +12,6 @@ import { useAuth } from "@/lib/auth-context";
 import { useLang } from "@/lib/lang-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listAreas, updateUserOwnArea } from "@/lib/admin.functions";
-import { changeOwnPassword } from "@/lib/auth.functions";
 import { getPlatformSetting, setPlatformSetting } from "@/lib/settings.functions";
 import { getColumns, createColumn, updateColumn, deleteColumn, getAiSettings, updateAiSettings } from "@/lib/data.functions";
 import { Switch } from "@/components/ui/switch";
@@ -21,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import {
   Settings, Columns3, Bot, GripVertical, Plus, Trash2, Save,
-  Pencil, Check, X, Lock, Shield, Building, User, Palette, Upload, Bell,
+  Pencil, Check, X, Shield, Building, User, Palette, Upload, Bell,
 } from "lucide-react";
 import { getSlackConfig, saveSlackConfig, testSlackConfig } from "@/lib/slack.functions";
 import { PermissionsManager } from "@/components/admin/permissions-manager";
@@ -1139,28 +1138,6 @@ function ProfileSettings() {
     },
   });
 
-  const [currentPwd, setCurrentPwd] = useState("");
-  const [newPwd, setNewPwd]         = useState("");
-  const [confirmPwd, setConfirmPwd] = useState("");
-
-  const changePwdMutation = useMutation({
-    mutationFn: changeOwnPassword,
-    onSuccess: () => {
-      toast.success("Contraseña actualizada correctamente");
-      setCurrentPwd(""); setNewPwd(""); setConfirmPwd("");
-    },
-    onError: (error: any) => {
-      toast.error(error.message ?? "Error al cambiar contraseña");
-    },
-  });
-
-  const handleChangePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPwd !== confirmPwd) { toast.error("Las contraseñas nuevas no coinciden"); return; }
-    if (newPwd.length < 6) { toast.error("La nueva contraseña debe tener al menos 6 caracteres"); return; }
-    changePwdMutation.mutate({ data: { currentPassword: currentPwd, newPassword: newPwd } });
-  };
-
   const areas        = areasData?.areas || [];
   const currentAreaId = profile?.area_id || null;
 
@@ -1243,75 +1220,6 @@ function ProfileSettings() {
         </div>
       )}
 
-      {/* Change password */}
-      <div style={cardStyle}>
-        <div style={{ padding: "20px 22px" }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: "0 0 16px" }}>
-            Cambiar contraseña
-          </p>
-          <form onSubmit={handleChangePassword} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <label htmlFor="current-pwd" style={subLabelStyle}>Contraseña actual</label>
-              <input
-                id="current-pwd"
-                type="password"
-                value={currentPwd}
-                onChange={(e) => setCurrentPwd(e.target.value)}
-                required
-                autoComplete="current-password"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label htmlFor="new-pwd" style={subLabelStyle}>Nueva contraseña</label>
-              <input
-                id="new-pwd"
-                type="password"
-                value={newPwd}
-                onChange={(e) => setNewPwd(e.target.value)}
-                required
-                minLength={6}
-                autoComplete="new-password"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label htmlFor="confirm-pwd" style={subLabelStyle}>Confirmar nueva contraseña</label>
-              <input
-                id="confirm-pwd"
-                type="password"
-                value={confirmPwd}
-                onChange={(e) => setConfirmPwd(e.target.value)}
-                required
-                autoComplete="new-password"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <button
-                type="submit"
-                disabled={changePwdMutation.isPending}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 7,
-                  height: 38, padding: "0 18px",
-                  borderRadius: "var(--r-md, 10px)",
-                  background: changePwdMutation.isPending ? "var(--muted)" : "#ED5650",
-                  border: "none",
-                  color: changePwdMutation.isPending ? "var(--muted-foreground)" : "white",
-                  fontSize: 13, fontWeight: 500,
-                  cursor: changePwdMutation.isPending ? "not-allowed" : "pointer",
-                }}
-              >
-                {changePwdMutation.isPending
-                  ? <span className="animate-spin" style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", display: "inline-block" }} />
-                  : <Lock size={14} />
-                }
-                Cambiar contraseña
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
     </div>
   );
 }

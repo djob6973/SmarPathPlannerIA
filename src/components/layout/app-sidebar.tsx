@@ -1,12 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
-import { Languages, KeyRound, LogOut } from "lucide-react";
+import { Languages } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useLang } from "@/lib/lang-context";
 import type { Lang } from "@/locales/translations";
-import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { getPlatformSetting } from "@/lib/settings.functions";
 
@@ -165,7 +164,7 @@ interface AppSidebarProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClick }: AppSidebarProps) {
-  const { user, roles, hasRole, hasPermission, signOut, profile, isSuperAdmin } = useAuth();
+  const { user, roles, hasRole, hasPermission, profile, isSuperAdmin } = useAuth();
   const { t, lang, setLang } = useLang();
   const [langOpen, setLangOpen] = useState(false);
 
@@ -189,7 +188,6 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
   }, [customLogo]);
 
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const navigate = useNavigate();
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
 
@@ -203,11 +201,6 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
   const roleLabel   = roles[0]?.replace(/_/g, " ") ?? "—";
 
   const isDark = resolvedTheme === "dark";
-
-  const handleSignOut = async () => {
-    await signOut();
-    navigate({ to: "/login" });
-  };
 
   const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
   const ThemeIcon = resolvedTheme === "dark" ? IconMoon : IconSun;
@@ -368,7 +361,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
       {/* ── Footer ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 12 }}>
 
-        {/* Utility buttons row: language · theme · change password · logout */}
+        {/* Utility buttons row: language · theme */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", gap: 4, padding: 4 }}>
           {/* Language selector */}
           <div style={{ position: "relative" }}>
@@ -425,31 +418,6 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
           >
             <ThemeIcon />
-          </button>
-
-          {/* Change password */}
-          <Link
-            to="/app/settings"
-            search={{ tab: "profile" }}
-            aria-label={t("nav.changePassword")}
-            title={t("nav.changePassword")}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer", textDecoration: "none" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
-          >
-            <KeyRound className="size-[16px]" strokeWidth={1.5} />
-          </Link>
-
-          {/* Logout */}
-          <button
-            onClick={handleSignOut}
-            aria-label={t("nav.signOut")}
-            title={t("nav.signOut")}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
-          >
-            <LogOut className="size-[16px]" strokeWidth={1.5} />
           </button>
         </div>
 
