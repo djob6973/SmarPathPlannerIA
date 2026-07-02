@@ -35,6 +35,7 @@ export function ManualRequestModal({ onClose, onCreated }: ManualRequestModalPro
   const [canAssignRequests, setCanAssignRequests] = useState(false);
   const [parentRequestId, setParentRequestId] = useState<string | null>(null);
   const [topLevelRequests, setTopLevelRequests] = useState<RequestRow[]>([]);
+  const [parentSearch, setParentSearch] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -203,15 +204,43 @@ export function ManualRequestModal({ onClose, onCreated }: ManualRequestModalPro
                 {topLevelRequests.length > 0 && (
                   <div>
                     <label className="text-sm font-medium mb-1.5 block">Vincular a iniciativa</label>
-                    <Select value={parentRequestId || "none"} onValueChange={(v) => setParentRequestId(v === "none" ? null : v)}>
-                      <SelectTrigger><SelectValue placeholder="Sin iniciativa (independiente)" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Sin iniciativa (independiente)</SelectItem>
-                        {topLevelRequests.map((r) => (
-                          <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="rounded-md border border-border overflow-hidden">
+                      <div className="flex items-center gap-1.5 border-b border-border px-2.5 py-2">
+                        <svg className="h-3.5 w-3.5 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <input
+                          placeholder="Buscar iniciativa..."
+                          value={parentSearch}
+                          onChange={(e) => setParentSearch(e.target.value)}
+                          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                        />
+                      </div>
+                      <div className="max-h-44 overflow-y-auto">
+                        <button
+                          type="button"
+                          onClick={() => setParentRequestId(null)}
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-secondary ${!parentRequestId ? "bg-secondary font-medium" : ""}`}
+                        >
+                          Sin iniciativa (independiente)
+                        </button>
+                        {(() => {
+                          const filtered = topLevelRequests.filter((r) =>
+                            r.title.toLowerCase().includes(parentSearch.toLowerCase())
+                          );
+                          return filtered.length === 0 ? (
+                            <p className="px-3 py-2 text-sm text-muted-foreground">Sin resultados</p>
+                          ) : filtered.map((r) => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              onClick={() => setParentRequestId(r.id)}
+                              className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-secondary ${parentRequestId === r.id ? "bg-secondary font-medium" : ""}`}
+                            >
+                              {r.title}
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                    </div>
                     <p className="text-xs text-muted-foreground mt-1">Asocia esta solicitud a un trabajo existente para agrupar iniciativas relacionadas.</p>
                   </div>
                 )}

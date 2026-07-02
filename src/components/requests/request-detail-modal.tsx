@@ -118,6 +118,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [linkableRequests, setLinkableRequests] = useState<RequestRow[]>([]);
   const [loadingLinkable, setLoadingLinkable] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState("");
+  const [parentSearch, setParentSearch] = useState("");
   const [updatingParent, setUpdatingParent] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
@@ -1194,26 +1195,49 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                     </div>
                   ) : isLinkingParent ? (
                     <div className="space-y-1.5">
-                      <Select value={selectedParentId} onValueChange={setSelectedParentId}>
-                        <SelectTrigger className="h-7 text-xs"><SelectValue placeholder={t("requests.selectInitiative")} /></SelectTrigger>
-                        <SelectContent>
-                          {loadingLinkable ? (
-                            <div className="p-2 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
-                          ) : linkableRequests.length === 0 ? (
-                            <div className="p-2 text-xs text-muted-foreground">{t("requests.noInitiatives")}</div>
-                          ) : (
-                            linkableRequests.map((r) => (
-                              <SelectItem key={r.id} value={r.id} className="text-xs">{r.title}</SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                      {loadingLinkable ? (
+                        <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                      ) : (
+                        <div className="rounded-md border border-border overflow-hidden">
+                          <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
+                            <svg className="h-3 w-3 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                            <input
+                              autoFocus
+                              placeholder="Buscar iniciativa..."
+                              value={parentSearch}
+                              onChange={(e) => setParentSearch(e.target.value)}
+                              className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                            />
+                          </div>
+                          <div className="max-h-44 overflow-y-auto">
+                            {linkableRequests.length === 0 ? (
+                              <p className="p-2 text-xs text-muted-foreground">{t("requests.noInitiatives")}</p>
+                            ) : (() => {
+                              const filtered = linkableRequests.filter((r) =>
+                                r.title.toLowerCase().includes(parentSearch.toLowerCase())
+                              );
+                              return filtered.length === 0 ? (
+                                <p className="p-2 text-xs text-muted-foreground">Sin resultados</p>
+                              ) : filtered.map((r) => (
+                                <button
+                                  key={r.id}
+                                  type="button"
+                                  onClick={() => setSelectedParentId(r.id)}
+                                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors hover:bg-secondary ${selectedParentId === r.id ? "bg-secondary font-medium" : ""}`}
+                                >
+                                  {r.title}
+                                </button>
+                              ));
+                            })()}
+                          </div>
+                        </div>
+                      )}
                       <div className="flex gap-1">
                         <Button size="sm" className="h-6 text-xs flex-1" onClick={linkParent} disabled={!selectedParentId || updatingParent}>
                           {updatingParent ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
                           {t("requests.link")}
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setIsLinkingParent(false)}>{t("common.cancel")}</Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => { setIsLinkingParent(false); setParentSearch(""); setSelectedParentId(""); }}>{t("common.cancel")}</Button>
                       </div>
                     </div>
                   ) : canEditRequest ? (
