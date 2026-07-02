@@ -970,7 +970,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                             e.target.style.height = "auto";
                             e.target.style.height = `${e.target.scrollHeight}px`;
                           }}
-                          className="text-sm min-h-[60px] resize-none overflow-hidden leading-relaxed"
+                          className="text-sm min-h-[120px] resize-none overflow-hidden leading-relaxed"
                           disabled={addingDeliverable}
                           rows={2}
                         />
@@ -1027,7 +1027,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                                       e.target.style.height = `${e.target.scrollHeight}px`;
                                     }}
                                     placeholder={t("requests.deliverableNotesPlaceholder")}
-                                    className="text-xs min-h-[60px] resize-none overflow-hidden leading-relaxed"
+                                    className="text-xs min-h-[120px] resize-none overflow-hidden leading-relaxed"
                                     disabled={savingDeliverableEdit}
                                     rows={2}
                                   />
