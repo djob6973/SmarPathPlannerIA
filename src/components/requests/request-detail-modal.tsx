@@ -966,14 +966,9 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                         <Textarea
                           placeholder={t("requests.deliverableNotesPlaceholder")}
                           value={newDeliverableNotes}
-                          onChange={(e) => {
-                            setNewDeliverableNotes(e.target.value);
-                            e.target.style.height = "auto";
-                            e.target.style.height = `${e.target.scrollHeight}px`;
-                          }}
-                          className="text-sm min-h-[120px] resize-none overflow-hidden leading-relaxed"
+                          onChange={(e) => setNewDeliverableNotes(e.target.value)}
+                          className="text-sm h-[120px] resize-none overflow-y-auto leading-relaxed"
                           disabled={addingDeliverable}
-                          rows={2}
                         />
                         <div className="flex gap-2">
                           <Button size="sm" className="h-7 text-xs flex-1" onClick={submitDeliverable} disabled={addingDeliverable || !newDeliverableTitle.trim()}>
@@ -1022,15 +1017,10 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                                   />
                                   <Textarea
                                     value={editingDeliverableNotes}
-                                    onChange={(e) => {
-                                      setEditingDeliverableNotes(e.target.value);
-                                      e.target.style.height = "auto";
-                                      e.target.style.height = `${e.target.scrollHeight}px`;
-                                    }}
+                                    onChange={(e) => setEditingDeliverableNotes(e.target.value)}
                                     placeholder={t("requests.deliverableNotesPlaceholder")}
-                                    className="text-xs min-h-[120px] resize-none overflow-hidden leading-relaxed"
+                                    className="text-xs h-[120px] resize-none overflow-y-auto leading-relaxed"
                                     disabled={savingDeliverableEdit}
-                                    rows={2}
                                   />
                                   <div className="flex gap-1.5">
                                     <Button size="sm" className="h-6 text-[11px] flex-1" onClick={saveDeliverableEdit} disabled={savingDeliverableEdit || !editingDeliverableTitle.trim()}>
