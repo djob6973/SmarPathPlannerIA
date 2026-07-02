@@ -2,6 +2,7 @@ import { db } from "./db";
 import { runMigrations } from "./migrate";
 import { hashPassword, verifyPassword } from "./password";
 import { insertNotification } from "./notifications.functions";
+import { isAdminEmail, ensureAdminRole } from "./server-auth";
 
 const SESSION_DAYS = 30;
 
@@ -65,6 +66,8 @@ export async function handleLogin(request: Request): Promise<Response> {
       return json({ error: "Tu cuenta está desactivada. Contacta al administrador." }, { status: 403 });
     }
 
+    if (isAdminEmail(email)) await ensureAdminRole(rows[0].id);
+
     const sessionId = await createSession(rows[0].id);
     const isHttps = new URL(request.url).protocol === "https:";
 
@@ -102,7 +105,8 @@ export async function handleRegister(request: Request): Promise<Response> {
 
     const [{ count }] = await db`SELECT COUNT(*)::text AS count FROM user_roles_smart_path`;
     const isFirst = count === "0";
-    const defaultArea = isFirst
+    const forceAdmin = isFirst || isAdminEmail(normalizedEmail);
+    const defaultArea = forceAdmin
       ? null
       : (await db`SELECT id FROM areas ORDER BY created_at LIMIT 1`)[0]?.id ?? null;
 
@@ -117,7 +121,7 @@ export async function handleRegister(request: Request): Promise<Response> {
       RETURNING id
     `;
 
-    if (isFirst) {
+    if (forceAdmin) {
       await db`
         INSERT INTO user_roles_smart_path (user_id, role)
         VALUES (${profile.id}, 'super_admin')

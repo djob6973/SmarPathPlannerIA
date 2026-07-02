@@ -148,12 +148,29 @@ function LoginPage() {
               : "Regístrate para empezar a usar SmartPath Planner."}
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-3.5 xl:mt-8 xl:space-y-4">
+          <div className="mt-6 space-y-3.5 xl:mt-8 xl:space-y-4">
             {error && (
               <div className="rounded-lg bg-red-50 px-3 py-2.5 text-sm text-[#ED5650]">
                 {error}
               </div>
             )}
+
+            <a
+              href="/api/auth/google"
+              className="flex h-10 w-full items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white text-[13px] font-semibold text-[#1a1a1a] shadow-sm transition-colors hover:bg-gray-50 xl:h-11"
+            >
+              <GoogleMark size={16} />
+              Continuar con Google
+            </a>
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-gray-200" />
+              <span className="text-[11px] uppercase tracking-wider text-gray-400">o</span>
+              <div className="h-px flex-1 bg-gray-200" />
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="mt-3.5 space-y-3.5 xl:mt-4 xl:space-y-4">
 
             {/* Full name — register only */}
             {!isLogin && (
@@ -383,6 +400,17 @@ function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function GoogleMark({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z" />
+      <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.5 6.1 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.4 0 10.3-1.9 14-5.3l-6.5-5.5c-2.1 1.4-4.7 2.3-7.5 2.3-5.2 0-9.6-3.3-11.3-8l-6.6 5.1C9.6 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4 5.6l6.5 5.5C41.5 36 44 30.5 44 24c0-1.3-.1-2.7-.4-3.5z" />
+    </svg>
   );
 }
 

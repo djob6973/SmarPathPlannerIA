@@ -26,6 +26,25 @@ function parseCookie(header: string | null, name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+// Emails in ADMIN_EMAILS always get super_admin, on every login — so a named
+// admin account can never end up locked out with no role, regardless of
+// which auth method (password or Google) they used or when they first signed in.
+export function isAdminEmail(email: string): boolean {
+  const list = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  return list.includes(email.toLowerCase().trim());
+}
+
+export async function ensureAdminRole(userId: string): Promise<void> {
+  await db`
+    INSERT INTO user_roles_smart_path (user_id, role)
+    VALUES (${userId}, 'super_admin')
+    ON CONFLICT (user_id, role) DO NOTHING
+  `;
+}
+
 export async function getAuthContext(): Promise<AuthContext | AuthError> {
   await runMigrations();
 
@@ -80,9 +99,12 @@ export async function getOrCreateProfile(email: string): Promise<UserProfile> {
     SELECT id, full_name, email, area_id FROM profiles WHERE email = ${email}
   `;
 
-  if (rows.length > 0) return rows[0];
+  if (rows.length > 0) {
+    if (isAdminEmail(email)) await ensureAdminRole(rows[0].id);
+    return rows[0];
+  }
 
-  // First user ever → super_admin; otherwise → client
+  // First user ever, or a configured admin email → super_admin; otherwise → client
   const [{ count }] = await db<[{ count: string }]>`
     SELECT COUNT(*)::text AS count FROM user_roles_smart_path
   `;
@@ -108,7 +130,7 @@ export async function getOrCreateProfile(email: string): Promise<UserProfile> {
     RETURNING id, full_name, email, area_id
   `;
 
-  if (isFirst) {
+  if (isFirst || isAdminEmail(email)) {
     await db`
       INSERT INTO user_roles_smart_path (user_id, role)
       VALUES (${created.id}, 'super_admin')
