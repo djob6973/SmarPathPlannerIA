@@ -22,7 +22,7 @@ function getInitials(name: string | null | undefined, email: string | null | und
 }
 
 function AppLayout() {
-  const { isAuthenticated, profile, user } = useAuth();
+  const { isAuthenticated, profile, user, roles } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -58,6 +58,31 @@ function AppLayout() {
             className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             Recargar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // A Super Admin hasn't assigned this user a role/area yet — everything in the
+  // sidebar is permission-gated, so without this screen they'd just see an empty
+  // shell with no explanation of why nothing works.
+  if (roles.length === 0) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-sm text-center">
+          <p className="text-2xl font-semibold mb-2">Cuenta pendiente de aprobación</p>
+          <p className="text-sm text-muted-foreground mb-1">
+            Tu cuenta ({user?.email}) fue creada correctamente.
+          </p>
+          <p className="text-sm text-muted-foreground mb-6">
+            Un administrador debe asignarte un rol y un área para que puedas acceder al sistema.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Ya me asignaron acceso, recargar
           </button>
         </div>
       </div>
