@@ -57,6 +57,24 @@ export const sendSlackNotification = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const auth = await getAuthContext();
     if ("error" in auth) throw new Error(auth.error);
+
+    const roleRows = await auth.db<{ role: string }[]>`
+      SELECT role FROM user_roles_smart_path WHERE user_id = ${auth.userId}
+    `;
+    const roles = roleRows.map((r) => r.role);
+    const allowed =
+      roles.length > 0 &&
+      (
+        await auth.db<[any]>`
+          SELECT 1 FROM role_permissions
+          WHERE role = ANY(${roles})
+            AND permission = 'send_slack_notifications'
+            AND enabled = true
+          LIMIT 1
+        `
+      ).length > 0;
+    if (!allowed) throw new Error("No tienes permiso para enviar notificaciones a Slack");
+
     await postSlackMessage(data.requestId, data.channel, data.deliverableIds);
     return { ok: true };
   });

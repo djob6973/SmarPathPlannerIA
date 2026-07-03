@@ -18,7 +18,8 @@ export type AppPermission =
   | "use_ai_features"
   | "manage_settings"
   | "manage_request_expiration"
-  | "manage_areas";
+  | "manage_areas"
+  | "send_slack_notifications";
 
 export type AppRole = "super_admin" | "area_admin" | "manager" | "agent" | "client" | "viewer";
 
@@ -62,6 +63,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       "assign_requests",
       "change_request_status",
       "manage_request_expiration",
+      "send_slack_notifications",
     ],
   },
   {
@@ -112,6 +114,7 @@ export const PERMISSION_LABELS: Record<AppPermission, string> = {
   manage_settings: "Gestionar configuración",
   manage_request_expiration: "Gestionar vencimiento de solicitudes",
   manage_areas: "Gestionar áreas",
+  send_slack_notifications: "Enviar notificaciones a Slack",
 };
 
 export const ROLE_LABELS: Record<AppRole, string> = {
@@ -145,6 +148,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "manage_settings",
     "manage_request_expiration",
     "manage_areas",
+    "send_slack_notifications",
   ],
   area_admin: [
     "view_dashboard",
@@ -164,6 +168,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "export_data",
     "use_ai_features",
     "manage_request_expiration",
+    "send_slack_notifications",
   ],
   manager: [
     "view_dashboard",
@@ -181,6 +186,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, AppPermission[]> = {
     "export_data",
     "use_ai_features",
     "manage_request_expiration",
+    "send_slack_notifications",
   ],
   agent: [
     "view_dashboard", "view_board",

@@ -105,6 +105,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [canAssignRequest, setCanAssignRequest] = useState(false);
   const [canChangeStatus, setCanChangeStatus] = useState(false);
+  const [canNotifySlack, setCanNotifySlack] = useState(false);
   const [sendingSlack, setSendingSlack] = useState(false);
   const [showSlackDialog, setShowSlackDialog] = useState(false);
   const [selectedDeliverableIds, setSelectedDeliverableIds] = useState<string[]>([]);
@@ -239,6 +240,13 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
     checkUserPermission({ data: { permission: "change_request_status" } })
       .then(({ hasPermission }) => setCanChangeStatus(hasPermission))
       .catch(() => setCanChangeStatus(false));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    checkUserPermission({ data: { permission: "send_slack_notifications" } })
+      .then(({ hasPermission }) => setCanNotifySlack(hasPermission))
+      .catch(() => setCanNotifySlack(false));
   }, [user]);
 
   const loadLinkableRequests = async () => {
@@ -703,7 +711,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {request && (
+            {request && canNotifySlack && (
               <Button
                 variant="ghost"
                 size="sm"

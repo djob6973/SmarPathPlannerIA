@@ -10,7 +10,7 @@ const ALL_PERMISSIONS = [
   "delete_own_requests", "delete_all_requests", "view_all_requests",
   "assign_requests", "change_request_status", "manage_users", "manage_roles", "manage_permissions",
   "manage_areas", "view_analytics", "export_data", "use_ai_features",
-  "manage_settings", "manage_request_expiration",
+  "manage_settings", "manage_request_expiration", "send_slack_notifications",
 ] as const;
 
 const DEFAULT_PERMISSIONS: Record<string, AppPermission[]> = {
@@ -20,12 +20,14 @@ const DEFAULT_PERMISSIONS: Record<string, AppPermission[]> = {
     "create_requests","edit_own_requests","edit_all_requests","delete_own_requests",
     "delete_all_requests","view_all_requests","assign_requests","change_request_status",
     "manage_users","manage_roles","view_analytics","export_data","use_ai_features","manage_request_expiration",
+    "send_slack_notifications",
   ],
   manager: [
     "view_dashboard","view_board","view_team",
     "create_requests","edit_own_requests","edit_all_requests","delete_own_requests",
     "delete_all_requests","view_all_requests","assign_requests","change_request_status",
     "view_analytics","export_data","use_ai_features","manage_request_expiration",
+    "send_slack_notifications",
   ],
   agent: [
     "view_dashboard","view_board",
