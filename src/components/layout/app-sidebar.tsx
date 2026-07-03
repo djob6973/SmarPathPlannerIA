@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
-import { Languages } from "lucide-react";
+import { Languages, User } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useLang } from "@/lib/lang-context";
@@ -361,7 +361,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
       {/* ── Footer ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 12 }}>
 
-        {/* Utility buttons row: language · theme */}
+        {/* Utility buttons row: language · theme · profile */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", gap: 4, padding: 4 }}>
           {/* Language selector */}
           <div style={{ position: "relative" }}>
@@ -419,6 +419,19 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
           >
             <ThemeIcon />
           </button>
+
+          {/* Profile */}
+          <Link
+            to="/app/settings"
+            search={{ tab: "profile" }}
+            aria-label={t("nav.myProfile")}
+            title={t("nav.myProfile")}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer", textDecoration: "none" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
+          >
+            <User className="size-[16px]" strokeWidth={1.5} />
+          </Link>
         </div>
 
         {/* User row */}
