@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
-import { Languages, User } from "lucide-react";
+import { Languages, User, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useLang } from "@/lib/lang-context";
@@ -95,24 +95,6 @@ function IconBell() {
   );
 }
 
-function IconSun() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2m-7.1-14.1 1.4 1.4m12.4 12.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m12.4-12.4 1.4-1.4" />
-    </svg>
-  );
-}
-
-function IconMoon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
-    </svg>
-  );
-}
-
-
 function IconChevronRight() {
   return (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -205,7 +187,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
   const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
   // Icon/label show the destination, not the current state: light mode → moon
   // ("switch to dark"), dark mode → sun ("switch to light").
-  const ThemeIcon = resolvedTheme === "dark" ? IconSun : IconMoon;
+  const ThemeIcon = resolvedTheme === "dark" ? Sun : Moon;
   const themeLabel = resolvedTheme === "dark" ? t("theme.switchToLight") : t("theme.switchToDark");
 
   const LANGS: { key: Lang; flag: string }[] = [
@@ -419,7 +401,7 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}
           >
-            <ThemeIcon />
+            <ThemeIcon className="size-[16px]" strokeWidth={1.5} />
           </button>
 
           {/* Profile */}
