@@ -203,8 +203,10 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
   const isDark = resolvedTheme === "dark";
 
   const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
-  const ThemeIcon = resolvedTheme === "dark" ? IconMoon : IconSun;
-  const themeLabel = resolvedTheme === "dark" ? t("theme.dark") : t("theme.light");
+  // Icon/label show the destination, not the current state: light mode → moon
+  // ("switch to dark"), dark mode → sun ("switch to light").
+  const ThemeIcon = resolvedTheme === "dark" ? IconSun : IconMoon;
+  const themeLabel = resolvedTheme === "dark" ? t("theme.switchToLight") : t("theme.switchToDark");
 
   const LANGS: { key: Lang; flag: string }[] = [
     { key: "es", flag: "🇪🇸" },
@@ -411,8 +413,8 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
           {/* Theme toggle */}
           <button
             onClick={() => setTheme(nextTheme)}
-            aria-label={`Tema: ${themeLabel}`}
-            title={`Tema: ${themeLabel}`}
+            aria-label={themeLabel}
+            title={themeLabel}
             style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, border: 0, background: "transparent", borderRadius: 999, color: "var(--sb-text-muted)", cursor: "pointer" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--sb-text-muted)"; }}

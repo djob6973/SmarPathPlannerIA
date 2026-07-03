@@ -47,7 +47,10 @@ const es = {
     myProfile: "Mi Perfil",
     noRole: "sin rol",
   },
-  theme: { dark: "Oscuro", light: "Claro", system: "Sistema" },
+  theme: {
+    dark: "Oscuro", light: "Claro", system: "Sistema",
+    switchToDark: "Cambiar a modo oscuro", switchToLight: "Cambiar a modo claro",
+  },
   notFound: {
     title: "Página no encontrada",
     message: "La página que buscas no existe o fue movida.",
@@ -338,7 +341,10 @@ const en: typeof es = {
     myProfile: "My Profile",
     noRole: "no role",
   },
-  theme: { dark: "Dark", light: "Light", system: "System" },
+  theme: {
+    dark: "Dark", light: "Light", system: "System",
+    switchToDark: "Switch to dark mode", switchToLight: "Switch to light mode",
+  },
   notFound: {
     title: "Page not found",
     message: "The page you're looking for doesn't exist or was moved.",
@@ -629,7 +635,10 @@ const pt: typeof es = {
     myProfile: "Meu Perfil",
     noRole: "sem função",
   },
-  theme: { dark: "Escuro", light: "Claro", system: "Sistema" },
+  theme: {
+    dark: "Escuro", light: "Claro", system: "Sistema",
+    switchToDark: "Mudar para modo escuro", switchToLight: "Mudar para modo claro",
+  },
   notFound: {
     title: "Página não encontrada",
     message: "A página que você procura não existe ou foi movida.",
