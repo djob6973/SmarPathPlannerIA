@@ -9,7 +9,7 @@ const ROLE_LABELS: Record<string, string> = {
   area_admin:  "Admin Área",
   manager:     "Manager",
   agent:       "Agent",
-  client:      "Client",
+  client:      "Cliente",
   viewer:      "Viewer",
 };
 

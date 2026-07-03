@@ -33,7 +33,7 @@ const ROLE_STYLES: Record<string, { bg: string; color: string; label: string }> 
   area_admin:  { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Admin Área" },
   manager:     { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Manager" },
   agent:       { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Agente" },
-  client:      { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Participante" },
+  client:      { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Cliente" },
   viewer:      { bg: "#F5F5F5", color: "rgba(51,51,51,0.65)", label: "Viewer" },
 };
 

@@ -56,6 +56,31 @@ export const getCurrentUser = createServerFn({ method: "GET" }).handler(
   }
 );
 
+// Self-service onboarding: a brand-new user with zero roles can grant
+// themselves exactly the "client" role while waiting on a Super Admin.
+// The zero-roles check happens here, server-side — this can never be used
+// to escalate an existing account, and the role is hardcoded, never
+// accepted as input.
+export const selfAssignClientRole = createServerFn({ method: "POST" }).handler(
+  async () => {
+    const auth = await getAuthContext();
+    if ("error" in auth) throw new Error(auth.error);
+    const { userId } = auth;
+
+    const existing = await db<{ role: string }[]>`
+      SELECT role FROM user_roles_smart_path WHERE user_id = ${userId}
+    `;
+    if (existing.length > 0) throw new Error("Ya tienes un rol asignado");
+
+    await db`
+      INSERT INTO user_roles_smart_path (user_id, role)
+      VALUES (${userId}, 'client')
+      ON CONFLICT (user_id, role) DO NOTHING
+    `;
+    return { ok: true };
+  }
+);
+
 export const updateOwnProfile = createServerFn({ method: "POST" })
   .inputValidator((input: { fullName?: string }) => input)
   .handler(async ({ data }) => {

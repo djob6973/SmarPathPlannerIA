@@ -119,7 +119,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   area_admin: "Admin Área",
   manager: "Manager",
   agent: "Agent",
-  client: "Client",
+  client: "Cliente",
   viewer: "Viewer",
 };
 
