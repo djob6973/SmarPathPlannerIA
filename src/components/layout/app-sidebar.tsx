@@ -381,7 +381,10 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
                       color: lang === key ? "var(--foreground)" : "var(--muted-foreground)",
                       fontSize: 15, fontWeight: lang === key ? 600 : 500,
                       cursor: "pointer", textAlign: "left",
+                      transition: "background 150ms ease, color 150ms ease",
                     }}
+                    onMouseEnter={(e) => { if (lang !== key) (e.currentTarget as HTMLElement).style.background = "var(--sb-hover-bg)"; }}
+                    onMouseLeave={(e) => { if (lang !== key) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
                     <span
                       style={{
