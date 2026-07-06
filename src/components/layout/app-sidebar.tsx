@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
-import { Languages, User, Sun, Moon } from "lucide-react";
+import { Languages, User, Sun, Moon, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
 import { useLang } from "@/lib/lang-context";
@@ -190,10 +190,10 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
   const ThemeIcon = resolvedTheme === "dark" ? Sun : Moon;
   const themeLabel = resolvedTheme === "dark" ? t("theme.switchToLight") : t("theme.switchToDark");
 
-  const LANGS: { key: Lang; flag: string }[] = [
-    { key: "es", flag: "🇪🇸" },
-    { key: "en", flag: "🇺🇸" },
-    { key: "pt", flag: "🇧🇷" },
+  const LANGS: { key: Lang; code: string }[] = [
+    { key: "es", code: "ES" },
+    { key: "en", code: "US" },
+    { key: "pt", code: "BR" },
   ];
 
   // ── CSS variable tokens (mirror prototype --sb- vars via inline style on root)
@@ -364,28 +364,37 @@ export function AppSidebar({ unreadCount = 0, onNotificationsClick, onSearchClic
                 style={{
                   position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)",
                   background: "var(--card)", border: "1px solid var(--border)",
-                  borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,.18)",
-                  padding: "6px", zIndex: 100, minWidth: 140,
+                  borderRadius: 16, boxShadow: "0 8px 24px rgba(0,0,0,.18)",
+                  padding: "8px", zIndex: 100, minWidth: 200,
                   animation: "spIn .12s ease both",
                 }}
                 onMouseLeave={() => setLangOpen(false)}
               >
-                {LANGS.map(({ key, flag }) => (
+                {LANGS.map(({ key, code }) => (
                   <button
                     key={key}
                     onClick={() => { setLang(key); setLangOpen(false); }}
                     style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      width: "100%", padding: "7px 10px", borderRadius: 8,
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%", padding: "8px 10px", borderRadius: 10,
                       border: "none", background: lang === key ? "var(--muted)" : "transparent",
                       color: lang === key ? "var(--foreground)" : "var(--muted-foreground)",
-                      fontSize: 13, fontWeight: lang === key ? 600 : 400,
+                      fontSize: 15, fontWeight: lang === key ? 600 : 500,
                       cursor: "pointer", textAlign: "left",
                     }}
                   >
-                    <span style={{ fontSize: 16 }}>{flag}</span>
+                    <span
+                      style={{
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        minWidth: 30, height: 22, padding: "0 6px", borderRadius: 7,
+                        background: "var(--sb-hover-bg)", color: "var(--muted-foreground)",
+                        fontSize: 10.5, fontWeight: 700, letterSpacing: "0.03em",
+                      }}
+                    >
+                      {code}
+                    </span>
                     {t(`lang.${key}`)}
-                    {lang === key && <span style={{ marginLeft: "auto", fontSize: 10, color: "#ED5650" }}>✓</span>}
+                    {lang === key && <Check className="ml-auto size-4 shrink-0" style={{ color: "#ED5650" }} strokeWidth={2.5} />}
                   </button>
                 ))}
               </div>
