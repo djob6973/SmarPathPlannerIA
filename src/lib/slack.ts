@@ -1,9 +1,25 @@
+import { slackifyMarkdown } from "slackify-markdown";
 import { db } from "./db";
 
 export interface SlackConfig {
   enabled: boolean;
   auto_notify: boolean;
   channel: string;
+}
+
+// Our fields are authored as CommonMark (react-markdown in the app UI), but Slack's
+// "mrkdwn" is a different, non-standard syntax (single-asterisk bold, no headings, etc.).
+// Converting via slackify-markdown also protects plain text from Slack's naive
+// mrkdwn parser (e.g. "user_id_migration" would otherwise italicize "id").
+function toSlackText(markdown: string): string {
+  return slackifyMarkdown(markdown).trim();
+}
+
+// Renders as bold in Slack even for plain (non-markdown) text, by bolding the
+// CommonMark source before conversion instead of wrapping the already-converted output
+// (which would nest asterisks and break Slack's parser if the source has its own formatting).
+function toSlackBoldText(markdown: string): string {
+  return toSlackText(`**${markdown}**`);
 }
 
 export async function getSlackConfigFromDb(): Promise<SlackConfig> {
@@ -83,7 +99,7 @@ export async function postSlackMessage(
     },
     {
       type: "section",
-      text: { type: "mrkdwn", text: `*${req.title}*` },
+      text: { type: "mrkdwn", text: toSlackBoldText(req.title) },
     },
     { type: "section", fields },
     { type: "divider" },
@@ -98,7 +114,7 @@ export async function postSlackMessage(
     `;
     if (deliverables.length > 0) {
       const lines = deliverables
-        .map((d) => `• *${d.title}*${d.notes ? `\n  ${d.notes}` : ""}`)
+        .map((d) => `• ${toSlackBoldText(d.title)}${d.notes ? `\n  ${toSlackText(d.notes)}` : ""}`)
         .join("\n");
       blocks.push({
         type: "section",
