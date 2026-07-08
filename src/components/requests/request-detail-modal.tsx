@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { MarkdownContent } from "@/components/ui/markdown-content";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -768,15 +770,15 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.fieldDescription")}</label>
-                    <Textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="text-sm min-h-[80px]" />
+                    <MarkdownEditor value={editDescription} onChange={setEditDescription} textareaClassName="text-sm min-h-[80px]" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.fieldObjective")}</label>
-                    <Textarea value={editObjective} onChange={(e) => setEditObjective(e.target.value)} className="text-sm min-h-[60px]" />
+                    <MarkdownEditor value={editObjective} onChange={setEditObjective} textareaClassName="text-sm min-h-[60px]" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.fieldProcess")}</label>
-                    <Textarea value={editProcess} onChange={(e) => setEditProcess(e.target.value)} className="text-sm min-h-[60px]" />
+                    <MarkdownEditor value={editProcess} onChange={setEditProcess} textareaClassName="text-sm min-h-[60px]" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">{t("requests.colPriority")}</label>
@@ -857,19 +859,19 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                   {request?.description && (
                     <div>
                       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t("requests.fieldDescription")}</h3>
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{request.description}</p>
+                      <MarkdownContent content={request.description} className="text-foreground" />
                     </div>
                   )}
                   {request?.objective && (
                     <div>
                       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t("requests.fieldObjective")}</h3>
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{request.objective}</p>
+                      <MarkdownContent content={request.objective} className="text-foreground" />
                     </div>
                   )}
                   {request?.process && (
                     <div>
                       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t("requests.fieldProcess")}</h3>
-                      <p className="text-sm text-foreground whitespace-pre-wrap">{request.process}</p>
+                      <MarkdownContent content={request.process} className="text-foreground" />
                     </div>
                   )}
                   {!request?.description && !request?.objective && !request?.process && (
@@ -971,11 +973,11 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                           disabled={addingDeliverable}
                           onKeyDown={(e) => { if (e.key === "Enter") submitDeliverable(); }}
                         />
-                        <Textarea
+                        <MarkdownEditor
                           placeholder={t("requests.deliverableNotesPlaceholder")}
                           value={newDeliverableNotes}
-                          onChange={(e) => setNewDeliverableNotes(e.target.value)}
-                          className="text-sm h-[120px] resize-none overflow-y-auto leading-relaxed"
+                          onChange={setNewDeliverableNotes}
+                          textareaClassName="text-sm h-[120px] resize-none overflow-y-auto leading-relaxed"
                           disabled={addingDeliverable}
                         />
                         <div className="flex gap-2">
@@ -1023,11 +1025,11 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                                     disabled={savingDeliverableEdit}
                                     autoFocus
                                   />
-                                  <Textarea
+                                  <MarkdownEditor
                                     value={editingDeliverableNotes}
-                                    onChange={(e) => setEditingDeliverableNotes(e.target.value)}
+                                    onChange={setEditingDeliverableNotes}
                                     placeholder={t("requests.deliverableNotesPlaceholder")}
-                                    className="text-xs h-[120px] resize-none overflow-y-auto leading-relaxed"
+                                    textareaClassName="text-xs h-[120px] resize-none overflow-y-auto leading-relaxed"
                                     disabled={savingDeliverableEdit}
                                   />
                                   <div className="flex gap-1.5">
@@ -1043,7 +1045,9 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                               ) : (
                                 <>
                                   <div className="flex items-center gap-1.5">
-                                    <span className={cn("font-medium leading-snug", isDelivered && "line-through text-muted-foreground")}>{item.title}</span>
+                                    <span className={cn("font-medium leading-snug", isDelivered && "line-through text-muted-foreground")}>
+                                      <MarkdownContent content={item.title} inline />
+                                    </span>
                                     {item.notes && (
                                       <button
                                         onClick={() => toggleNotes(item.id)}
@@ -1058,7 +1062,7 @@ export function RequestDetailModal({ requestId, onClose, onUpdated }: RequestDet
                                     "transition-all duration-300 ease-in-out",
                                     expandedNotes.has(item.id) ? "max-h-40 opacity-100 mt-1.5 overflow-y-auto" : "max-h-0 opacity-0 overflow-hidden"
                                   )}>
-                                    <p className="text-muted-foreground whitespace-pre-wrap text-[11px] leading-relaxed pr-1">{item.notes}</p>
+                                    <MarkdownContent content={item.notes ?? ""} className="text-muted-foreground text-[11px] leading-relaxed pr-1" />
                                   </div>
                                   {isDelivered && item.delivered_at && (
                                     <p className="text-emerald-600 dark:text-emerald-400 mt-0.5">

@@ -7,8 +7,8 @@ import { createRequest, getRequestsData, type RequestRow } from "@/lib/requests.
 import { getColumns } from "@/lib/data.functions";
 import { listProfiles } from "@/lib/data.functions";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
@@ -123,15 +123,15 @@ export function ManualRequestModal({ onClose, onCreated }: ManualRequestModalPro
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">Descripción</label>
-                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descripción detallada de la solicitud" rows={3} />
+                  <MarkdownEditor value={description} onChange={setDescription} placeholder="Descripción detallada de la solicitud" textareaClassName="min-h-[80px]" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">Objetivo</label>
-                  <Textarea value={objective} onChange={(e) => setObjective(e.target.value)} placeholder="Objetivo de la solicitud" rows={2} />
+                  <MarkdownEditor value={objective} onChange={setObjective} placeholder="Objetivo de la solicitud" textareaClassName="min-h-[60px]" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">Procesos/Pasos</label>
-                  <Textarea value={process} onChange={(e) => setProcess(e.target.value)} placeholder="Procesos o pasos a seguir" rows={2} />
+                  <MarkdownEditor value={process} onChange={setProcess} placeholder="Procesos o pasos a seguir" textareaClassName="min-h-[60px]" />
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">Prioridad</label>
