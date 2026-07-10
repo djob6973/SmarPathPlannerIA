@@ -80,8 +80,9 @@ export async function postSlackMessage(
     ? new Date(req.completed_at).toLocaleDateString("es", {
         day: "2-digit", month: "2-digit", year: "numeric",
         hour: "2-digit", minute: "2-digit",
+        timeZone: "America/Bogota",
       })
-    : new Date().toLocaleDateString("es", { day: "2-digit", month: "2-digit", year: "numeric" });
+    : new Date().toLocaleDateString("es", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Bogota" });
 
   const fields: { type: string; text: string }[] = [
     { type: "mrkdwn", text: `*👤 Responsable*\n${req.assigned_name ?? "Sin asignar"}` },
